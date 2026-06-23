@@ -14,8 +14,8 @@ val localProperties = Properties().apply {
     val f = rootProject.file("local.properties")
     if (f.exists()) f.inputStream().use { load(it) }
 }
-val mapsApiKey: String = localProperties.getProperty("MAPS_API_KEY")
-    ?: System.getenv("MAPS_API_KEY") ?: ""
+val mapsApiKey: String = (localProperties.getProperty("MAPS_API_KEY")
+    ?: System.getenv("MAPS_API_KEY") ?: "").ifBlank { "MISSING_MAPS_API_KEY" }
 
 android {
     namespace = "com.vsmart.user_app"
@@ -43,6 +43,8 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        // Inject the Google Maps key into AndroidManifest's ${MAPS_API_KEY} placeholder.
+        manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
     }
 
     buildTypes {
