@@ -63,6 +63,7 @@ import '../../features/settings/presentation/screens/about_screen.dart';
 import '../../features/settings/presentation/screens/language_screen.dart';
 import '../../features/settings/presentation/screens/notification_settings_screen.dart';
 import '../../features/settings/presentation/screens/security_settings_screen.dart';
+import '../../features/serviceability/presentation/providers/serviceability_gate_providers.dart';
 import '../../features/serviceability/presentation/screens/not_serviceable_screen.dart';
 import '../../features/support/presentation/screens/faq_screen.dart';
 import '../../features/support/presentation/screens/raise_ticket_screen.dart';
@@ -101,7 +102,10 @@ final goRouterProvider = Provider<GoRouter>((ref) {
     ..listen(authGuardProvider, (_, __) => refresh.value++)
     ..listen(onboardingSeenProvider, (_, __) => refresh.value++)
     ..listen(guestModeProvider, (_, __) => refresh.value++)
-    ..listen(appStartupProvider, (_, __) => refresh.value++);
+    ..listen(appStartupProvider, (_, __) => refresh.value++)
+    // Re-run the redirect when the serviceability hard-lock verdict resolves so
+    // the gate flips between the loader, the lock screen, and the live app.
+    ..listen(serviceabilityGateProvider, (_, __) => refresh.value++);
 
   return GoRouter(
     navigatorKey: _rootKey,
@@ -141,8 +145,14 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         return kVisitorLocations.contains(loc) ? null : RoutePaths.login;
       }
 
-      // Authenticated: enforce the verification lifecycle guard.
-      return resolveGuardRedirect(stage, loc);
+      // Authenticated: enforce the verification lifecycle guard first.
+      final lifecycle = resolveGuardRedirect(stage, loc);
+      if (lifecycle != null) return lifecycle;
+
+      // Serviceability HARD LOCK: gate the whole post-login app on the GPS-based
+      // verdict. The verification flow, the lock screen itself, and the few
+      // entry/legal routes are exempt (handled inside the helper).
+      return serviceabilityGateRedirect(ref.read(serviceabilityGateProvider), loc);
     },
     routes: [
       GoRoute(
@@ -539,17 +549,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: RoutePaths.notServiceable,
         name: RouteNames.notServiceable,
-        builder: (_, state) {
-          final extra = state.extra;
-          if (extra is Address) {
-            return NotServiceableScreen(
-              latitude: extra.latitude,
-              longitude: extra.longitude,
-              pincode: extra.pincode,
-            );
-          }
-          return const NotServiceableScreen();
-        },
+        builder: (_, __) => const NotServiceableScreen(),
       ),
       GoRoute(
         path: RoutePaths.coupons,

@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/extensions/context_extensions.dart';
 import '../../core/widgets/widgets.dart';
 import '../../features/cart/presentation/providers/cart_providers.dart';
+import '../../features/serviceability/presentation/providers/serviceability_gate_providers.dart';
 
 /// Hosts the persistent bottom navigation for the main authenticated tabs and
 /// renders the active [StatefulNavigationShell] branch.
@@ -24,6 +25,17 @@ class AppShell extends ConsumerStatefulWidget {
 
 class _AppShellState extends ConsumerState<AppShell> {
   DateTime? _lastBackAt;
+
+  @override
+  void initState() {
+    super.initState();
+    // Kick off the once-per-session GPS serviceability hard-lock check the
+    // moment the authenticated shell mounts. Idempotent — the lock screen fires
+    // the same call, whichever mounts first wins.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(serviceabilityGateProvider.notifier).ensureChecked();
+    });
+  }
 
   void _onTap(int index) {
     widget.navigationShell.goBranch(

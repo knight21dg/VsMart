@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../features/auth/domain/entities/user.dart';
 import '../../features/auth/presentation/providers/current_user_provider.dart';
 import '../../features/auth/presentation/providers/session_provider.dart';
+import '../../features/serviceability/presentation/providers/serviceability_gate_providers.dart';
 import 'route_paths.dart';
 
 /// Where a user sits in the auth + verification lifecycle. Drives the GoRouter
@@ -153,3 +154,50 @@ String landingForStage(UserStage stage) => switch (stage) {
       // Everyone else (incl. KYC-incomplete) lands on Home — KYC is optional.
       _ => RoutePaths.home,
     };
+
+/// Routes that bypass the serviceability HARD LOCK even while locked. The whole
+/// verification flow, support, and legal pages stay reachable so a locked user
+/// can still get help or finish KYC. Everything else (home, catalog, search,
+/// cart, credit, orders, profile…) is gated. The lock screen itself is NOT in
+/// this set — it's handled explicitly so a now-serviceable user is bounced off
+/// it back to Home.
+const Set<String> _serviceabilityExemptLocations = {
+  RoutePaths.support,
+  RoutePaths.terms,
+  RoutePaths.privacyPolicy,
+};
+
+bool _isServiceabilityExempt(String loc) {
+  if (_serviceabilityExemptLocations.contains(loc)) return true;
+  // The KYC / verification flow is part of onboarding and must never be locked.
+  if (kVerificationLocations.contains(loc)) return true;
+  if (loc.startsWith('/verification')) return true;
+  if (loc == RoutePaths.kyc || loc.startsWith('${RoutePaths.kyc}/')) return true;
+  return false;
+}
+
+/// Resolves the serviceability hard-lock redirect for an authenticated user at
+/// [loc], or null to allow. Gates the ENTIRE main app on the GPS-based verdict:
+///
+///  • [GateStatus.serviceable]      → allow; bounce off the lock screen to home.
+///  • locked (unserviceable / location-unavailable) → force the lock screen; no
+///    other main route is reachable.
+///  • resolving (unresolved/checking) → also route to the lock screen, which
+///    renders a "Checking your area…" loader instead of flashing main content.
+///
+/// Exempt routes (verification flow, support, legal) always pass.
+String? serviceabilityGateRedirect(GateStatus gate, String loc) {
+  final onLockScreen = loc == RoutePaths.notServiceable;
+
+  // Serviceable: full access. If the user is sitting on the lock screen (e.g.
+  // they just changed location and it resolved), send them to Home.
+  if (gate == GateStatus.serviceable) {
+    return onLockScreen ? RoutePaths.home : null;
+  }
+
+  // Locked or still resolving. Let exempt routes through; the lock screen is
+  // where we want to be; everything else funnels to the lock screen.
+  if (onLockScreen) return null;
+  if (_isServiceabilityExempt(loc)) return null;
+  return RoutePaths.notServiceable;
+}

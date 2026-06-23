@@ -1,18 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
-import '../../../../app/routes/route_paths.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/extensions/context_extensions.dart';
 import '../../../../core/widgets/widgets.dart';
-import '../providers/serviceability_providers.dart';
+import '../providers/serviceability_gate_providers.dart';
 
-/// Shown when the customer's location falls outside every serviceable zone
-/// (spec §NOT SERVICEABLE FLOW). Offers: change location, notify-me (captured as
-/// an expansion request), and contact support.
-class NotServiceableScreen extends ConsumerWidget {
+/// Full-screen serviceability HARD LOCK (Zepto/Blinkit style).
+///
+/// When the customer's device location resolves OUTSIDE every serving zone (or
+/// coverage can't be confirmed) the router funnels the entire app here, with a
+/// single action: **Change location**. While the GPS check is still resolving it
+/// renders a brief "Checking your area…" loader instead of locking content.
+///
+/// Unlocking is automatic: changing the location re-runs the serviceability
+/// check via [ServiceabilityGateController]; once it resolves serviceable the
+/// router's `refreshListenable` flips the redirect and lands the user on Home.
+class NotServiceableScreen extends ConsumerStatefulWidget {
   const NotServiceableScreen({super.key, this.latitude, this.longitude, this.pincode});
 
   final double? latitude;
@@ -20,18 +25,65 @@ class NotServiceableScreen extends ConsumerWidget {
   final String? pincode;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<NotServiceableScreen> createState() =>
+      _NotServiceableScreenState();
+}
+
+class _NotServiceableScreenState extends ConsumerState<NotServiceableScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // If we landed here before any check ran (first launch lands on the lock
+    // screen while `unresolved`), kick the once-per-session GPS resolve.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(serviceabilityGateProvider.notifier).ensureChecked();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final vs = context.vsColors;
+    final gate = ref.watch(serviceabilityGateProvider);
+
+    // ----- Resolving: brief, non-locking loading state. -----
+    if (gate.isResolving) {
+      return Scaffold(
+        body: SafeArea(
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const CircularProgressIndicator(),
+                AppSpacing.vGapLg,
+                Text('Checking your area…',
+                    style: AppTypography.titleMedium),
+                AppSpacing.vGapXs,
+                Text(
+                  'Confirming we deliver where you are.',
+                  textAlign: TextAlign.center,
+                  style: AppTypography.bodyMedium
+                      .copyWith(color: vs.textSecondary),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    // `locationUnavailable` means GPS was denied / coverage couldn't be
+    // confirmed — frame the copy as "set your location" rather than a definitive
+    // "we're not here yet".
+    final couldntLocate = gate == GateStatus.locationUnavailable;
+
     return Scaffold(
-      appBar: const VSAppBar(title: 'Delivery area'),
       body: SafeArea(
-        child: SingleChildScrollView(
+        child: Padding(
           padding: const EdgeInsets.all(AppSpacing.xxl),
           child: Column(
-            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: AppSpacing.xl),
               Center(
                 child: Container(
                   height: 96,
@@ -46,41 +98,28 @@ class NotServiceableScreen extends ConsumerWidget {
               ),
               AppSpacing.vGapXl,
               Text(
-                'We are not available in your area yet',
+                couldntLocate
+                    ? 'Set your location to continue'
+                    : "VS Mart isn't in your area yet",
                 textAlign: TextAlign.center,
                 style: AppTypography.headlineMedium,
               ),
               AppSpacing.vGapSm,
               Text(
-                "VS Mart is expanding fast. Tell us where you are and we'll "
-                'notify you the moment we start delivering near you.',
+                couldntLocate
+                    ? "We couldn't confirm your location. Set it so we can "
+                        'check if VS Mart delivers near you.'
+                    : "We're expanding fast. Change your location to shop from a "
+                        'serviceable area near you.',
                 textAlign: TextAlign.center,
-                style: AppTypography.bodyMedium.copyWith(color: vs.textSecondary),
+                style:
+                    AppTypography.bodyMedium.copyWith(color: vs.textSecondary),
               ),
               const SizedBox(height: AppSpacing.xxl),
               VSButton(
                 label: 'Change location',
                 icon: Icons.edit_location_alt_rounded,
-                onPressed: () {
-                  if (context.canPop()) {
-                    context.pop();
-                  } else {
-                    context.goNamed(RouteNames.addresses);
-                  }
-                },
-              ),
-              AppSpacing.vGapMd,
-              VSOutlinedButton(
-                label: 'Notify me when you arrive',
-                icon: Icons.notifications_active_outlined,
-                onPressed: () => _openNotifySheet(context, ref),
-              ),
-              AppSpacing.vGapMd,
-              VSButton(
-                label: 'Contact support',
-                variant: VSButtonVariant.neutral,
-                icon: Icons.support_agent_rounded,
-                onPressed: () => context.goNamed(RouteNames.support),
+                onPressed: () => _openChangeLocationSheet(context),
               ),
             ],
           ),
@@ -89,7 +128,7 @@ class NotServiceableScreen extends ConsumerWidget {
     );
   }
 
-  void _openNotifySheet(BuildContext context, WidgetRef ref) {
+  void _openChangeLocationSheet(BuildContext context) {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -98,69 +137,79 @@ class NotServiceableScreen extends ConsumerWidget {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.lg)),
       ),
-      builder: (_) => _NotifyMeSheet(
-        latitude: latitude,
-        longitude: longitude,
-        pincode: pincode ?? '',
-      ),
+      builder: (_) => const _ChangeLocationSheet(),
     );
   }
 }
 
-class _NotifyMeSheet extends ConsumerStatefulWidget {
-  const _NotifyMeSheet({this.latitude, this.longitude, this.pincode = ''});
-
-  final double? latitude;
-  final double? longitude;
-  final String pincode;
+/// Bottom sheet that lets a locked user re-detect their GPS location or type a
+/// pincode, then re-runs the serviceability check. On a serviceable result the
+/// router auto-unlocks; otherwise it surfaces a "still not covered" note.
+class _ChangeLocationSheet extends ConsumerStatefulWidget {
+  const _ChangeLocationSheet();
 
   @override
-  ConsumerState<_NotifyMeSheet> createState() => _NotifyMeSheetState();
+  ConsumerState<_ChangeLocationSheet> createState() =>
+      _ChangeLocationSheetState();
 }
 
-class _NotifyMeSheetState extends ConsumerState<_NotifyMeSheet> {
-  final _formKey = GlobalKey<FormState>();
-  final _name = TextEditingController();
-  final _mobile = TextEditingController();
-  final _area = TextEditingController();
-  late final _pincode = TextEditingController(text: widget.pincode);
-  bool _submitting = false;
+class _ChangeLocationSheetState extends ConsumerState<_ChangeLocationSheet> {
+  final _pincode = TextEditingController();
+  bool _busy = false;
+  String? _note;
 
   @override
   void dispose() {
-    _name.dispose();
-    _mobile.dispose();
-    _area.dispose();
     _pincode.dispose();
     super.dispose();
   }
 
-  Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
-    setState(() => _submitting = true);
-    try {
-      await ref.read(serviceabilityDataSourceProvider).requestExpansion(
-            name: _name.text.trim(),
-            mobile: _mobile.text.trim(),
-            area: _area.text.trim(),
-            pincode: _pincode.text.trim(),
-            latitude: widget.latitude,
-            longitude: widget.longitude,
-          );
-      if (!mounted) return;
-      Navigator.of(context).pop();
-      context.showSnack(
-        "Thanks! We'll let you know when VS Mart reaches your area.",
-      );
-    } catch (_) {
-      if (!mounted) return;
-      setState(() => _submitting = false);
-      context.showSnack('Could not submit. Please try again.', isError: true);
+  Future<void> _useMyLocation() async {
+    setState(() {
+      _busy = true;
+      _note = null;
+    });
+    final status =
+        await ref.read(serviceabilityGateProvider.notifier).recheck();
+    _handleResult(status, detected: true);
+  }
+
+  Future<void> _checkPincode() async {
+    final pin = _pincode.text.trim();
+    if (pin.length != 6) {
+      setState(() => _note = 'Enter a valid 6-digit pincode');
+      return;
     }
+    setState(() {
+      _busy = true;
+      _note = null;
+    });
+    final status = await ref
+        .read(serviceabilityGateProvider.notifier)
+        .recheckCoordinate(pincode: pin);
+    _handleResult(status, detected: false);
+  }
+
+  void _handleResult(GateStatus status, {required bool detected}) {
+    if (!mounted) return;
+    if (status == GateStatus.serviceable) {
+      // The router's refreshListenable will redirect off the lock screen to
+      // Home; just close the sheet.
+      Navigator.of(context).pop();
+      return;
+    }
+    setState(() {
+      _busy = false;
+      _note = status == GateStatus.locationUnavailable && detected
+          ? "Couldn't get your location. Check GPS/permissions and try again, "
+              'or enter a pincode.'
+          : "We don't deliver there yet. Try a different location.";
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    final vs = context.vsColors;
     final bottom = MediaQuery.of(context).viewInsets.bottom;
     return Padding(
       padding: EdgeInsets.fromLTRB(
@@ -169,71 +218,79 @@ class _NotifyMeSheetState extends ConsumerState<_NotifyMeSheet> {
         AppSpacing.lg,
         AppSpacing.lg + bottom,
       ),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text('Notify me when you arrive',
-                style: AppTypography.titleLarge),
-            AppSpacing.vGapSm,
-            Text(
-              'Share your details so we can reach out as soon as we launch '
-              'near you.',
-              style: AppTypography.bodySmall
-                  .copyWith(color: context.vsColors.textSecondary),
-            ),
-            AppSpacing.vGapLg,
-            VSTextField(
-              controller: _name,
-              label: 'Name',
-              hint: 'Your name',
-              textInputAction: TextInputAction.next,
-              validator: (v) =>
-                  (v == null || v.trim().isEmpty) ? 'Enter your name' : null,
-            ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('Change location', style: AppTypography.titleLarge),
+          AppSpacing.vGapSm,
+          Text(
+            'Use your current location or enter a pincode to check coverage.',
+            style: AppTypography.bodySmall.copyWith(color: vs.textSecondary),
+          ),
+          AppSpacing.vGapLg,
+          VSButton(
+            label: 'Use my current location',
+            icon: Icons.my_location_rounded,
+            isLoading: _busy,
+            onPressed: _busy ? null : _useMyLocation,
+          ),
+          AppSpacing.vGapMd,
+          Row(
+            children: [
+              Expanded(child: Divider(color: vs.border)),
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                child: Text('OR',
+                    style: AppTypography.labelSmall
+                        .copyWith(color: vs.textSecondary)),
+              ),
+              Expanded(child: Divider(color: vs.border)),
+            ],
+          ),
+          AppSpacing.vGapMd,
+          VSTextField(
+            controller: _pincode,
+            label: 'Pincode',
+            hint: '6-digit pincode',
+            keyboardType: TextInputType.number,
+            enabled: !_busy,
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              LengthLimitingTextInputFormatter(6),
+            ],
+            onSubmitted: (_) => _busy ? null : _checkPincode(),
+          ),
+          AppSpacing.vGapMd,
+          VSButton(
+            label: 'Check this pincode',
+            variant: VSButtonVariant.secondary,
+            isLoading: _busy,
+            onPressed: _busy ? null : _checkPincode,
+          ),
+          if (_note != null) ...[
             AppSpacing.vGapMd,
-            VSTextField(
-              controller: _mobile,
-              label: 'Mobile number',
-              hint: '10-digit mobile',
-              keyboardType: TextInputType.phone,
-              textInputAction: TextInputAction.next,
-              inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly,
-                LengthLimitingTextInputFormatter(10),
-              ],
-              validator: (v) => (v == null || v.trim().length < 10)
-                  ? 'Enter a valid 10-digit mobile'
-                  : null,
-            ),
-            AppSpacing.vGapMd,
-            VSTextField(
-              controller: _area,
-              label: 'Area / village',
-              hint: 'Your locality',
-              textInputAction: TextInputAction.next,
-            ),
-            AppSpacing.vGapMd,
-            VSTextField(
-              controller: _pincode,
-              label: 'Pincode',
-              hint: '6-digit pincode',
-              keyboardType: TextInputType.number,
-              inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly,
-                LengthLimitingTextInputFormatter(6),
-              ],
-            ),
-            AppSpacing.vGapXl,
-            VSButton(
-              label: 'Submit',
-              isLoading: _submitting,
-              onPressed: _submitting ? null : _submit,
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              decoration: BoxDecoration(
+                color: vs.offerTint,
+                borderRadius: AppRadius.brMd,
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline_rounded, size: 18, color: vs.offer),
+                  AppSpacing.hGapSm,
+                  Expanded(
+                    child: Text(_note!,
+                        style: AppTypography.bodySmall
+                            .copyWith(color: vs.offer)),
+                  ),
+                ],
+              ),
             ),
           ],
-        ),
+        ],
       ),
     );
   }

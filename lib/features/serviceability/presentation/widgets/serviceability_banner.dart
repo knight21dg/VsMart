@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
-import '../../../../app/routes/route_paths.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/extensions/context_extensions.dart';
 import '../../../address/presentation/providers/address_selection_provider.dart';
@@ -11,7 +9,8 @@ import '../providers/serviceability_providers.dart';
 /// A slim status strip reflecting the customer's serviceability for their
 /// selected delivery address:
 ///  • serviceable   → green chip with the zone ETA
-///  • not serviceable → tappable amber banner → [NotServiceableScreen]
+///  • not serviceable → amber info strip (the app-wide hard lock already blocks
+///    out-of-coverage users, so this is informational only — no navigation)
 ///  • not resolved   → nothing (don't nag before a location is chosen)
 class ServiceabilityBanner extends ConsumerWidget {
   const ServiceabilityBanner({super.key});
@@ -56,22 +55,16 @@ class ServiceabilityBanner extends ConsumerWidget {
       );
     }
 
-    // Resolved but outside coverage.
-    return InkWell(
-      onTap: () => context.pushNamed(
-        RouteNames.notServiceable,
-        extra: address,
-      ),
-      child: _Strip(
-        color: vs.offerTint,
-        iconColor: vs.offer,
-        icon: Icons.location_off_rounded,
-        trailing: Icon(Icons.chevron_right_rounded, color: vs.offer, size: 18),
-        child: Text(
-          'Not available at this address yet — tap to notify me',
-          style: AppTypography.labelMedium
-              .copyWith(color: vs.offer, fontWeight: FontWeight.w600),
-        ),
+    // Resolved but outside coverage — informational only (the app-wide hard
+    // lock already prevents an out-of-coverage user from reaching this screen).
+    return _Strip(
+      color: vs.offerTint,
+      iconColor: vs.offer,
+      icon: Icons.location_off_rounded,
+      child: Text(
+        'Not available at this address yet',
+        style: AppTypography.labelMedium
+            .copyWith(color: vs.offer, fontWeight: FontWeight.w600),
       ),
     );
   }
@@ -83,14 +76,12 @@ class _Strip extends StatelessWidget {
     required this.iconColor,
     required this.icon,
     required this.child,
-    this.trailing,
   });
 
   final Color color;
   final Color iconColor;
   final IconData icon;
   final Widget child;
-  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -106,7 +97,6 @@ class _Strip extends StatelessWidget {
           Icon(icon, size: 16, color: iconColor),
           const SizedBox(width: AppSpacing.sm),
           Expanded(child: child),
-          if (trailing != null) trailing!,
         ],
       ),
     );
