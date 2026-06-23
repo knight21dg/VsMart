@@ -389,6 +389,7 @@ class _Body extends StatelessWidget {
                       return VSProductListTile(
                         product: p,
                         quantity: quantityOf(p),
+                        heroTag: productHeroTag(p.id),
                         onTap: () => onOpen(p),
                         onAdd: () => onAdd(p),
                       );

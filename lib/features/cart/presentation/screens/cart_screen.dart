@@ -9,6 +9,7 @@ import '../../../../core/widgets/widgets.dart';
 import '../../../../shared/providers/core_providers.dart';
 import '../../../address/presentation/providers/address_providers.dart';
 import '../../../auth/presentation/providers/session_provider.dart';
+import '../../../catalog/presentation/product_navigation.dart';
 import '../../domain/services/cart_validation_service.dart';
 import '../providers/cart_providers.dart';
 import '../widgets/cart_widgets.dart';
@@ -157,9 +158,11 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                     VSCartItem(
                       item: item,
                       warning: warnings[item.productId],
-                      onTap: () => context.pushNamed(
-                        RouteNames.productDetails,
-                        pathParameters: {'productId': item.productId},
+                      heroTag: detailHeroTag('cart', item.productId),
+                      onTap: () => openProductDetail(
+                        context,
+                        productId: item.productId,
+                        source: 'cart',
                       ),
                       onIncrement: () => controller.increment(item.productId),
                       onDecrement: () => controller.decrement(item.productId),

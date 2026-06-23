@@ -126,7 +126,4 @@ abstract final class ApiConstants {
   static const String loyaltyLedger = '/loyalty/ledger';
   static const String loyaltyRedeem = '/loyalty/redeem';
 
-  // ----- Subscriptions -----
-  static const String subscriptions = '/subscriptions';
-  static String subscription(String id) => '/subscriptions/$id';
 }

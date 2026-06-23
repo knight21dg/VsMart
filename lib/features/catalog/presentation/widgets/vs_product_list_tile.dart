@@ -14,12 +14,17 @@ class VSProductListTile extends StatelessWidget {
     required this.onTap,
     required this.onAdd,
     this.quantity = 0,
+    this.heroTag,
   });
 
   final Product product;
   final VoidCallback onTap;
   final VoidCallback onAdd;
   final int quantity;
+
+  /// When set, the thumbnail is a [Hero] with this tag so it morphs into the
+  /// product overlay/detail surface on open (and back on close).
+  final String? heroTag;
 
   @override
   Widget build(BuildContext context) {
@@ -42,7 +47,14 @@ class VSProductListTile extends StatelessWidget {
               child: SizedBox(
                 height: 64,
                 width: 64,
-                child: VSNetworkImage(url: p.imageUrl, fit: BoxFit.cover),
+                child: heroTag == null
+                    ? VSNetworkImage(url: p.imageUrl, fit: BoxFit.cover)
+                    : Hero(
+                        tag: heroTag!,
+                        flightShuttleBuilder: (_, __, ___, ____, _____) =>
+                            VSNetworkImage(url: p.imageUrl, fit: BoxFit.cover),
+                        child: VSNetworkImage(url: p.imageUrl, fit: BoxFit.cover),
+                      ),
               ),
             ),
             AppSpacing.hGapMd,

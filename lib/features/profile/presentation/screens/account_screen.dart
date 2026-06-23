@@ -1064,13 +1064,6 @@ class _SupportSettingsCard extends StatelessWidget {
           ),
           Divider(height: 1, color: vs.border),
           _ListRow(
-            icon: Icons.autorenew_rounded,
-            label: 'Subscriptions',
-            color: vs.brand,
-            onTap: () => context.pushNamed(RouteNames.subscriptions),
-          ),
-          Divider(height: 1, color: vs.border),
-          _ListRow(
             icon: Icons.assignment_return_outlined,
             label: 'My Returns',
             color: vs.trust,

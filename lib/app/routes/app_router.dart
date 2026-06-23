@@ -73,7 +73,6 @@ import '../../features/verification/presentation/screens/aadhaar_verification_sc
 import '../../features/verification/presentation/screens/pan_verification_screen.dart';
 import '../../features/verification/presentation/screens/residence_verification_screen.dart';
 import '../../features/loyalty/presentation/screens/loyalty_screen.dart';
-import '../../features/subscriptions/presentation/screens/subscriptions_screen.dart';
 import '../../features/returns/presentation/screens/returns_screen.dart';
 import '../../features/returns/presentation/screens/request_return_screen.dart';
 import '../../features/content/presentation/screens/content_page_screen.dart';
@@ -613,11 +612,6 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: RoutePaths.rewards,
         name: RouteNames.rewards,
         builder: (_, __) => const LoyaltyScreen(),
-      ),
-      GoRoute(
-        path: RoutePaths.subscriptions,
-        name: RouteNames.subscriptions,
-        builder: (_, __) => const SubscriptionsScreen(),
       ),
       GoRoute(
         path: RoutePaths.returns,

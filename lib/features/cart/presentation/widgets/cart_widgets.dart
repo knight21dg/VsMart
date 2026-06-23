@@ -17,6 +17,7 @@ class VSCartItem extends StatelessWidget {
     required this.onDecrement,
     this.onTap,
     this.warning,
+    this.heroTag,
   });
 
   final CartItem item;
@@ -26,6 +27,25 @@ class VSCartItem extends StatelessWidget {
   /// Tapping the line (outside the stepper) opens the product details page.
   final VoidCallback? onTap;
   final String? warning;
+
+  /// When set, the thumbnail is a [Hero] with this tag so it morphs into the
+  /// product detail gallery on open (and back on close).
+  final String? heroTag;
+
+  /// Wraps the thumbnail in a [Hero] (when a tag is given) so it morphs into the
+  /// product detail gallery. The flight shuttle flies the cached image so the
+  /// open never fades.
+  Widget _heroImage(Widget child) {
+    final tag = heroTag;
+    if (tag == null) return child;
+    return Hero(
+      tag: tag,
+      flightShuttleBuilder: (_, __, ___, ____, _____) => item.imageUrl != null
+          ? VSNetworkImage(url: item.imageUrl, fit: BoxFit.cover)
+          : child,
+      child: child,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -51,13 +71,16 @@ class VSCartItem extends StatelessWidget {
                     child: SizedBox(
                       height: 56,
                       width: 56,
-                      child: item.imageUrl != null
-                          ? VSNetworkImage(url: item.imageUrl, fit: BoxFit.cover)
-                          : Container(
-                              color: vs.brandTint,
-                              child: Icon(Icons.shopping_basket_rounded,
-                                  color: vs.brand),
-                            ),
+                      child: _heroImage(
+                        item.imageUrl != null
+                            ? VSNetworkImage(
+                                url: item.imageUrl, fit: BoxFit.cover)
+                            : Container(
+                                color: vs.brandTint,
+                                child: Icon(Icons.shopping_basket_rounded,
+                                    color: vs.brand),
+                              ),
+                      ),
                     ),
                   ),
                   AppSpacing.hGapMd,

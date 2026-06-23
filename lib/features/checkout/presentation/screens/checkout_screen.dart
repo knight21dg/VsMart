@@ -11,6 +11,7 @@ import '../../../../core/widgets/widgets.dart';
 import '../../../../shared/providers/core_providers.dart';
 import '../../../address/presentation/providers/address_selection_provider.dart';
 import '../../../cart/presentation/providers/cart_providers.dart';
+import '../../../catalog/presentation/product_navigation.dart';
 import '../../../credit/domain/credit_access.dart';
 import '../../../credit/presentation/providers/credit_access_provider.dart';
 import '../../../credit/presentation/providers/credit_providers.dart';
@@ -137,10 +138,14 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                   child: Column(
                     children: [
                       for (final item in cart.items)
-                        InkWell(
-                          onTap: () => context.pushNamed(
-                            RouteNames.productDetails,
-                            pathParameters: {'productId': item.productId},
+                        Builder(builder: (context) {
+                          final heroTag =
+                              detailHeroTag('checkout', item.productId);
+                          return InkWell(
+                          onTap: () => openProductDetail(
+                            context,
+                            productId: item.productId,
+                            source: 'checkout',
                           ),
                           borderRadius: AppRadius.brSm,
                           child: Padding(
@@ -154,12 +159,23 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                                     height: 44,
                                     width: 44,
                                     color: vs.brandTint,
-                                    child: VSNetworkImage(
-                                      url: item.imageUrl,
-                                      fit: BoxFit.cover,
-                                      borderRadius: AppRadius.brSm,
-                                      fallbackIcon:
-                                          Icons.shopping_basket_rounded,
+                                    child: Hero(
+                                      tag: heroTag,
+                                      flightShuttleBuilder:
+                                          (_, __, ___, ____, _____) =>
+                                              VSNetworkImage(
+                                        url: item.imageUrl,
+                                        fit: BoxFit.cover,
+                                        fallbackIcon:
+                                            Icons.shopping_basket_rounded,
+                                      ),
+                                      child: VSNetworkImage(
+                                        url: item.imageUrl,
+                                        fit: BoxFit.cover,
+                                        borderRadius: AppRadius.brSm,
+                                        fallbackIcon:
+                                            Icons.shopping_basket_rounded,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -185,7 +201,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                               ],
                             ),
                           ),
-                        ),
+                        );
+                        }),
                     ],
                   ),
                 ),

@@ -101,7 +101,6 @@ abstract final class RoutePaths {
   static const String cashCollectionRequest = '/credit/collections/request';
   // Phase 3 — customer engagement modules
   static const String rewards = '/rewards';
-  static const String subscriptions = '/subscriptions';
   static const String returns = '/returns';
   static const String requestReturn = '/returns/new';
   static const String contact = '/contact';
@@ -205,7 +204,6 @@ abstract final class RouteNames {
   static const String cashCollectionRequest = 'cashCollectionRequest';
   // Phase 3 — customer engagement modules
   static const String rewards = 'rewards';
-  static const String subscriptions = 'subscriptions';
   static const String returns = 'returns';
   static const String requestReturn = 'requestReturn';
   static const String contact = 'contact';

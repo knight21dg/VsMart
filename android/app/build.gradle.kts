@@ -17,6 +17,14 @@ val localProperties = Properties().apply {
 val mapsApiKey: String = (localProperties.getProperty("MAPS_API_KEY")
     ?: System.getenv("MAPS_API_KEY") ?: "").ifBlank { "MISSING_MAPS_API_KEY" }
 
+// Release signing — credentials live in android/key.properties (git-ignored).
+// Falls back to debug signing when key.properties is absent (e.g. CI without the keystore).
+val keystoreProperties = Properties().apply {
+    val f = rootProject.file("key.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}
+val hasReleaseKeystore = rootProject.file("key.properties").exists()
+
 android {
     namespace = "com.vsmart.user_app"
     compileSdk = flutter.compileSdkVersion
@@ -47,11 +55,25 @@ android {
         manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
     }
 
+    signingConfigs {
+        if (hasReleaseKeystore) {
+            create("release") {
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+                storeFile = keystoreProperties.getProperty("storeFile")?.let { file(it) }
+                storePassword = keystoreProperties.getProperty("storePassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            // Use the upload keystore (key.properties) when present; otherwise fall
+            // back to debug signing so CI / quick local builds still work.
+            signingConfig = if (hasReleaseKeystore)
+                signingConfigs.getByName("release")
+            else
+                signingConfigs.getByName("debug")
         }
     }
 }

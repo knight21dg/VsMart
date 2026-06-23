@@ -11,6 +11,7 @@ import '../../../../core/extensions/num_extensions.dart';
 import '../../../../core/widgets/widgets.dart';
 import '../../../cart/presentation/providers/cart_providers.dart';
 import '../../../catalog/domain/entities/product.dart';
+import '../../../catalog/presentation/product_navigation.dart';
 import '../providers/wishlist_providers.dart';
 
 enum _WishFilter { all, inStock, priceDrop }
@@ -266,6 +267,7 @@ class _WishlistCard extends ConsumerWidget {
     final vs = context.vsColors;
     final p = product;
     final discount = p.discountPercent;
+    final heroTag = detailHeroTag('wishlist', p.id);
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
@@ -280,11 +282,20 @@ class _WishlistCard extends ConsumerWidget {
             children: [
               Stack(
                 children: [
-                  VSNetworkImage(
-                    url: p.imageUrl,
-                    width: 76,
-                    height: 76,
-                    borderRadius: AppRadius.brMd,
+                  Hero(
+                    tag: heroTag,
+                    flightShuttleBuilder: (_, __, ___, ____, _____) =>
+                        VSNetworkImage(
+                      url: p.imageUrl,
+                      fit: BoxFit.cover,
+                      borderRadius: AppRadius.brMd,
+                    ),
+                    child: VSNetworkImage(
+                      url: p.imageUrl,
+                      width: 76,
+                      height: 76,
+                      borderRadius: AppRadius.brMd,
+                    ),
                   ),
                   if (discount > 0)
                     Positioned(
@@ -352,6 +363,7 @@ class _WishlistCard extends ConsumerWidget {
                 onView: () => context.pushNamed(
                   RouteNames.productDetails,
                   pathParameters: {'productId': p.id},
+                  extra: heroTag,
                 ),
               ),
             ],

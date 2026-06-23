@@ -14,9 +14,9 @@ import '../../../credit/domain/credit_access.dart';
 import '../../../credit/presentation/providers/credit_access_provider.dart';
 import '../../../offers/presentation/widgets/placement_banner_carousel.dart';
 import '../../../reviews/presentation/widgets/product_reviews_section.dart';
-import '../../../subscriptions/presentation/widgets/subscribe_button.dart';
 import '../../../wishlist/presentation/providers/wishlist_providers.dart';
 import '../../domain/entities/product.dart';
+import '../product_navigation.dart';
 import '../providers/catalog_providers.dart';
 import '../providers/product_detail_controller.dart';
 import '../widgets/product_detail_widgets.dart';
@@ -137,20 +137,21 @@ class _Body extends ConsumerWidget {
         );
 
     final gallery = VSProductGallery(images: p.gallery);
+    // Land the incoming flight on the gallery. When a card threaded its exact
+    // tag we use it; otherwise default to `product_image_<id>` so the Hero is
+    // still well-formed (an unmatched tag simply renders with no flight).
+    final tag = heroTag ?? 'product_image_${p.id}';
     return ListView(
       padding: EdgeInsets.zero,
       children: [
-        heroTag == null
-            ? gallery
-            : Hero(
-                tag: heroTag!,
-                flightShuttleBuilder: (_, __, ___, ____, _____) =>
-                    VSNetworkImage(
-                  url: p.gallery.isNotEmpty ? p.gallery.first : p.imageUrl,
-                  fit: BoxFit.cover,
-                ),
-                child: gallery,
-              ),
+        Hero(
+          tag: tag,
+          flightShuttleBuilder: (_, __, ___, ____, _____) => VSNetworkImage(
+            url: p.gallery.isNotEmpty ? p.gallery.first : p.imageUrl,
+            fit: BoxFit.cover,
+          ),
+          child: gallery,
+        ),
         Padding(
           padding: AppSpacing.screen,
           child: Column(
@@ -235,8 +236,6 @@ class _Body extends ConsumerWidget {
                 trailingGap: AppSpacing.md,
               ),
               AppSpacing.vGapLg,
-              SubscribeButton(productId: p.id),
-              AppSpacing.vGapLg,
               VSSpecificationSection(specifications: p.specifications),
               AppSpacing.vGapLg,
               const Divider(height: AppSpacing.xxl),
@@ -306,6 +305,7 @@ class _RecommendedRail extends StatelessWidget {
         separatorBuilder: (_, __) => AppSpacing.hGapMd,
         itemBuilder: (context, i) {
           final p = products[i];
+          final tag = detailHeroTag('related', p.id);
           return SizedBox(
             width: 160,
             child: VSProductCard(
@@ -316,9 +316,11 @@ class _RecommendedRail extends StatelessWidget {
               rating: p.rating,
               imageUrl: p.imageUrl,
               outOfStock: !p.inStock,
+              heroTag: tag,
               onTap: () => context.pushReplacementNamed(
                 RouteNames.productDetails,
                 pathParameters: {'productId': p.id},
+                extra: tag,
               ),
             ),
           );

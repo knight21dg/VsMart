@@ -79,7 +79,6 @@ const List<String> _guestAuthRequiredPrefixes = [
   RoutePaths.kyc, // /kyc (+ details)
   '/verification', // all KYC steps
   RoutePaths.returns, // /returns (+ new)
-  RoutePaths.subscriptions,
   RoutePaths.rewards,
   RoutePaths.familyInfo,
 ];
