@@ -1,0 +1,94 @@
+name: user_app
+description: "VS Mart Customer Application — Grocery Commerce + Credit Ecosystem."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.8.1
+  flutter: ">=3.24.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+  # State management
+  flutter_riverpod: ^2.5.1
+  riverpod_annotation: ^2.3.5
+
+  # Routing
+  go_router: ^14.6.2
+
+  # Networking
+  dio: ^5.7.0
+  pretty_dio_logger: ^1.4.0
+  connectivity_plus: ^6.1.0
+
+  # Models / serialization
+  freezed_annotation: ^2.4.4
+  json_annotation: ^4.9.0
+
+  # Local storage
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+  flutter_secure_storage: ^9.2.2
+  shared_preferences: ^2.3.3
+
+  # Firebase
+  firebase_core: ^3.8.0
+  firebase_auth: ^5.3.3
+  firebase_messaging: ^15.1.5
+  cloud_firestore: ^5.5.0
+  firebase_analytics: ^11.3.3
+
+  # UI / media
+  cached_network_image: ^3.4.1
+  google_fonts: ^6.2.1
+  shimmer: ^3.0.0
+  image_picker: ^1.1.2
+  flutter_svg: ^2.0.16
+  lottie: ^3.1.3
+  camera: ^0.11.0+2
+  flutter_image_compress: ^2.3.0
+
+  # Device / location
+  geolocator: ^13.0.2
+  permission_handler: ^11.3.1
+
+  # Maps (order tracking)
+  google_maps_flutter: ^2.9.0
+
+  # Payments (Razorpay checkout for order payments + credit repayment)
+  razorpay_flutter: ^1.3.7
+
+  # Utilities
+  intl: ^0.19.0
+  equatable: ^2.0.7
+  package_info_plus: ^8.1.2
+  dartz: ^0.10.1
+  logger: ^2.5.0
+
+  # Invoices (preview / print / share / save the backend-generated PDF)
+  printing: ^5.13.4
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+  # Code generation
+  build_runner: ^2.4.13
+  freezed: ^2.5.7
+  json_serializable: ^6.9.0
+  riverpod_generator: ^2.6.3
+  hive_generator: ^2.0.1
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/
+    - assets/images/products/
+    - assets/icons/
+    - assets/illustrations/
+    - assets/animations/

@@ -1,0 +1,61 @@
+name: Build VS Mart Customer App
+
+# Builds the Android APK and an unsigned iOS app on every push to main (and on
+# manual dispatch). Artifacts are attached to the workflow run.
+#
+# Required repo secret:
+#   MAPS_API_KEY  — Google "Maps SDK for Android" key (injected into the manifest).
+# The API base URL is baked in below; change API_BASE_URL to point elsewhere.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  API_BASE_URL: https://api.thevsmart.com/api/v1
+  FLUTTER_VERSION: 3.32.4
+
+jobs:
+  android:
+    name: Android APK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Build release APK
+        env:
+          MAPS_API_KEY: ${{ secrets.MAPS_API_KEY }}
+        run: flutter build apk --release --dart-define=API_BASE_URL=${{ env.API_BASE_URL }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vsmart-customer-android
+          path: build/app/outputs/flutter-apk/app-release.apk
+
+  ios:
+    name: iOS (unsigned)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Build iOS (no code signing)
+        run: flutter build ios --release --no-codesign --dart-define=API_BASE_URL=${{ env.API_BASE_URL }}
+      - name: Package unsigned .ipa
+        run: |
+          cd build/ios/iphoneos
+          mkdir -p Payload && cp -R Runner.app Payload/
+          zip -qr vsmart-customer-ios-unsigned.ipa Payload
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vsmart-customer-ios-unsigned
+          path: build/ios/iphoneos/vsmart-customer-ios-unsigned.ipa
