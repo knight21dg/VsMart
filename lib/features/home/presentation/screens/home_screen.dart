@@ -22,6 +22,7 @@ import '../../../catalog/presentation/product_navigation.dart';
 import '../../../catalog/presentation/providers/catalog_providers.dart';
 import '../../../catalog/presentation/providers/recently_viewed_provider.dart';
 import '../../../credit/presentation/providers/credit_providers.dart';
+import '../../../location/presentation/providers/location_providers.dart';
 import '../../../offers/domain/entities/offer.dart';
 import '../../../offers/presentation/providers/offer_providers.dart';
 import '../../../offers/presentation/widgets/vs_offer_banner.dart';
@@ -52,6 +53,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
     _scrollController.addListener(_onScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(analyticsServiceProvider).track('home_viewed');
+      // Resolve the live device location for the "Delivery to <area>" header.
+      ref.read(locationControllerProvider.notifier).ensureResolved();
       _maybeAutoDetectLocation();
     });
   }
@@ -325,20 +328,21 @@ class _HomeHeader extends ConsumerWidget {
 
   final double scrollOffset;
 
-  String _label(Address? a) {
-    if (a == null) return 'Set delivery address';
+  /// Fallback label from the saved default address when no live location yet.
+  String _addressLabel(Address? a) {
+    if (a == null) return '';
     final area = a.area.isNotEmpty
         ? a.area
         : (a.village.isNotEmpty ? a.village : a.district);
-    final pin = a.pincode.isNotEmpty ? ' · ${a.pincode}' : '';
-    if (area.isNotEmpty) return '$area$pin';
-    return a.formatted.isNotEmpty ? a.formatted : 'Set delivery address';
+    if (area.isNotEmpty && area != 'Current Location') return area;
+    return a.formatted.isNotEmpty ? a.formatted : '';
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final vs = context.vsColors;
     final address = ref.watch(defaultAddressProvider);
+    final loc = ref.watch(locationControllerProvider);
     // Brand wordmark stays visible at the very top and disappears once the user
     // starts scrolling the feed.
     final showBrand = scrollOffset < 24;
@@ -375,34 +379,13 @@ class _HomeHeader extends ConsumerWidget {
         Row(
           children: [
             Expanded(
-              child: InkWell(
+              child: _DeliveryLocation(
+                state: loc,
+                addressLabel: _addressLabel(address),
                 onTap: () => context.pushNamed(RouteNames.addresses),
-                borderRadius: AppRadius.brSm,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Delivering to',
-                        style: AppTypography.labelSmall
-                            .copyWith(color: vs.textSecondary)),
-                    Row(
-                      children: [
-                        Icon(Icons.location_on_rounded,
-                            size: 18, color: vs.brand),
-                        const SizedBox(width: 2),
-                        Flexible(
-                          child: Text(
-                            _label(address),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppTypography.titleMedium,
-                          ),
-                        ),
-                        Icon(Icons.keyboard_arrow_down_rounded,
-                            size: 20, color: context.colors.onSurface),
-                      ],
-                    ),
-                  ],
-                ),
+                onEnableLocation: () => ref
+                    .read(locationControllerProvider.notifier)
+                    .ensureResolved(force: true),
               ),
             ),
             IconButton(
@@ -420,6 +403,97 @@ class _HomeHeader extends ConsumerWidget {
           ],
         ),
       ],
+    );
+  }
+}
+
+/// The "Delivery to <area>" header. Surfaces the live GPS-resolved area, with a
+/// shimmer while locating, an "Enable location" CTA on permission denial, and a
+/// graceful fall-back to the saved address label.
+class _DeliveryLocation extends StatelessWidget {
+  const _DeliveryLocation({
+    required this.state,
+    required this.addressLabel,
+    required this.onTap,
+    required this.onEnableLocation,
+  });
+
+  final DeviceLocationState state;
+  final String addressLabel;
+  final VoidCallback onTap;
+  final VoidCallback onEnableLocation;
+
+  @override
+  Widget build(BuildContext context) {
+    final vs = context.vsColors;
+
+    // Permission denied → tappable "Enable location".
+    if (state.isPermissionDenied && addressLabel.isEmpty) {
+      return InkWell(
+        onTap: onEnableLocation,
+        borderRadius: AppRadius.brSm,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Delivery to',
+                style:
+                    AppTypography.labelSmall.copyWith(color: vs.textSecondary)),
+            Row(
+              children: [
+                Icon(Icons.location_off_rounded, size: 18, color: vs.danger),
+                const SizedBox(width: 4),
+                Text('Enable location',
+                    style: AppTypography.titleMedium.copyWith(color: vs.brand)),
+              ],
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Resolved live location wins; otherwise the saved-address fallback.
+    final liveArea = state.location?.displayLabel ?? '';
+    final label = liveArea.isNotEmpty
+        ? liveArea
+        : (addressLabel.isNotEmpty ? addressLabel : 'Set delivery address');
+
+    // Loading with nothing to show yet → subtle shimmer.
+    final showShimmer =
+        state.isLoading && liveArea.isEmpty && addressLabel.isEmpty;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: AppRadius.brSm,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Delivery to',
+              style:
+                  AppTypography.labelSmall.copyWith(color: vs.textSecondary)),
+          Row(
+            children: [
+              Icon(Icons.location_on_rounded, size: 18, color: vs.brand),
+              const SizedBox(width: 2),
+              if (showShimmer)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 3),
+                  child: VSShimmerBox(width: 120, height: 14),
+                )
+              else
+                Flexible(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.titleMedium,
+                  ),
+                ),
+              Icon(Icons.keyboard_arrow_down_rounded,
+                  size: 20, color: context.colors.onSurface),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

@@ -22,6 +22,15 @@ extension StringX on String {
 
   String truncate(int max, {String ellipsis = '…'}) =>
       length <= max ? this : '${substring(0, max)}$ellipsis';
+
+  /// Reduces a stored phone (which may be E.164 like "+919100000001") to the
+  /// local 10-digit national number used by the address phone field. Falls back
+  /// to the trimmed digits if it isn't a 12-digit "91…" number.
+  String get localPhone {
+    final digits = replaceAll(RegExp(r'\D'), '');
+    if (digits.length > 10) return digits.substring(digits.length - 10);
+    return digits;
+  }
 }
 
 extension NullableStringX on String? {

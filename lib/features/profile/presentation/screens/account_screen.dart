@@ -290,7 +290,12 @@ class _ProfileTopCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final vs = context.vsColors;
     final name = (user?.name).isNullOrBlank ? 'Guest' : user!.name;
-    final memberId = (user?.id).isNullOrBlank ? '—' : user!.id;
+    // Phone shown on top, name below. Format the registered number for display.
+    final localPhone = (user?.phone ?? '').localPhone;
+    final phoneLabel = localPhone.length == 10
+        ? '+91 ${localPhone.substring(0, 5)} ${localPhone.substring(5)}'
+        : (user?.phone ?? '');
+    final hasPhone = phoneLabel.trim().isNotEmpty;
     return _Card(
       child: Row(
         children: [
@@ -312,21 +317,28 @@ class _ProfileTopCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // ---- Phone on top ----
                 Row(
                   children: [
                     Flexible(
-                      child: Text(name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTypography.titleLarge),
+                      child: Text(
+                        hasPhone ? phoneLabel : name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.titleLarge,
+                      ),
                     ),
                     const SizedBox(width: 4),
                     Icon(Icons.verified_rounded, size: 16, color: vs.success),
                   ],
                 ),
-                Text(memberId,
-                    style: AppTypography.bodySmall
-                        .copyWith(color: vs.textSecondary)),
+                // ---- Name below the phone ----
+                if (hasPhone)
+                  Text(name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTypography.bodySmall
+                          .copyWith(color: vs.textSecondary)),
               ],
             ),
           ),
@@ -576,6 +588,8 @@ class _OrderRow extends StatelessWidget {
   }
 }
 
+/// "Quick Access" — a tidy grid of rounded quick-action tiles. Each tile pairs
+/// a tinted icon chip with a label and keeps the original navigation targets.
 class _QuickGrid extends StatelessWidget {
   const _QuickGrid();
 
@@ -583,34 +597,39 @@ class _QuickGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     final vs = context.vsColors;
     final items = <_QuickItem>[
-      _QuickItem(Icons.receipt_long_outlined, 'My Orders', vs.brand,
+      _QuickItem(Icons.receipt_long_outlined, 'Orders', vs.brand,
           () => context.pushNamed(RouteNames.orders)),
-      _QuickItem(Icons.description_outlined, 'Statements', vs.trust,
-          () => context.pushNamed(RouteNames.statements)),
-      _QuickItem(Icons.payments_outlined, 'Payments', vs.brand,
-          () => context.pushNamed(RouteNames.paymentHistory)),
-      _QuickItem(Icons.location_on_outlined, 'Addresses', vs.offer,
+      _QuickItem(Icons.location_on_outlined, 'Addresses', vs.trust,
           () => context.pushNamed(RouteNames.addresses)),
+      _QuickItem(Icons.account_balance_wallet_outlined, 'VS Credit', vs.offer,
+          () => context.goNamed(RouteNames.creditDashboard)),
       _QuickItem(Icons.favorite_border_rounded, 'Wishlist', AppColors.error,
           () => context.pushNamed(RouteNames.wishlist)),
+      _QuickItem(Icons.payments_outlined, 'Payments', vs.brand,
+          () => context.pushNamed(RouteNames.paymentHistory)),
       _QuickItem(Icons.local_offer_outlined, 'Offers', vs.offer,
           () => context.pushNamed(RouteNames.offers)),
-      _QuickItem(Icons.notifications_none_rounded, 'Alerts', vs.trust,
-          () => context.pushNamed(RouteNames.notifications)),
+      _QuickItem(Icons.description_outlined, 'Statements', vs.trust,
+          () => context.pushNamed(RouteNames.statements)),
       _QuickItem(Icons.headset_mic_outlined, 'Support', vs.brand,
           () => context.pushNamed(RouteNames.support)),
     ];
     return _Card(
-      padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.sm, vertical: AppSpacing.sm),
-      child: GridView.count(
-        crossAxisCount: 4,
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        mainAxisSpacing: AppSpacing.sm,
-        crossAxisSpacing: AppSpacing.xs,
-        childAspectRatio: 1.05,
-        children: [for (final i in items) _QuickTile(item: i)],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Quick Access', style: AppTypography.titleLarge),
+          AppSpacing.vGapMd,
+          GridView.count(
+            crossAxisCount: 4,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            mainAxisSpacing: AppSpacing.md,
+            crossAxisSpacing: AppSpacing.sm,
+            childAspectRatio: 0.82,
+            children: [for (final i in items) _QuickTile(item: i)],
+          ),
+        ],
       ),
     );
   }
@@ -638,20 +657,21 @@ class _QuickTile extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 32,
-            height: 32,
+            width: 48,
+            height: 48,
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: item.color.withValues(alpha: 0.12),
-              borderRadius: AppRadius.brSm,
+              borderRadius: AppRadius.brMd,
             ),
-            child: Icon(item.icon, size: 16, color: item.color),
+            child: Icon(item.icon, size: 22, color: item.color),
           ),
-          const SizedBox(height: 3),
+          AppSpacing.vGapSm,
           Text(item.label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: AppTypography.labelSmall.copyWith(fontSize: 9.5)),
+              textAlign: TextAlign.center,
+              style: AppTypography.labelSmall),
         ],
       ),
     );
