@@ -17,6 +17,11 @@ import '../../../serviceability/presentation/providers/serviceability_providers.
 import '../../domain/credit_checkout_validator.dart';
 import '../../domain/credit_repayment_plan.dart';
 
+/// Machine code stamped on the [ValidationFailure] raised when the selected
+/// delivery address is outside every serviceable zone. Lets the UI offer a
+/// "Change address" action instead of a generic error.
+const String kNotServiceableCode = 'ADDRESS_NOT_SERVICEABLE';
+
 /// Persisted checkout selections (delivery slot, payment, terms, coupon).
 class CheckoutState extends Equatable {
   const CheckoutState({
@@ -214,6 +219,33 @@ class CheckoutController extends Notifier<CheckoutState> {
     final validation =
         await ref.read(cartValidationServiceProvider).validateCart(cart);
     if (validation.hasBlocking) return null;
+
+    // Serviceability is the ONLY place ordering is gated — browsing/cart stay
+    // free. Resolve the selected address fresh here (rather than trusting the
+    // ambient/cached value) so we can distinguish a POSITIVELY resolved
+    // "out of coverage" from a merely-unresolved state. Fail soft: if the check
+    // itself errors (flaky network), don't block the order — the backend still
+    // enforces serviceability server-side.
+    try {
+      final svc =
+          await ref.read(serviceabilityProvider.notifier).checkCoordinate(
+                latitude: address.latitude,
+                longitude: address.longitude,
+                pincode: address.pincode,
+              );
+      if (!svc.serviceable) {
+        state = state.copyWith(
+          error: const ValidationFailure(
+            'We don’t deliver to this address yet. '
+            'Please change your delivery address to continue.',
+            code: kNotServiceableCode,
+          ),
+        );
+        return null;
+      }
+    } catch (_) {
+      // Could not verify serviceability — proceed and let the backend decide.
+    }
 
     final total = grandTotal();
     if (state.paymentMethod == PaymentMethod.credit) {

@@ -65,10 +65,27 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       // Surface the specific backend reason (out of stock, credit ineligible,
       // etc.) when we have it, instead of a generic message.
       final failure = ref.read(checkoutControllerProvider).error;
-      context.showSnack(
-        failure?.message ?? 'Could not place order. Please review your cart.',
-        isError: true,
-      );
+      final message =
+          failure?.message ?? 'Could not place order. Please review your cart.';
+      // For the serviceability gate, give the user a direct "Change address"
+      // action right on the snackbar.
+      if (failure?.code == kNotServiceableCode) {
+        context.messenger
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(
+              content: Text(message),
+              backgroundColor: context.vsColors.danger,
+              action: SnackBarAction(
+                label: 'Change address',
+                textColor: context.colors.onError,
+                onPressed: () => context.pushNamed(RouteNames.addresses),
+              ),
+            ),
+          );
+      } else {
+        context.showSnack(message, isError: true);
+      }
     }
   }
 
