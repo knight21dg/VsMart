@@ -51,5 +51,11 @@
 	<string>VS Mart needs photo access to upload your KYC documents.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>VS Mart uses your location to set your delivery address and verify residence.</string>
+	<!-- Skips the App Store "export compliance" question on every upload (no custom crypto). -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<!-- Google Maps iOS key (order tracking). Put your iOS-restricted Maps key here; blank = map stays blank. -->
+	<key>GMSApiKey</key>
+	<string></string>
 </dict>
 </plist>
