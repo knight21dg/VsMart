@@ -1,0 +1,76 @@
+from django.urls import path
+
+from . import batch_views
+from .admin_views import (
+    AdminAgentPerformanceView,
+    AdminCommandCenterView,
+    AdminDeliveryAgentsView,
+    AdminDeliveryAssignView,
+    AdminDeliveryDashboardView,
+    AdminDeliveryListView,
+    AdminDeliveryReassignView,
+    AdminDeliveryStatusView,
+    AdminManualVerifyView,
+    AdminReattemptQueueView,
+    AdminReattemptView,
+    AdminReturnToStoreView,
+)
+from .views import (
+    AgentCashInHandView,
+    AssignedDeliveriesView,
+    DeliveryCollectCodView,
+    DeliveryReturnInitiateView,
+    DeliveryAcceptView,
+    DeliveryArriveView,
+    DeliveryCompleteView,
+    DeliveryDetailView,
+    DeliveryFailView,
+    DeliveryLocationView,
+    DeliveryOtpView,
+    DeliveryOutForDeliveryView,
+    DeliveryPhotoView,
+    DeliveryPickupView,
+    DeliveryProofPhotoView,
+    DeliveryRejectView,
+    DeliveryStartView,
+)
+
+urlpatterns = [
+    # ── admin / super-admin delivery control center ──
+    path("admin/delivery/dashboard", AdminDeliveryDashboardView.as_view()),
+    path("admin/delivery/command-center", AdminCommandCenterView.as_view()),
+    path("admin/delivery/agents", AdminDeliveryAgentsView.as_view()),
+    path("admin/delivery/assign", AdminDeliveryAssignView.as_view()),
+    path("admin/delivery/reattempt-queue", AdminReattemptQueueView.as_view()),
+    path("admin/delivery/performance", AdminAgentPerformanceView.as_view()),
+    path("admin/delivery", AdminDeliveryListView.as_view()),
+    path("admin/delivery/<int:pk>/reassign", AdminDeliveryReassignView.as_view()),
+    path("admin/delivery/<int:pk>/reattempt", AdminReattemptView.as_view()),
+    path("admin/delivery/<int:pk>/return", AdminReturnToStoreView.as_view()),
+    path("admin/delivery/<int:pk>/manual-verify", AdminManualVerifyView.as_view()),
+    path("admin/delivery/<int:pk>/status", AdminDeliveryStatusView.as_view()),
+    # ── agent app ──
+    path("deliveries/assigned", AssignedDeliveriesView.as_view()),
+    path("deliveries/location", DeliveryLocationView.as_view()),
+    path("deliveries/cash-in-hand", AgentCashInHandView.as_view()),
+    # batched guided route (must precede the <int:pk> patterns)
+    path("deliveries/batch/current", batch_views.AgentBatchCurrentView.as_view()),
+    path("deliveries/batch/<int:batch_id>", batch_views.AgentBatchDetailView.as_view()),
+    path("deliveries/batch/<int:batch_id>/accept", batch_views.AgentBatchAcceptView.as_view()),
+    path("deliveries/batch/<int:batch_id>/pickup", batch_views.AgentBatchPickupView.as_view()),
+    path("deliveries/batch/<int:batch_id>/abandon", batch_views.AgentBatchAbandonView.as_view()),
+    path("deliveries/<int:pk>", DeliveryDetailView.as_view()),
+    path("deliveries/<int:pk>/accept", DeliveryAcceptView.as_view()),
+    path("deliveries/<int:pk>/reject", DeliveryRejectView.as_view()),
+    path("deliveries/<int:pk>/pickup", DeliveryPickupView.as_view()),
+    path("deliveries/<int:pk>/out-for-delivery", DeliveryOutForDeliveryView.as_view()),
+    path("deliveries/<int:pk>/start", DeliveryStartView.as_view()),  # legacy combined
+    path("deliveries/<int:pk>/arrive", DeliveryArriveView.as_view()),
+    path("deliveries/<int:pk>/otp", DeliveryOtpView.as_view()),
+    path("deliveries/<int:pk>/photo", DeliveryPhotoView.as_view()),
+    path("deliveries/<int:pk>/return", DeliveryReturnInitiateView.as_view()),
+    path("deliveries/<int:pk>/collect-cash", DeliveryCollectCodView.as_view()),
+    path("deliveries/<int:pk>/proof-photo", DeliveryProofPhotoView.as_view()),
+    path("deliveries/<int:pk>/complete", DeliveryCompleteView.as_view()),
+    path("deliveries/<int:pk>/fail", DeliveryFailView.as_view()),
+]

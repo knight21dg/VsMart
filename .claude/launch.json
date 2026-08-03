@@ -1,0 +1,39 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "vsmartlanding",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "apps/vsmartlanding", "run", "start"],
+      "port": 3031,
+      "autoPort": true
+    },
+    {
+      "name": "admin",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "apps/admin", "run", "dev", "--", "-p", "3000"],
+      "port": 3000,
+      "autoPort": true
+    },
+    {
+      "name": "store-admin",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "apps/store-admin", "run", "dev", "--", "-p", "3001"],
+      "port": 3001,
+      "autoPort": true
+    },
+    {
+      "name": "pan",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["C:/knight21/pan/server.js"],
+      "port": 3300,
+      "autoPort": true
+    },
+    {
+      "name": "backend",
+      "runtimeExecutable": "apps/backend/.venv/Scripts/python.exe",
+      "runtimeArgs": ["apps/backend/manage.py", "runserver", "127.0.0.1:8000", "--noreload"],
+      "port": 8000
+    }
+  ]
+}

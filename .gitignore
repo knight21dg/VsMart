@@ -1,0 +1,53 @@
+# Secrets — never commit
+.env
+*.env
+!.env.example
+
+# Python / Django
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+db.sqlite3
+db.sqlite3-journal
+apps/backend/media/
+apps/backend/staticfiles/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node / Next.js
+node_modules/
+.next/
+npm-debug.log*
+yarn-error.log*
+
+# Flutter
+**/.dart_tool/
+**/build/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# secret: FCM service account
+apps/backend/config/firebase-service-account.json
+config/firebase-service-account.json
+
+# Published mobile builds. Served off disk by Caddy (see docker-compose
+# caddy volumes) - deliberately not committed: a ~78 MB binary per build
+# would balloon the repo.
+/downloads/
+
+# Local build output
+/builds/
+*.apk
+*.aab
+
+# Nested git repositories (kept as separate repos)
+/apps/user_app/
+/apps/vsmartlanding/

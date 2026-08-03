@@ -1,0 +1,57 @@
+# VS Mart reverse proxy + automatic HTTPS (Let's Encrypt).
+# ACME_EMAIL is injected from the environment (see docker-compose.yml / .env).
+
+{
+	email {$ACME_EMAIL}
+}
+
+# ── API (Django) — also serves /static and /media straight off the shared volumes ──
+api.thevsmart.com {
+	encode zstd gzip
+
+	handle_path /static/* {
+		root * /srv/static
+		file_server
+	}
+
+	handle_path /media/* {
+		root * /srv/media
+		file_server
+	}
+
+	reverse_proxy backend:8000
+}
+
+# ── Super-admin console ──
+admin.thevsmart.com {
+	encode zstd gzip
+	reverse_proxy admin:3000
+}
+
+# ── Store-admin console ──
+store.thevsmart.com {
+	encode zstd gzip
+	reverse_proxy store-admin:3000
+}
+
+# ── Marketing / landing site (apex + www) ──
+thevsmart.com, www.thevsmart.com {
+	encode zstd gzip
+
+	# App downloads (the APK) served straight off disk from the host's
+	# ./downloads directory. Deliberately NOT inside the Next.js public/ folder:
+	# a ~78 MB binary there would be baked into the image, making every landing
+	# rebuild that much slower and pushing the artifact into git.
+	handle_path /downloads/* {
+		root * /srv/downloads
+		# Android needs this exact type to offer "install"; Caddy's default MIME
+		# map has no .apk entry and would serve application/octet-stream.
+		header Content-Type application/vnd.android.package-archive
+		header Content-Disposition attachment
+		# Already-compressed zip container — re-encoding just burns CPU.
+		header Cache-Control "public, max-age=300"
+		file_server
+	}
+
+	reverse_proxy landing:3000
+}

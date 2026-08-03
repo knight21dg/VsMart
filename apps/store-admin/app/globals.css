@@ -1,0 +1,245 @@
+@import "tailwindcss";
+
+/* Class-based dark mode (we default to light for the admin) */
+@custom-variant dark (&:is(.dark *));
+
+/*
+  VS Mart admin design tokens.
+  Brand: teal #006D77 (primary), green #8BC34A, gold #F4C430.
+  Semantic palette is neutral/slate with a teal primary.
+*/
+:root {
+  --radius: 0.625rem;
+
+  --background: #f6f8f9;
+  --foreground: #0f172a;
+
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+
+  --popover: #ffffff;
+  --popover-foreground: #0f172a;
+
+  --primary: #006d77;
+  --primary-foreground: #ffffff;
+
+  --secondary: #eef2f4;
+  --secondary-foreground: #0f172a;
+
+  --muted: #eef2f4;
+  --muted-foreground: #64748b;
+
+  --accent: #e3f2f1;
+  --accent-foreground: #0b4f57;
+
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+
+  --success: #16a34a;
+  --warning: #d97706;
+
+  --border: #e2e8f0;
+  --input: #e2e8f0;
+  --ring: #006d77;
+
+  /* brand */
+  --brand-teal: #006d77;
+  --brand-green: #8bc34a;
+  --brand-gold: #f4c430;
+
+  /* sidebar (deep slate-teal) */
+  --sidebar: #0f1b2a;
+  --sidebar-foreground: #cbd5e1;
+  --sidebar-muted: #94a3b8;
+  --sidebar-accent: #1c2b3d;
+  --sidebar-border: #1e2d3f;
+
+  /* chart series */
+  --chart-1: #006d77;
+  --chart-2: #8bc34a;
+  --chart-3: #f4c430;
+  --chart-4: #3b82f6;
+  --chart-5: #ec4899;
+}
+
+.dark {
+  --background: #0b1220;
+  --foreground: #e2e8f0;
+  --card: #111a2b;
+  --card-foreground: #e2e8f0;
+  --popover: #111a2b;
+  --popover-foreground: #e2e8f0;
+  --primary: #2dd4bf;
+  --primary-foreground: #042f2e;
+  --secondary: #1e293b;
+  --secondary-foreground: #e2e8f0;
+  --muted: #1e293b;
+  --muted-foreground: #94a3b8;
+  --accent: #134e4a;
+  --accent-foreground: #ccfbf1;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: #1e293b;
+  --input: #1e293b;
+  --ring: #2dd4bf;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-brand-teal: var(--brand-teal);
+  --color-brand-green: var(--brand-green);
+  --color-brand-gold: var(--brand-gold);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-muted: var(--sidebar-muted);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-border: var(--sidebar-border);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --font-sans: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-mono), ui-monospace, monospace;
+}
+
+@layer base {
+  *,
+  ::after,
+  ::before {
+    border-color: var(--color-border);
+  }
+  html,
+  body {
+    height: 100%;
+  }
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+  }
+}
+
+/* thin scrollbars for data-dense panes */
+@layer utilities {
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: color-mix(in oklab, var(--color-muted-foreground) 35%, transparent);
+    border-radius: 9999px;
+  }
+  /* Hidden scrollbar (still scrollable) — used by the sidebar nav. */
+  .scrollbar-none {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* legacy Edge */
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none; /* Chrome / Safari */
+  }
+}
+
+/* ============================================================
+   POS thermal receipt printing (80mm roll)
+   The receipt node lives in the DOM but is invisible on screen; printing hides
+   the entire app and reveals only it, so a cashier prints with one keypress
+   instead of leaving the till to download a PDF.
+
+   CONTRACT: `#pos-print-receipt` MUST be a direct child of <body>. The rules
+   below hide `body > *` wholesale, so a receipt rendered inside the page tree
+   inherits display:none from a hidden ancestor and prints a blank roll — the id
+   rule can only re-show the node itself, never its hidden parents. The component
+   (components/pos-print-receipt.tsx) therefore portals into document.body.
+   ============================================================ */
+#pos-print-receipt {
+  display: none;
+}
+
+@media print {
+  /* 80mm roll, continuous: no margins, height grows with the content. */
+  @page {
+    size: 80mm auto;
+    margin: 0;
+  }
+
+  /* Hide the app, not by class (fragile) but by hiding body's children and
+     re-showing only the receipt — survives any layout change. */
+  body > * {
+    display: none !important;
+  }
+
+  #pos-print-receipt,
+  body > #pos-print-receipt {
+    display: block !important;
+    position: static;
+    width: 72mm;              /* 80mm roll minus printer margins */
+    margin: 0;
+    padding: 3mm;
+    background: #fff;
+    color: #000;
+    /* Monospace keeps the qty/amount columns aligned on a thermal head. */
+    font-family: "Courier New", ui-monospace, monospace;
+    font-size: 11px;
+    line-height: 1.35;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  #pos-print-receipt .pr-center { text-align: center; }
+  #pos-print-receipt .pr-bold   { font-weight: 700; }
+  #pos-print-receipt .pr-lg     { font-size: 15px; }
+  #pos-print-receipt .pr-sm     { font-size: 10px; }
+  #pos-print-receipt .pr-cap    { text-transform: capitalize; }
+  #pos-print-receipt .pr-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 6px;
+  }
+  #pos-print-receipt .pr-rule {
+    border-top: 1px dashed #000;
+    margin: 4px 0;
+  }
+  /* Blank tail so the tear bar clears the text. */
+  #pos-print-receipt .pr-feed { height: 12mm; }
+
+  /* Never split a line item across pages on a continuous roll. */
+  #pos-print-receipt > div { break-inside: avoid; }
+}

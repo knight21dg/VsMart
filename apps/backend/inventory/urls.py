@@ -1,0 +1,110 @@
+from django.urls import path
+
+from .ap_views import (
+    AdminInvoiceActionView,
+    AdminPayablesAgingView,
+    AdminPurchaseInvoiceDetailView,
+    AdminPurchaseInvoiceListView,
+    AdminVendorPaymentView,
+)
+
+from .admin_analytics import (
+    AgingExpiryView,
+    AuditTrailView,
+    DeadStockView,
+    FinanceView,
+    HeatmapView,
+    MoversView,
+    NetworkOverviewView,
+    PhysicalCountView,
+    ProductOverviewView,
+    ReorderView,
+    StoreProductDetailView,
+    StoreProductsView,
+    StoreRollupView,
+    TransferSuggestionView,
+)
+from .views import (
+    AdjustmentListCreateView,
+    BarcodeDetailView,
+    BarcodeListCreateView,
+    BrandDetailView,
+    BrandListCreateView,
+    DamageListCreateView,
+    ExpiryListCreateView,
+    GRNListCreateView,
+    GRNPostView,
+    InventoryLedgerListView,
+    LowStockView,
+    ProductStockSummaryView,
+    PurchaseOrderListCreateView,
+    ReconcileView,
+    ReorderLevelView,
+    StockBatchListView,
+    StockItemListView,
+    StockTransferCompleteView,
+    StockTransferListCreateView,
+    SupplierDetailView,
+    SupplierListCreateView,
+    UnitDetailView,
+    UnitListCreateView,
+    ValuationView,
+    WarehouseListView,
+)
+
+urlpatterns = [
+    # warehouses + stock
+    path("inventory/warehouses", WarehouseListView.as_view()),
+    path("inventory/products", ProductStockSummaryView.as_view()),
+    path("inventory/stock", StockItemListView.as_view()),
+    path("inventory/batches", StockBatchListView.as_view()),
+    # masters
+    path("inventory/brands", BrandListCreateView.as_view()),
+    path("inventory/brands/<int:pk>", BrandDetailView.as_view()),
+    path("inventory/units", UnitListCreateView.as_view()),
+    path("inventory/units/<int:pk>", UnitDetailView.as_view()),
+    path("inventory/suppliers", SupplierListCreateView.as_view()),
+    path("inventory/suppliers/<int:pk>", SupplierDetailView.as_view()),
+    path("inventory/barcodes", BarcodeListCreateView.as_view()),
+    path("inventory/barcodes/<int:pk>", BarcodeDetailView.as_view()),
+    # transfers
+    path("inventory/transfer", StockTransferListCreateView.as_view()),
+    path("inventory/transfers", StockTransferListCreateView.as_view()),
+    path("inventory/transfers/<int:pk>/complete", StockTransferCompleteView.as_view()),
+    # procurement
+    path("inventory/purchase-orders", PurchaseOrderListCreateView.as_view()),
+    path("inventory/grn", GRNListCreateView.as_view()),
+    path("inventory/grn/<int:pk>/post", GRNPostView.as_view()),
+    # ledger + operations
+    path("inventory/ledger", InventoryLedgerListView.as_view()),
+    path("inventory/adjustments", AdjustmentListCreateView.as_view()),
+    path("inventory/damage", DamageListCreateView.as_view()),
+    path("inventory/expiry", ExpiryListCreateView.as_view()),
+    path("inventory/low-stock", LowStockView.as_view()),
+    path("inventory/reorder-level", ReorderLevelView.as_view()),
+    path("inventory/valuation", ValuationView.as_view()),
+    path("inventory/reconcile", ReconcileView.as_view()),
+    # ── enterprise command-center analytics ──────────────────
+    path("inventory/overview", NetworkOverviewView.as_view()),
+    path("inventory/stores", StoreRollupView.as_view()),
+    path("inventory/stores/<int:wid>/products", StoreProductsView.as_view()),
+    path("inventory/stores/<int:wid>/products/<int:pid>", StoreProductDetailView.as_view()),
+    path("inventory/heatmap", HeatmapView.as_view()),
+    path("inventory/movers", MoversView.as_view()),
+    path("inventory/dead-stock", DeadStockView.as_view()),
+    path("inventory/aging", AgingExpiryView.as_view()),
+    path("inventory/finance", FinanceView.as_view()),
+    path("inventory/reorder", ReorderView.as_view()),
+    path("inventory/transfer-suggestions", TransferSuggestionView.as_view()),
+    path("inventory/products/<int:pk>/overview", ProductOverviewView.as_view()),
+    path("inventory/physical-count", PhysicalCountView.as_view()),
+    path("inventory/audit", AuditTrailView.as_view()),
+
+    # ── Accounts payable (supplier invoices + vendor payments) ──
+    # NOTE: /payables must precede /<pk> so it isn't captured as an id.
+    path("admin/procurement/payables", AdminPayablesAgingView.as_view()),
+    path("admin/procurement/invoices", AdminPurchaseInvoiceListView.as_view()),
+    path("admin/procurement/invoices/<int:pk>/payments", AdminVendorPaymentView.as_view()),
+    path("admin/procurement/invoices/<int:pk>/<str:action>", AdminInvoiceActionView.as_view()),
+    path("admin/procurement/invoices/<int:pk>", AdminPurchaseInvoiceDetailView.as_view()),
+]

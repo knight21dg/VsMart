@@ -1,0 +1,182 @@
+# VS Mart production stack.
+#   thevsmart.com / www  -> landing (marketing)
+#   admin.thevsmart.com  -> super-admin console
+#   store.thevsmart.com  -> store-admin console
+#   api.thevsmart.com    -> Django REST backend (also used by the mobile apps)
+# Caddy terminates TLS (auto Let's Encrypt) and reverse-proxies everything.
+#
+# Copy .env.example -> .env and fill it in before `docker compose up -d --build`.
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./apps/backend
+    image: vsmart-backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.prod
+    volumes:
+      - media:/app/media          # user uploads (KYC docs, POD photos)
+      - static:/app/staticfiles    # collectstatic output, served by Caddy
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    expose:
+      - "8000"
+
+  # Periodic jobs. Reuses the backend image (same build context → compose shares the
+  # cached layer). Without this the assignment engine only ran when someone clicked
+  # "Auto Assign" on the dispatch board — ready orders never batched themselves. A
+  # plain shell loop (no cron daemon in the image) ticks every 2 minutes: reclaim
+  # stale un-picked-up batches, then plan + assign fresh ones for every active store.
+  scheduler:
+    # SAME image as the backend — never its own build. With its own build tag the
+    # scheduler kept running a stale image after every `compose build backend`
+    # deploy: its cron loop was invoking commands that no longer matched the code
+    # (reconcile_payments "unknown command") and running an old dispatch engine.
+    image: vsmart-backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.prod
+    volumes:
+      - media:/app/media
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      backend:
+        condition: service_started
+    # Dispatch runs every tick. Payment reconciliation runs every 5th tick (~10
+    # min): it asks the gateway about payments that were captured but never
+    # reported (app killed before the callback, webhook lost), so a paid order is
+    # settled instead of being cancelled by the reservation-expiry job.
+    command: >
+      sh -c "echo 'scheduler up — dispatch 120s / reconcile+release+handovers 600s / statements+banners hourly';
+             tick=0;
+             while true; do
+               python manage.py run_dispatch || echo 'run_dispatch failed (will retry next tick)';
+               tick=$$((tick + 1));
+               if [ $$((tick % 5)) -eq 0 ]; then
+                 python manage.py reconcile_payments || echo 'reconcile_payments failed (will retry)';
+                 python manage.py release_expired_reservations || echo 'release_expired failed (will retry)';
+                 python manage.py sweep_stale_handovers || echo 'sweep_stale_handovers failed (will retry)';
+               fi;
+               if [ $$((tick % 30)) -eq 0 ]; then
+                 python manage.py generate_statements || echo 'generate_statements failed (will retry)';
+                 python manage.py expire_banners || echo 'expire_banners failed (will retry)';
+               fi;
+               sleep 120;
+             done"
+
+  admin:
+    build:
+      context: ./apps/admin
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ${ADMIN_API_BASE_URL}
+        NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${ADMIN_MAPS_KEY:-}
+    restart: unless-stopped
+    depends_on:
+      - backend
+    expose:
+      - "3000"
+
+  store-admin:
+    build:
+      context: ./apps/store-admin
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ${ADMIN_API_BASE_URL}
+        # "New Order" push notifications (closed-tab case) — see
+        # apps/store-admin/lib/notifications/firebase.ts. All optional: the
+        # feature just stays unconfigured (no closed-tab push) if left blank.
+        NEXT_PUBLIC_FIREBASE_API_KEY: ${STORE_FIREBASE_API_KEY:-}
+        NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${STORE_FIREBASE_AUTH_DOMAIN:-}
+        NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${STORE_FIREBASE_PROJECT_ID:-}
+        NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ${STORE_FIREBASE_STORAGE_BUCKET:-}
+        NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${STORE_FIREBASE_MESSAGING_SENDER_ID:-}
+        NEXT_PUBLIC_FIREBASE_APP_ID: ${STORE_FIREBASE_APP_ID:-}
+        NEXT_PUBLIC_FIREBASE_VAPID_KEY: ${STORE_FIREBASE_VAPID_KEY:-}
+    restart: unless-stopped
+    depends_on:
+      - backend
+    expose:
+      - "3000"
+
+  landing:
+    build:
+      context: ./apps/vsmartlanding
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ${ADMIN_API_BASE_URL}
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: ${ADMIN_API_BASE_URL}
+      # App Links / Universal Links verification, served from /.well-known/.
+      # Read per request, so rotating a fingerprint is a restart, not a rebuild.
+      # ANDROID_SHA256_CERT_FINGERPRINTS must be the Play APP-SIGNING key's
+      # SHA-256 (Play Console → Setup → App integrity), not the upload key.
+      # APPLE_APP_ID is "<AppleTeamID>.com.vsmart.userApp".
+      # Both default to empty → the endpoints 404 until configured.
+      ANDROID_SHA256_CERT_FINGERPRINTS: ${ANDROID_SHA256_CERT_FINGERPRINTS:-}
+      APPLE_APP_ID: ${APPLE_APP_ID:-}
+    restart: unless-stopped
+    volumes:
+      # Read-only view of the published APK so /userapp can show its real size
+      # and build date. Caddy serves the bytes; this is only for stat().
+      - ./downloads:/srv/downloads:ro
+    depends_on:
+      - backend
+    expose:
+      - "3000"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      ACME_EMAIL: ${ACME_EMAIL}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # Mobile app builds (APK). Host directory, not an image layer — dropping a
+      # new build in here is a file copy, not a rebuild.
+      - ./downloads:/srv/downloads:ro
+      - media:/srv/media:ro
+      - static:/srv/static:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - backend
+      - admin
+      - store-admin
+      - landing
+
+volumes:
+  pgdata:
+  media:
+  static:
+  caddy_data:
+  caddy_config:

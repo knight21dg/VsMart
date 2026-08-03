@@ -1,0 +1,68 @@
+name: agent_app
+description: "VS Mart Agent — delivery, collections & KYC field verification."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.8.1
+  flutter: ">=3.24.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  flutter_riverpod: ^2.5.1
+  go_router: ^14.6.2
+  dio: ^5.7.0
+  flutter_secure_storage: ^9.2.2
+  equatable: ^2.0.7
+  # Delivery field tooling: live GPS (geofence), proof-of-delivery camera, tap-to-call.
+  geolocator: ^13.0.2
+  image_picker: ^1.1.2
+  url_launcher: ^6.3.1
+  # Embedded route map (store pickup + sequenced stops + agent location).
+  google_maps_flutter: ^2.9.0
+  # Push: FCM for real-time assignment alerts (new delivery / collection / task),
+  # + local notifications to surface foreground pushes (Android won't auto-display
+  # those). Fail-soft: no-op until a google-services.json is present. See
+  # lib/core/services/push_controller.dart.
+  firebase_core: ^3.8.0
+  firebase_messaging: ^15.1.5
+  flutter_local_notifications: ^18.0.1
+  # Persistent foreground service so an on-duty agent's location keeps
+  # reaching dispatch even if the app is swiped away, not just backgrounded.
+  # See lib/core/services/background_service.dart.
+  flutter_background_service: ^5.1.0
+  # Build-time only (`dart run flutter_native_splash:create`) — but kept as a
+  # real dependency, not a dev_dependency: Flutter's dev-dependency plugin
+  # exclusion for release builds only strips the Gradle module, not the
+  # reference GeneratedPluginRegistrant.java still emits, which then fails to
+  # compile ("package ... does not exist"). Its runtime Android class is
+  # inert either way — the splash itself is pure native XML generated at
+  # build time — so shipping it costs nothing.
+  flutter_native_splash: ^2.4.4
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/branding/
+
+# Native (cold-start) splash — shown before the Flutter engine draws its first
+# frame, so it can only be a static image, not the animated one in
+# lib/features/splash/splash_screen.dart. Same logo + white background as that
+# screen so the handoff between the two is seamless. Regenerate after changing
+# assets/branding/logo.png with: dart run flutter_native_splash:create
+flutter_native_splash:
+  color: "#FFFFFF"
+  image: assets/branding/logo.png
+  android_12:
+    color: "#FFFFFF"
+    image: assets/branding/logo.png
+  android: true
+  ios: false
+  web: false

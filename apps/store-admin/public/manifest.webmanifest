@@ -1,0 +1,24 @@
+{
+  "name": "VS Mart — Store Panel",
+  "short_name": "VS Store",
+  "description": "VS Mart store operations panel — POS, inventory, orders and collections for store staff.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#ffffff",
+  "theme_color": "#558b2f",
+  "categories": ["business", "productivity", "shopping"],
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "POS / Billing", "short_name": "POS", "url": "/pos", "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Inventory", "short_name": "Inventory", "url": "/inventory", "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Orders", "short_name": "Orders", "url": "/orders", "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }] }
+  ]
+}

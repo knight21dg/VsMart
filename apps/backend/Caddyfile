@@ -1,0 +1,18 @@
+# Production: auto-HTTPS via Let's Encrypt. Point the domain's A record at this VPS first.
+api.vsmart.app {
+    encode gzip
+
+    # Serve uploaded media straight from MinIO (signed URLs in app for private files).
+    handle_path /media/* {
+        reverse_proxy minio:9000
+    }
+
+    # API + Django admin console.
+    reverse_proxy api:8000
+}
+
+# Local dev over plain HTTP on :80 — uncomment to run Caddy locally.
+# :80 {
+#     encode gzip
+#     reverse_proxy api:8000
+# }

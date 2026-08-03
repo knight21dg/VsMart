@@ -1,0 +1,88 @@
+{
+  "project_info": {
+    "project_number": "849199482898",
+    "project_id": "the-vsmart",
+    "storage_bucket": "the-vsmart.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:849199482898:android:ec0150be4a6c9955ed30cb",
+        "android_client_info": {
+          "package_name": "com.vsmart.agent.agent_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "849199482898-kkk86i5srcvo6fsiiqknbdkjgn8osr85.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA1hd74bIU4stERUwFrEY3TuYnyyIOcM6M"
+        },
+        {
+          "current_key": "AIzaSyAVbIGwEi4GeLFmQefqrOcV3Md8bK1Qtoc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "849199482898-kkk86i5srcvo6fsiiqknbdkjgn8osr85.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "849199482898-g2uifljd41vbaldsa4jj837ms3rpmfki.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.vsmart.userApp"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:849199482898:android:83122724fad95299ed30cb",
+        "android_client_info": {
+          "package_name": "com.vsmart.user_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "849199482898-kkk86i5srcvo6fsiiqknbdkjgn8osr85.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA1hd74bIU4stERUwFrEY3TuYnyyIOcM6M"
+        },
+        {
+          "current_key": "AIzaSyAVbIGwEi4GeLFmQefqrOcV3Md8bK1Qtoc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "849199482898-kkk86i5srcvo6fsiiqknbdkjgn8osr85.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "849199482898-g2uifljd41vbaldsa4jj837ms3rpmfki.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.vsmart.userApp"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
