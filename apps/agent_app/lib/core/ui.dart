@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'api_exception.dart';
+import 'net_errors.dart';
 
 /// Agent-app brand + theme — the "Agent App" Figma design system (green primary,
 /// bento cards). Field names kept stable so existing screens re-theme for free.
@@ -87,21 +87,39 @@ class Loading extends StatelessWidget {
 
 /// Error state with a retry action.
 class ErrorRetry extends StatelessWidget {
-  const ErrorRetry({super.key, required this.onRetry, this.message});
+  const ErrorRetry({
+    super.key,
+    required this.onRetry,
+    this.message,
+    this.error,
+    this.extraAction,
+  });
+
   final VoidCallback onRetry;
+
+  /// Explicit copy. When omitted, [error] is classified into a message that
+  /// distinguishes "you're offline" from "the server refused".
   final String? message;
+  final Object? error;
+
+  /// Optional escape hatch under the retry button (e.g. "Sign out").
+  final Widget? extraAction;
+
   @override
   Widget build(BuildContext context) {
+    final failure = error == null ? null : describeFailure(error!);
+    final text = message ?? failure?.display ?? 'Something went wrong.';
+    final offline = failure?.isOffline ?? true;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.cloud_off_rounded,
+            Icon(offline ? Icons.wifi_off_rounded : Icons.error_outline_rounded,
                 size: 56, color: AgentColors.textSecondary),
             const SizedBox(height: 12),
-            Text(message ?? 'Something went wrong.',
+            Text(text,
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: AgentColors.textSecondary)),
             const SizedBox(height: 16),
@@ -110,6 +128,10 @@ class ErrorRetry extends StatelessWidget {
               style: FilledButton.styleFrom(minimumSize: const Size(140, 44)),
               child: const Text('Retry'),
             ),
+            if (extraAction != null) ...[
+              const SizedBox(height: 8),
+              extraAction!,
+            ],
           ],
         ),
       ),
@@ -375,19 +397,12 @@ void showToast(BuildContext context, String message, {bool error = false}) {
     ));
 }
 
-/// Surface a caught error as an error toast. For an [ApiException] (any feature
-/// subclass) it shows the backend `display` message plus `nextStep`; anything
-/// else falls back to a generic line. Use this everywhere a repo call is caught.
+/// Surface a caught error as an error toast. An [ApiException] shows the
+/// backend `display` message plus `nextStep`; a network failure says so in
+/// those words (see [describeFailure]) rather than hiding behind a generic
+/// line. Use this everywhere a repo call is caught.
 void showApiError(BuildContext context, Object error, {String? fallback}) {
-  if (error is ApiException) {
-    final next = error.nextStep;
-    final msg = (next != null && next.isNotEmpty)
-        ? '${error.display}\n$next'
-        : error.display;
-    showToast(context, msg, error: true);
-    return;
-  }
-  showToast(context, fallback ?? 'Something went wrong. Please try again.',
+  showToast(context, describeFailure(error, fallback: fallback).display,
       error: true);
 }
 

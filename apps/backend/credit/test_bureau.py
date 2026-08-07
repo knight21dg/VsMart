@@ -178,6 +178,22 @@ class BureauProviderTests(TestCase):
         self.assertIn("Invalid API key", str(ctx.exception))
 
     @patch("credit.bureau.runtime.cfg")
+    def test_payon_permission_denied_raises_provider_error(self, mock_cfg):
+        """Observed live 2026-08-05 on the reseller host: the key is recognised
+        but credit-score isn't entitled on the account. The reviewer must see a
+        provider error — showing "no credit record found" would blame the
+        customer for a vendor provisioning gap."""
+        mock_cfg.side_effect = lambda k: "key" if k == "credit_bureau_api_key" else ""
+        fake = _fake_requests({
+            "statusCode": 400, "status": 400,
+            "message": "Error: Permission denied for this service",
+        })
+        with patch.dict(sys.modules, {"requests": fake}):
+            with self.assertRaises(bureau.BureauError) as ctx:
+                bureau.PayonBureau().fetch_score(mobile="9494429963")
+        self.assertIn("Permission denied", str(ctx.exception))
+
+    @patch("credit.bureau.runtime.cfg")
     def test_payon_http_500_raises(self, mock_cfg):
         mock_cfg.side_effect = lambda k: "key" if k == "credit_bureau_api_key" else ""
         fake = _fake_requests({"message": "upstream down"}, status=500)

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Universal Links for https://thevsmart.com/products/<shareToken>.
+	     Apple fetches /.well-known/apple-app-site-association from each domain
+	     and matches its appIDs against this app's <TeamID>.<bundleId>.
+
+	     NOT YET ACTIVE. This file is not referenced by the Xcode project: the
+	     Runner target has no CODE_SIGN_ENTITLEMENTS build setting and no
+	     DEVELOPMENT_TEAM. Hand-editing project.pbxproj to add it is risky and
+	     cannot be built or verified from this machine, so it is left as a
+	     deliberate manual step:
+
+	       1. Xcode → Runner target → Signing & Capabilities → select your Team.
+	       2. "+ Capability" → Associated Domains. Xcode creates/links the
+	          entitlements file and sets CODE_SIGN_ENTITLEMENTS for every config.
+	       3. Confirm the applinks entry below survived, then commit the
+	          project.pbxproj change.
+	       4. Set APPLE_APP_ID="<TeamID>.com.vsmart.userApp" on the landing
+	          service so the association file starts serving.
+
+	     Use `applinks:` only — `webcredentials:` is not needed here. -->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:thevsmart.com</string>
+		<string>applinks:www.thevsmart.com</string>
+	</array>
+</dict>
+</plist>

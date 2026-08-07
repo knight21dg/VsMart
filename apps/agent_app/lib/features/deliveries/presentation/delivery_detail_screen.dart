@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/destination_map.dart';
+import '../../../core/gps.dart';
 import '../../../core/reason_screen.dart';
 import '../../../core/ui.dart';
 import '../../cash/cash_providers.dart';
@@ -39,6 +40,13 @@ class DeliveryDetailScreen extends ConsumerStatefulWidget {
       _DeliveryDetailScreenState();
 }
 
+/// Sentinel returned when an action was skipped because another one is already
+/// in flight — not a success, so a caller's follow-on step doesn't run.
+class _BusyRejected {
+  const _BusyRejected._();
+  static const instance = _BusyRejected._();
+}
+
 class _DeliveryDetailScreenState extends ConsumerState<DeliveryDetailScreen> {
   bool _busy = false;
   final _otpController = TextEditingController();
@@ -59,29 +67,23 @@ class _DeliveryDetailScreenState extends ConsumerState<DeliveryDetailScreen> {
   LocationService get _location => ref.read(locationServiceProvider);
 
   // ── error surfacing ──────────────────────────────────────────────────────
-  /// Returns the parsed [DeliveryApiException] (or null when not one) after
-  /// showing the backend envelope to the agent.
-  DeliveryApiException? _show(Object error) {
-    if (error is DeliveryApiException) {
-      final next = error.nextStep;
-      showToast(
-        context,
-        next != null && next.isNotEmpty ? '${error.display}\n$next' : error.display,
-        error: true,
-      );
-      return error;
-    }
-    showToast(context, 'Something went wrong. Please try again.', error: true);
-    return null;
-  }
+  /// Show a caught error: the backend envelope when there is one, otherwise a
+  /// classified network/server message (so "no signal" never reads as a
+  /// rejection).
+  void _show(Object error) => showApiError(context, error);
 
-  /// Run a repo call with the busy flag + refresh + error surfacing. Returns the
-  /// thrown [DeliveryApiException] (if any) so callers can branch on its `code`.
-  Future<DeliveryApiException?> _run(
+  /// Run a repo call with the busy flag + refresh + error surfacing.
+  ///
+  /// Returns null on SUCCESS and the caught error otherwise — callers gate
+  /// follow-on steps on `err == null`. It used to return `DeliveryApiException?`,
+  /// which was null for a success AND for every non-API failure, so a dropped
+  /// connection read as success: the app opened the live map on a trip that
+  /// never started, and would have discarded an unsent proof photo.
+  Future<Object?> _run(
     Future<AgentDelivery> Function() action, {
     String? successMsg,
   }) async {
-    if (_busy) return null;
+    if (_busy) return _BusyRejected.instance;
     setState(() => _busy = true);
     try {
       final updated = await action();
@@ -93,8 +95,8 @@ class _DeliveryDetailScreenState extends ConsumerState<DeliveryDetailScreen> {
       if (successMsg != null) showToast(context, successMsg);
       return null;
     } catch (e) {
-      if (!mounted) return null;
-      return _show(e);
+      if (mounted) _show(e);
+      return e;
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -113,11 +115,11 @@ class _DeliveryDetailScreenState extends ConsumerState<DeliveryDetailScreen> {
     if (_trackingTaskId == d.id && _locationTimer != null) return;
     _stopTracking();
     _trackingTaskId = d.id;
-    final fallback = (d.destLat != null && d.destLng != null)
-        ? GeoFix(d.destLat!, d.destLng!)
-        : null;
     Future<void> ping() async {
-      final fix = await _location.current(fallback: fallback);
+      // Real fixes only: a breadcrumb is dispatch's picture of where this rider
+      // actually is. Reporting the destination when GPS is off would tell
+      // dispatch the rider is already at the door.
+      final fix = await _location.current();
       if (fix == null) return; // No location source yet — degrade silently.
       await _repo.postLocation(
         taskId: d.id,
@@ -168,22 +170,28 @@ class _DeliveryDetailScreenState extends ConsumerState<DeliveryDetailScreen> {
   }
 
   Future<void> _arrive(AgentDelivery d) async {
-    final fallback = (d.destLat != null && d.destLng != null)
-        ? GeoFix(d.destLat!, d.destLng!)
-        : null;
-    final fix = await _location.current(fallback: fallback);
-    if (fix == null) {
+    // Arrival is the one check that the rider physically reached the customer,
+    // and the backend can only check the coordinates this app sends. So it must
+    // be a LIVE fix — never a cached one, and never the destination.
+    if (_busy) return;
+    // Hold the busy flag over the fix attempt too: it can take a few seconds,
+    // and without it the button looks dead and invites a second tap.
+    setState(() => _busy = true);
+    GeoFix? fix;
+    try {
+      fix = await _location.currentLive();
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+    final live = fix;
+    if (live == null) {
       if (!mounted) return;
-      showToast(
-        context,
-        'Location unavailable on this device. Enable GPS to mark arrival.',
-        error: true,
-      );
+      await promptEnableLocation(context);
       return;
     }
     await _run(
       () => _repo.arrive(widget.id,
-          latitude: fix.latitude, longitude: fix.longitude),
+          latitude: live.latitude, longitude: live.longitude),
       successMsg: "Arrival confirmed",
     );
     // 409 DELIVERY_LOCATION_MISMATCH (and any other failure) is surfaced by
@@ -205,6 +213,16 @@ class _DeliveryDetailScreenState extends ConsumerState<DeliveryDetailScreen> {
     // messages come straight from the envelope through _run.
   }
 
+  /// A photo that was taken but hasn't reached the server yet. Kept in memory
+  /// so a failed upload — the normal outcome at a doorway with one bar — can be
+  /// retried instead of making the agent shoot the proof again (and explain to
+  /// the customer why they're being photographed twice).
+  Uint8List? _pendingPhotoBytes;
+  double _pendingPhotoLat = 0;
+  double _pendingPhotoLng = 0;
+
+  bool get hasPendingPhoto => _pendingPhotoBytes != null;
+
   Future<void> _capturePhoto(AgentDelivery d) async {
     // Capture a real proof-of-delivery photo and attach it in ONE multipart
     // call (the backend's media engine stores it as a viewable private asset).
@@ -222,9 +240,9 @@ class _DeliveryDetailScreenState extends ConsumerState<DeliveryDetailScreen> {
         final lost = await _picker.retrieveLostData();
         if (!lost.isEmpty) shot = lost.file;
       }
-    } catch (e) {
+    } catch (_) {
       if (mounted) {
-        showToast(context, 'Camera failed: $e', error: true);
+        showToast(context, "Couldn't open the camera. Try again.", error: true);
       }
       return;
     }
@@ -237,22 +255,51 @@ class _DeliveryDetailScreenState extends ConsumerState<DeliveryDetailScreen> {
     }
     final XFile photo = shot;
 
-    final fallback = (d.destLat != null && d.destLng != null)
-        ? GeoFix(d.destLat!, d.destLng!)
-        : null;
-    final fix = await _location.current(fallback: fallback);
-    final lat = fix?.latitude ?? d.destLat ?? 0;
-    final lng = fix?.longitude ?? d.destLng ?? 0;
+    // The photo's GPS stamp is evidence of where it was taken, so it must come
+    // from the device — a live fix, or the last real one this phone produced.
+    // It is never the delivery address, which is what the old fallback sent.
+    final fix = await _location.current();
+    if (fix == null) {
+      if (!mounted) return;
+      await promptEnableLocation(context);
+      return;
+    }
 
-    await _run(
-      () async {
-        final bytes = await photo.readAsBytes();
-        return _repo.attachPhotoFile(widget.id,
-            bytes: bytes, filename: 'pod_${widget.id}.jpg',
-            latitude: lat, longitude: lng);
-      },
+    final Uint8List bytes;
+    try {
+      bytes = await photo.readAsBytes();
+    } catch (_) {
+      if (mounted) {
+        showToast(context, "Couldn't read the photo from the camera. Try again.",
+            error: true);
+      }
+      return;
+    }
+
+    setState(() {
+      _pendingPhotoBytes = bytes;
+      _pendingPhotoLat = fix.latitude;
+      _pendingPhotoLng = fix.longitude;
+    });
+    await _uploadPendingPhoto();
+  }
+
+  /// Send (or re-send) the captured proof photo. The bytes survive a failure so
+  /// the agent can retry on better signal.
+  Future<void> _uploadPendingPhoto() async {
+    final bytes = _pendingPhotoBytes;
+    if (bytes == null) return;
+    final err = await _run(
+      () => _repo.attachPhotoFile(widget.id,
+          bytes: bytes,
+          filename: 'pod_${widget.id}.jpg',
+          latitude: _pendingPhotoLat,
+          longitude: _pendingPhotoLng),
       successMsg: 'Proof photo attached',
     );
+    if (err == null && mounted) {
+      setState(() => _pendingPhotoBytes = null);
+    }
   }
 
 
@@ -356,6 +403,8 @@ class _DeliveryDetailScreenState extends ConsumerState<DeliveryDetailScreen> {
             onArrive: () => _arrive(delivery),
             onVerifyOtp: _verifyOtp,
             onCapturePhoto: () => _capturePhoto(delivery),
+            pendingPhotoUpload: hasPendingPhoto,
+            onRetryPhotoUpload: _uploadPendingPhoto,
             onComplete: _complete,
             onCollectCash: () => _collectCash(delivery),
             onInitiateReturn: _initiateReturn,
@@ -430,6 +479,8 @@ class _DetailBody extends StatelessWidget {
     required this.onArrive,
     required this.onVerifyOtp,
     required this.onCapturePhoto,
+    required this.pendingPhotoUpload,
+    required this.onRetryPhotoUpload,
     required this.onComplete,
     required this.onCollectCash,
     required this.onInitiateReturn,
@@ -448,6 +499,10 @@ class _DetailBody extends StatelessWidget {
   final VoidCallback onArrive;
   final VoidCallback onVerifyOtp;
   final VoidCallback onCapturePhoto;
+
+  /// A proof photo is held on the device because its upload hasn't succeeded.
+  final bool pendingPhotoUpload;
+  final VoidCallback onRetryPhotoUpload;
   final VoidCallback onComplete;
   final VoidCallback onCollectCash;
   final VoidCallback onInitiateReturn;
@@ -494,6 +549,8 @@ class _DetailBody extends StatelessWidget {
           onArrive: onArrive,
           onVerifyOtp: onVerifyOtp,
           onCapturePhoto: onCapturePhoto,
+          pendingPhotoUpload: pendingPhotoUpload,
+          onRetryPhotoUpload: onRetryPhotoUpload,
           onComplete: onComplete,
           onCollectCash: onCollectCash,
           onInitiateReturn: onInitiateReturn,
@@ -825,6 +882,8 @@ class _ActionArea extends StatelessWidget {
     required this.onArrive,
     required this.onVerifyOtp,
     required this.onCapturePhoto,
+    required this.pendingPhotoUpload,
+    required this.onRetryPhotoUpload,
     required this.onComplete,
     required this.onCollectCash,
     required this.onInitiateReturn,
@@ -842,6 +901,8 @@ class _ActionArea extends StatelessWidget {
   final VoidCallback onArrive;
   final VoidCallback onVerifyOtp;
   final VoidCallback onCapturePhoto;
+  final bool pendingPhotoUpload;
+  final VoidCallback onRetryPhotoUpload;
   final VoidCallback onComplete;
   final VoidCallback onCollectCash;
   final VoidCallback onInitiateReturn;
@@ -955,7 +1016,12 @@ class _ActionArea extends StatelessWidget {
       case 'cancelled':
         return _doneNote('This order was cancelled.');
       default:
-        return const SizedBox.shrink();
+        // A status this build doesn't know (backend added one, or the task is
+        // in a transient state). Say so instead of rendering an empty area that
+        // looks like a broken screen with no way forward.
+        return _doneNote(
+            'This delivery is "${deliveryStatusLabel(delivery.status)}". '
+            'Pull down to refresh, or contact the store if it stays here.');
     }
   }
 
@@ -1022,11 +1088,42 @@ class _ActionArea extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          _primary(
-            label: 'Capture Photo (required)',
-            icon: Icons.photo_camera_outlined,
-            onPressed: onCapturePhoto,
-          ),
+          if (pendingPhotoUpload) ...[
+            // The photo exists on the phone; only the upload failed. Offer the
+            // retry rather than sending the agent back to the camera.
+            AppCard(
+              child: Row(
+                children: const [
+                  Icon(Icons.cloud_upload_outlined,
+                      color: AgentColors.amber, size: 18),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      "Photo saved on your phone — it hasn't reached VS Mart yet.",
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            _primary(
+              label: 'Retry upload',
+              icon: Icons.refresh,
+              onPressed: onRetryPhotoUpload,
+            ),
+            const SizedBox(height: 8),
+            TextButton.icon(
+              onPressed: onCapturePhoto,
+              icon: const Icon(Icons.photo_camera_outlined, size: 18),
+              label: const Text('Take a new photo instead'),
+            ),
+          ] else
+            _primary(
+              label: 'Capture Photo (required)',
+              icon: Icons.photo_camera_outlined,
+              onPressed: onCapturePhoto,
+            ),
         ],
       );
     }

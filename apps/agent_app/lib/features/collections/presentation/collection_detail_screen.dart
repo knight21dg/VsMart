@@ -41,6 +41,13 @@ class CollectionDetailScreen extends ConsumerStatefulWidget {
       _CollectionDetailScreenState();
 }
 
+/// Sentinel returned when an action was skipped because another one is already
+/// in flight — not a success, so a caller's follow-on step doesn't run.
+class _BusyRejected {
+  const _BusyRejected._();
+  static const instance = _BusyRejected._();
+}
+
 class _CollectionDetailScreenState
     extends ConsumerState<CollectionDetailScreen> {
   bool _busy = false;
@@ -61,31 +68,24 @@ class _CollectionDetailScreenState
   CollectionsRepo get _repo => ref.read(collectionsRepoProvider);
 
   // ── error surfacing ──────────────────────────────────────────────────────
-  /// Returns the parsed [CollectionApiException] (or null when not one) after
-  /// showing the backend envelope to the agent.
-  CollectionApiException? _show(Object error) {
-    if (error is CollectionApiException) {
-      final next = error.nextStep;
-      showToast(
-        context,
-        next != null && next.isNotEmpty
-            ? '${error.display}\n$next'
-            : error.display,
-        error: true,
-      );
-      return error;
-    }
-    showToast(context, 'Something went wrong. Please try again.', error: true);
-    return null;
-  }
+  /// Show a caught error: the backend envelope when there is one, otherwise a
+  /// classified network/server message.
+  void _show(Object error) => showApiError(context, error);
 
-  /// Run a repo call with the busy flag + refresh + error surfacing. Returns the
-  /// thrown [CollectionApiException] (if any) so callers can branch on `code`.
-  Future<CollectionApiException?> _run(
+  /// Run a repo call with the busy flag + refresh + error surfacing.
+  ///
+  /// Returns null on SUCCESS and the caught error otherwise. It used to return
+  /// `CollectionApiException?`, which was null for a success AND for every
+  /// non-API failure — so on a dropped connection the agent was told "OTP sent
+  /// to the customer to confirm ₹X" for a request that never left the phone,
+  /// and "OTP verified" (with the field cleared) for a verification that never
+  /// happened. On a cash-recovery flow those are the two worst things to lie
+  /// about.
+  Future<Object?> _run(
     Future<AgentCollection> Function() action, {
     String? successMsg,
   }) async {
-    if (_busy) return null;
+    if (_busy) return _BusyRejected.instance;
     setState(() => _busy = true);
     try {
       await action();
@@ -96,8 +96,8 @@ class _CollectionDetailScreenState
       if (successMsg != null) showToast(context, successMsg);
       return null;
     } catch (e) {
-      if (!mounted) return null;
-      return _show(e);
+      if (mounted) _show(e);
+      return e;
     } finally {
       if (mounted) setState(() => _busy = false);
     }

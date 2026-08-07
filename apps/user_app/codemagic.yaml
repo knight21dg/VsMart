@@ -1,0 +1,62 @@
+# Codemagic CI/CD — VS Mart customer app (iOS → TestFlight).
+# Docs: https://docs.codemagic.io/yaml-quick-start/building-a-flutter-app/
+#
+# ONE-TIME SETUP in the Codemagic web UI (see CODEMAGIC_IOS.md):
+#   1. Connect this GitHub repo (knight21dg/VsMart).
+#   2. Teams → Integrations → App Store Connect → add your API key
+#      (Issuer ID + Key ID + .p8). Name it exactly  "VSMart ASC"  (or rename below).
+#   3. (optional) Add an env-var group "vsmart" with GMS_API_KEY_IOS = your iOS Maps key.
+#   4. The bundle id  com.vsmart.userApp  must exist in App Store Connect + the
+#      Apple Developer portal (Identifiers) before the first run.
+
+workflows:
+  ios-testflight:
+    name: iOS — TestFlight
+    instance_type: mac_mini_m2
+    max_build_duration: 90
+    integrations:
+      app_store_connect: VSMart ASC          # <- name of the API key you add in Codemagic
+    environment:
+      ios_signing:
+        distribution_type: app_store         # Codemagic auto-creates the signing cert + profile
+        bundle_identifier: com.vsmart.userApp
+      groups:
+        - vsmart                             # optional group providing GMS_API_KEY_IOS
+      vars:
+        API_BASE_URL: "https://api.thevsmart.com/api/v1"
+      flutter: 3.32.4
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Flutter pub get
+        script: flutter pub get
+      - name: Inject iOS Google Maps key (optional)
+        script: |
+          if [ -n "$GMS_API_KEY_IOS" ]; then
+            /usr/libexec/PlistBuddy -c "Set :GMSApiKey $GMS_API_KEY_IOS" ios/Runner/Info.plist 2>/dev/null \
+              || /usr/libexec/PlistBuddy -c "Add :GMSApiKey string $GMS_API_KEY_IOS" ios/Runner/Info.plist
+          fi
+      - name: Set up code signing
+        script: xcode-project use-profiles
+      - name: Install CocoaPods
+        script: find . -name "Podfile" -execdir pod install \;
+      - name: Build signed IPA
+        script: |
+          flutter build ipa --release \
+            --dart-define=API_BASE_URL=$API_BASE_URL \
+            --export-options-plist=/Users/builder/export_options.plist
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        beta_groups:
+          - App Store Connect Users          # rename to your TestFlight group
+      email:
+        recipients:
+          - knight21digihub@gmail.com
+        notify:
+          success: true
+          failure: true

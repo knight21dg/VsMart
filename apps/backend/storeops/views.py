@@ -964,7 +964,10 @@ class StoreDeliveryAgentsView(StoreScopedMixin, APIView):
     def get(self, request):
         from delivery.admin_service import agent_load
 
-        return Response(agent_load())
+        # Store-scoped: this list populates the delivery AND collections
+        # reassign pickers, so an unscoped pool let a store hand work to another
+        # store's agent.
+        return Response(agent_load(store=self.store))
 
 
 class StoreDeliveryStatusView(StoreScopedMixin, APIView):
@@ -1001,15 +1004,32 @@ class StoreDeliveryReassignView(StoreScopedMixin, APIView):
     def post(self, request, task_id):
         from accounts.models import User
         from delivery.models import DeliveryTask
-        from delivery.services import reassign
+        from delivery.services import manual_assign
+
+        from agents.candidates import eligible_for_store
 
         task = get_object_or_404(
             DeliveryTask.objects.select_related("order"), pk=task_id, order__store=self.store
         )
         agent = get_object_or_404(User, pk=request.data.get("agentId") or request.data.get("agent_id"),
-                                  role="agent")
-        new_task = reassign(task, agent, by=request.user,
-                            reason=request.data.get("reason", "Reassigned by store"))
+                                  role="agent", is_active=True)
+        # The picker is store-scoped, but the endpoint is the actual control:
+        # handing this task to another store's agent would drop it off this
+        # store's board and onto a rider who can't physically do it.
+        if not eligible_for_store(agent, self.store):
+            raise AppError(
+                "VALIDATION_ERROR",
+                message="That agent belongs to another store.",
+                fields={"agentId": ["Pick one of your store's agents."]},
+            )
+        # `manual_assign`, not `reassign`: reassign refuses a TERMINAL task, and
+        # `rejected` is terminal. An agent turning a job down auto-reassigns it,
+        # but when nobody else is eligible the order sits with a rejected task
+        # and no live one — nobody is delivering it, and the store had no way to
+        # act. manual_assign hands over the live task when there is one and
+        # otherwise opens the next attempt for the order.
+        new_task = manual_assign(task.order, agent, by=request.user,
+                                 reason=request.data.get("reason", "Reassigned by store"))
         record_audit(request.user, "store_delivery.reassign", target=task,
                      after={"agentId": str(agent.id)})
         return Response({"id": new_task.id, "agent": agent.name or agent.phone})

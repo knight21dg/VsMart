@@ -2008,3 +2008,249 @@ class StoreBannerTests(TestCase):
         r = self.mgr.post("/api/v1/store/marketing/coupons", {"code": "HACK"},
                           format="json")
         self.assertIn(r.status_code, (403, 405))
+
+
+# ── Reassignment: agent pool + store boundary ────────────
+def mk_agent(store=None, *, available=True, active=True, name=None):
+    """An agent, optionally owned by a store (AgentProfile.store)."""
+    from accounts.models import AgentProfile
+
+    n = next(_seq)
+    user = User.objects.create(
+        phone=_ph(), name=name or f"Agent{n}", role=Role.AGENT, is_active=active
+    )
+    AgentProfile.objects.create(
+        user=user, code=f"AG-{n}", store=store, is_available=available
+    )
+    return user
+
+
+class StoreReassignAgentPoolTests(TestCase):
+    """Who a store may hand a delivery or a collection to.
+
+    Agents are store-owned. The reassign pickers on both the Delivery and the
+    Collections pages read `/store/delivery/agents`, which was unscoped — it
+    listed every agent on the platform, so a store could hand its work to
+    another store's rider. The task then drops off the owning store's board and
+    lands with somebody who can't physically do it.
+    """
+
+    def setUp(self):
+        self.store = mk_store("Mine")
+        self.other = mk_store("Theirs")
+        self.mgr = client_for(mk_staff(self.store, "manager"))
+        self.mine = mk_agent(self.store, name="Mine Agent")
+        self.theirs = mk_agent(self.other, name="Their Agent")
+
+    def _pool(self):
+        return {a["name"] for a in _data(self.mgr.get("/api/v1/store/delivery/agents"))}
+
+    def test_pool_is_scoped_to_this_store(self):
+        pool = self._pool()
+        self.assertIn("Mine Agent", pool)
+        self.assertNotIn("Their Agent", pool)
+
+    def test_off_duty_agents_are_offered_but_flagged(self):
+        # A human picking a name may knowingly choose someone starting a shift —
+        # so they stay in the list, but the UI has to be able to say "off duty".
+        resting = mk_agent(self.store, available=False, name="Resting")
+        rows = {a["name"]: a for a in _data(self.mgr.get("/api/v1/store/delivery/agents"))}
+        self.assertIn("Resting", rows)
+        self.assertFalse(rows["Resting"]["onDuty"])
+        self.assertEqual(str(resting.id), rows["Resting"]["id"])
+
+    def test_deactivated_agents_are_never_offered(self):
+        mk_agent(self.store, active=False, name="Gone")
+        self.assertNotIn("Gone", self._pool())
+
+    def test_store_less_legacy_agents_are_the_fallback_pool(self):
+        # An install that never filled in AgentProfile.store must keep working:
+        # store-less agents are offered when the store has none of its own, and
+        # step aside once it does. Same rule as `candidate_agents`, so the panel
+        # and the auto-assignment engine never disagree about who is eligible.
+        mk_agent(None, name="Legacy")
+        self.assertNotIn("Legacy", self._pool())  # this store has its own
+
+        bare_store = mk_store("Bare")
+        bare_mgr = client_for(mk_staff(bare_store, "manager"))
+        names = {a["name"] for a in _data(bare_mgr.get("/api/v1/store/delivery/agents"))}
+        self.assertIn("Legacy", names)
+        self.assertNotIn("Mine Agent", names)
+
+    def test_picker_and_endpoint_agree_on_eligibility(self):
+        # The guard is defined as membership of the picker's pool, so an agent
+        # the panel never offers can't be forced through the endpoint either.
+        from agents.candidates import assignable_agents, eligible_for_store
+
+        offered = {a.id for a in assignable_agents(self.store)}
+        self.assertTrue(eligible_for_store(self.mine, self.store))
+        self.assertFalse(eligible_for_store(self.theirs, self.store))
+        self.assertEqual(offered, {self.mine.id})
+
+    def test_reassigning_a_delivery_to_another_stores_agent_is_refused(self):
+        from delivery.models import DeliveryTask
+
+        order = mk_order(self.store, mk_customer(), status="packed")
+        task = DeliveryTask.objects.create(order=order, agent=self.mine, status="failed")
+        r = self.mgr.post(
+            f"/api/v1/store/delivery/{task.id}/reassign",
+            {"agentId": str(self.theirs.id)}, format="json",
+        )
+        self.assertEqual(r.status_code, 400)
+        task.refresh_from_db()
+        self.assertEqual(task.agent_id, self.mine.id)
+
+    def test_a_failed_delivery_can_be_retried_with_this_stores_agent(self):
+        from delivery.models import DeliveryTask
+
+        order = mk_order(self.store, mk_customer(), status="packed")
+        task = DeliveryTask.objects.create(order=order, agent=self.mine, status="failed")
+        mate = mk_agent(self.store, name="Mate")
+        r = self.mgr.post(
+            f"/api/v1/store/delivery/{task.id}/reassign",
+            {"agentId": str(mate.id)}, format="json",
+        )
+        self.assertEqual(r.status_code, 200)
+        # A fresh task for the new agent to accept — not a force-jump to accepted.
+        self.assertEqual(_data(r)["agent"], "Mate")
+        self.assertNotEqual(_data(r)["id"], task.id)
+        fresh = DeliveryTask.objects.get(pk=_data(r)["id"])
+        self.assertEqual(fresh.status, "assigned")
+        # The next attempt at this address is attempt 2, not another attempt 1.
+        self.assertEqual(fresh.attempt_no, task.attempt_no + 1)
+        # The failed attempt keeps its status: those goods are still with the
+        # first agent and must still come back through "Returns to receive".
+        task.refresh_from_db()
+        self.assertEqual(task.status, "failed")
+
+    def test_a_rejected_delivery_can_still_be_given_to_someone(self):
+        # `rejected` is TERMINAL, so `services.reassign` refuses it — and the
+        # panel button 409'd. When an agent turns a job down and nobody else is
+        # eligible, the order sits with a rejected task and no live one: nobody
+        # is delivering it. The store must be able to hand it to a name.
+        from delivery.models import DeliveryTask
+
+        order = mk_order(self.store, mk_customer(), status="packed")
+        task = DeliveryTask.objects.create(order=order, agent=self.mine, status="rejected")
+        mate = mk_agent(self.store, name="Mate")
+        r = self.mgr.post(
+            f"/api/v1/store/delivery/{task.id}/reassign",
+            {"agentId": str(mate.id)}, format="json",
+        )
+        self.assertEqual(r.status_code, 200)
+        fresh = DeliveryTask.objects.get(pk=_data(r)["id"])
+        self.assertEqual(fresh.agent_id, mate.id)
+        self.assertEqual(fresh.status, "assigned")
+        task.refresh_from_db()
+        self.assertEqual(task.status, "rejected")  # history is not rewritten
+
+    def test_a_live_task_is_handed_over_rather_than_forked(self):
+        # With a task still in play, reassignment must close it out — never
+        # leave two live tasks racing on one order.
+        from delivery.models import DeliveryTask
+
+        order = mk_order(self.store, mk_customer(), status="packed")
+        task = DeliveryTask.objects.create(order=order, agent=self.mine, status="assigned")
+        mate = mk_agent(self.store, name="Mate")
+        r = self.mgr.post(
+            f"/api/v1/store/delivery/{task.id}/reassign",
+            {"agentId": str(mate.id)}, format="json",
+        )
+        self.assertEqual(r.status_code, 200)
+        task.refresh_from_db()
+        self.assertEqual(task.status, "reassigned")
+        live = DeliveryTask.objects.filter(
+            order=order, status__in=["assigned", "accepted"]
+        )
+        self.assertEqual(live.count(), 1)
+        self.assertEqual(live.first().agent_id, mate.id)
+
+
+class StoreCollectionReassignTests(TestCase):
+    """Handing a cash recovery to a different agent.
+
+    The panel only ever offered this on a FAILED collection, so the everyday
+    case — the agent holding it went off duty, is unreachable, or was the wrong
+    person — had no lever: the collection sat with someone who was never going
+    to work it. `cashcollections.services.manual_assign` has always accepted
+    requested/assigned/failed/disputed; only the UI was narrower.
+    """
+
+    def setUp(self):
+        from payments.models import CashCollection
+
+        self.store = mk_store("Mine")
+        self.other = mk_store("Theirs")
+        self.mgr = client_for(mk_staff(self.store, "manager"))
+        self.customer = mk_customer()
+        mk_order(self.store, self.customer)  # makes them this store's customer
+        self.agent = mk_agent(self.store, name="First")
+        self.mate = mk_agent(self.store, name="Second")
+        self.theirs = mk_agent(self.other, name="Outsider")
+        self.coll = CashCollection.objects.create(
+            user=self.customer, agent=self.agent, amount=1500, status="assigned"
+        )
+
+    def _reassign(self, agent):
+        return self.mgr.post(
+            f"/api/v1/store/collections/{self.coll.id}/reassign",
+            {"agentId": str(agent.id)}, format="json",
+        )
+
+    def test_an_assigned_collection_can_be_moved_to_another_agent(self):
+        r = self._reassign(self.mate)
+        self.assertEqual(r.status_code, 200)
+        self.coll.refresh_from_db()
+        self.assertEqual(self.coll.agent_id, self.mate.id)
+        self.assertEqual(self.coll.status, "assigned")
+
+    def test_a_failed_collection_is_reopened_with_the_new_agent(self):
+        self.coll.status = "failed"
+        self.coll.save(update_fields=["status"])
+        r = self._reassign(self.mate)
+        self.assertEqual(r.status_code, 200)
+        self.coll.refresh_from_db()
+        self.assertEqual(self.coll.agent_id, self.mate.id)
+        self.assertEqual(self.coll.status, "assigned")
+
+    def test_the_move_is_written_to_the_assignment_history(self):
+        # The store detail drawer reads this to answer "who handled it, and why
+        # is it with someone else now".
+        self._reassign(self.mate)
+        from cashcollections.models import CollectionAssignmentHistory
+
+        actions = list(
+            CollectionAssignmentHistory.objects.filter(collection=self.coll)
+            .values_list("action", flat=True)
+        )
+        self.assertIn("reassigned", actions)
+
+    def test_another_stores_agent_is_refused(self):
+        r = self._reassign(self.theirs)
+        self.assertEqual(r.status_code, 400)
+        self.coll.refresh_from_db()
+        self.assertEqual(self.coll.agent_id, self.agent.id)
+
+    def test_a_collection_mid_visit_is_not_pulled_from_under_the_agent(self):
+        # accepted/en_route/reached are excluded by manual_assign: a rider at
+        # the customer's door shouldn't have the task moved away.
+        self.coll.status = "reached"
+        self.coll.save(update_fields=["status"])
+        r = self._reassign(self.mate)
+        self.assertEqual(r.status_code, 409)
+        self.coll.refresh_from_db()
+        self.assertEqual(self.coll.agent_id, self.agent.id)
+
+    def test_a_collection_for_another_stores_customer_is_invisible(self):
+        from payments.models import CashCollection
+
+        outsider = mk_customer()
+        mk_order(self.other, outsider)
+        foreign = CashCollection.objects.create(
+            user=outsider, agent=self.theirs, amount=900, status="assigned"
+        )
+        r = self.mgr.post(
+            f"/api/v1/store/collections/{foreign.id}/reassign",
+            {"agentId": str(self.mate.id)}, format="json",
+        )
+        self.assertEqual(r.status_code, 404)

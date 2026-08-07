@@ -86,11 +86,34 @@ class _AuthGateState extends ConsumerState<_AuthGate> {
     if (status == AuthStatus.unauthenticated) return const LoginScreen();
 
     if (!_dismissedThisSession) {
-      final profile = ref.watch(agentProfileProvider).valueOrNull;
-      // Still loading the profile — stay on a blank loader rather than flash
-      // the capture screen for a profile that turns out to already have a
-      // photo (avoided by simply not deciding yet).
-      if (profile == null) return const Scaffold(body: Loading());
+      final profileAsync = ref.watch(agentProfileProvider);
+
+      // The profile call failing must NOT leave the agent on a blank screen.
+      // This used to read `.valueOrNull == null` and show a loader, which is
+      // also what an error looks like — so a dead network, a 500, or an
+      // expired session parked the app on an empty spinner forever, with no
+      // message, no retry and no way to sign out. Opening the app out of
+      // coverage made it look bricked.
+      if (profileAsync.hasError) {
+        return Scaffold(
+          backgroundColor: AgentColors.bg,
+          body: SafeArea(
+            child: ErrorRetry(
+              error: profileAsync.error,
+              onRetry: () => ref.invalidate(agentProfileProvider),
+              extraAction: TextButton(
+                onPressed: () => ref.read(authStatusProvider.notifier).logout(),
+                child: const Text('Sign out'),
+              ),
+            ),
+          ),
+        );
+      }
+
+      // Still loading — stay on the splash rather than flash the capture screen
+      // for a profile that turns out to already have a photo.
+      final profile = profileAsync.valueOrNull;
+      if (profile == null) return const AgentSplashScreen();
       if (!profile.hasAvatar) {
         return FaceCaptureScreen(
           onDone: () => setState(() => _dismissedThisSession = true),

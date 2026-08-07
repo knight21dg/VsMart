@@ -44,21 +44,9 @@ class _VerificationDetailScreenState
   VerificationRepo get _repo => ref.read(verificationRepoProvider);
 
   // ── error surfacing ──────────────────────────────────────────────────────
-  void _show(Object error) {
-    if (error is VerificationApiException) {
-      final next = error.nextStep;
-      showToast(
-        context,
-        next != null && next.isNotEmpty
-            ? '${error.display}\n$next'
-            : error.display,
-        error: true,
-      );
-    } else {
-      showToast(context, 'Something went wrong. Please try again.',
-          error: true);
-    }
-  }
+  /// Backend envelope when there is one, otherwise a classified
+  /// network/server message — a field agent needs "you're offline" to say so.
+  void _show(Object error) => showApiError(context, error);
 
   /// Run an action with the busy flag + refresh + error surfacing. Returns true
   /// on success.

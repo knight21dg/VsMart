@@ -50,10 +50,14 @@ class SmsLoginSendTests(TestCase):
         self.assertEqual(params["username"], "Vsmart")
         self.assertEqual(params["apikey"], "test-key")
         self.assertEqual(params["senderid"], "VSMART")
-        self.assertEqual(params["templateid"], "1234567890")
+        # Resolved from the registered DLT map, not the fallback config.
+        self.assertEqual(params["templateid"], "1777178591139204185")
         self.assertEqual(params["mobile"], "9876543210")
         # The code is substituted into the DLT body, not sent on its own.
-        self.assertEqual(params["message"], "482913 is your VS Mart verification code.")
+        self.assertEqual(
+            params["message"],
+            "482913 is your VS Mart login OTP. Valid for 5 minutes."
+            " Do not share this code with anyone.https://thevsmart.com/login")
 
     @mock.patch("accounts.otp.runtime.cfg")
     @mock.patch("requests.get")
@@ -113,11 +117,10 @@ class SmsLoginSendTests(TestCase):
 
     @mock.patch("accounts.otp.runtime.cfg")
     def test_missing_sender_id_or_template_is_named_not_silently_sent(self, mock_cfg):
-        mock_cfg.side_effect = _cfg(smslogin_sender_id="", smslogin_template_id="")
+        mock_cfg.side_effect = _cfg(smslogin_sender_id="")
         with self.assertRaises(RuntimeError) as ctx:
             otp.send_sms("+919876543210", "482913", "login")
         self.assertIn("smslogin_sender_id", str(ctx.exception))
-        self.assertIn("smslogin_template_id", str(ctx.exception))
 
     @mock.patch("accounts.otp.runtime.cfg")
     def test_console_provider_still_short_circuits(self, mock_cfg):

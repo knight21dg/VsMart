@@ -126,9 +126,25 @@ def delivery_list(params, limit=200):
     return [_row(t) for t in qs.order_by("-created_at")[:limit]]
 
 
-def agent_load():
-    """Per-agent live delivery load (active count + completed today)."""
+def agent_load(store=None):
+    """Per-agent live delivery load (active count + completed today).
+
+    Pass ``store`` for a store panel: agents are store-owned
+    (``AgentProfile.store``), and this list is what a store's reassign pickers
+    (delivery + collections) are populated from. Unscoped, it returned every
+    agent on the platform, so a store could hand its delivery or collection to
+    another store's rider — the task then vanishes from the owning store's board
+    and lands with somebody who physically can't do it. Eligibility mirrors
+    ``agents.candidates.candidate_agents``: that store's agents, else the
+    store-less legacy pool.
+
+    Unlike ``candidate_agents`` this does NOT filter to on-duty — a human
+    picking a name may deliberately choose someone starting their shift — but
+    every row carries ``onDuty`` so the UI can say so. Inactive (deactivated)
+    accounts are always excluded; they can never work a task.
+    """
     from accounts.models import Role, User
+    from agents.candidates import assignable_agents
     from agents.services import attendance_today
 
     today = timezone.localdate()
@@ -142,7 +158,11 @@ def agent_load():
         )
     )
     by_agent = {a["agent_id"]: a for a in agg}
-    for u in User.objects.filter(role=Role.AGENT):
+    candidates = (
+        assignable_agents(store) if store is not None
+        else list(User.objects.filter(role=Role.AGENT, is_active=True))
+    )
+    for u in candidates:
         a = by_agent.get(u.id, {})
         rows.append({
             "id": str(u.id), "name": u.name or u.phone,

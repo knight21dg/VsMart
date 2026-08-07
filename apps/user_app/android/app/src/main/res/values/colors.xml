@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- VS Mart brand green (AppColors.vsGreen). Tints the notification small
+         icon and the colored accent line on the notification. -->
+    <color name="notification_accent">#16A34A</color>
+</resources>

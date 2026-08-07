@@ -1,0 +1,137 @@
+/* ============================================================
+   Legal / prose styles for CMS-authored documents
+   (Privacy Policy, Terms & Conditions). The body HTML comes
+   from the backend, so these rules style arbitrary headings,
+   paragraphs, lists, links and tables in an on-brand, readable
+   "legal" container.
+   ============================================================ */
+
+.legal-back:hover {
+  color: #8bc34a;
+}
+
+.legal-prose {
+  font-family: var(--font-body), sans-serif;
+  color: #334155;
+  font-size: 16px;
+  line-height: 1.75;
+  font-weight: 450;
+}
+
+.legal-prose > *:first-child {
+  margin-top: 0;
+}
+.legal-prose > *:last-child {
+  margin-bottom: 0;
+}
+
+.legal-prose h1,
+.legal-prose h2,
+.legal-prose h3,
+.legal-prose h4 {
+  font-family: var(--font-display), sans-serif;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  margin: 1.9em 0 0.6em;
+  scroll-margin-top: 90px;
+}
+
+.legal-prose h1 {
+  font-size: 1.85em;
+  font-weight: 800;
+}
+.legal-prose h2 {
+  font-size: 1.42em;
+  font-weight: 800;
+}
+.legal-prose h3 {
+  font-size: 1.18em;
+  font-weight: 700;
+}
+.legal-prose h4 {
+  font-size: 1.02em;
+  font-weight: 700;
+}
+
+.legal-prose p {
+  margin: 0 0 1.15em;
+}
+
+.legal-prose a {
+  color: #006d77;
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: rgba(0, 109, 119, 0.35);
+  text-underline-offset: 2px;
+  transition: text-decoration-color 0.2s, color 0.2s;
+}
+.legal-prose a:hover {
+  color: #8bc34a;
+  text-decoration-color: #8bc34a;
+}
+
+.legal-prose ul,
+.legal-prose ol {
+  margin: 0 0 1.15em;
+  padding-left: 1.4em;
+}
+.legal-prose li {
+  margin: 0.35em 0;
+  padding-left: 0.2em;
+}
+.legal-prose li::marker {
+  color: #006d77;
+}
+
+.legal-prose strong,
+.legal-prose b {
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.legal-prose blockquote {
+  margin: 1.4em 0;
+  padding: 4px 0 4px 18px;
+  border-left: 3px solid #8bc34a;
+  color: #475569;
+  font-style: italic;
+}
+
+.legal-prose hr {
+  border: none;
+  border-top: 1px solid rgba(15, 23, 42, 0.1);
+  margin: 2em 0;
+}
+
+.legal-prose code {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.88em;
+  background: rgba(15, 23, 42, 0.05);
+  padding: 0.12em 0.4em;
+  border-radius: 6px;
+}
+
+.legal-prose table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.4em 0;
+  font-size: 0.95em;
+}
+.legal-prose th,
+.legal-prose td {
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  padding: 10px 14px;
+  text-align: left;
+  vertical-align: top;
+}
+.legal-prose th {
+  background: #f8fafc;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.legal-prose img {
+  border-radius: 12px;
+  margin: 1.2em 0;
+}

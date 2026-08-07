@@ -46,6 +46,15 @@ interface CollectionDetail extends CollectionRow {
 
 const METHODS = ["cash", "upi", "card", "netbanking"] as const;
 
+// States `cashcollections.services.manual_assign` will (re)assign from. The
+// panel only ever offered this on `failed`, so the everyday case — the agent
+// holding it went off duty, is unreachable, or was simply the wrong person —
+// had no lever at all: the collection sat with an agent who was never going to
+// work it. Anything mid-visit (accepted/en_route/reached) is deliberately not
+// here; the backend refuses it, because a rider standing at the door shouldn't
+// have the task pulled from under them.
+const REASSIGNABLE = new Set(["requested", "assigned", "failed", "disputed"]);
+
 export default function CollectionsPage() {
   return (
     <RequirePerm perm="collections.view">
@@ -104,12 +113,15 @@ function CollectionsInner() {
       header: "", id: "actions",
       cell: ({ row }) => {
         if (!canManage || row.original.status === "collected") return null;
+        const reassignable = REASSIGNABLE.has(row.original.status);
         return (
           <div className="flex justify-end gap-1.5">
-            {row.original.status === "failed" && (
+            {reassignable && (
               <Button variant="outline" size="sm"
                 onClick={(e) => { e.stopPropagation(); setRetryTarget(row.original); }}>
-                Retry
+                {/* "Retry" reads right after a failure; for one that's simply
+                    sitting with the wrong agent, the action is a reassignment. */}
+                {row.original.status === "failed" ? "Retry" : "Reassign"}
               </Button>
             )}
             <Button variant="outline" size="sm"
@@ -225,31 +237,60 @@ function RetryDialog({
   row, agents, onClose,
 }: { row: CollectionRow; agents: { id: string; name: string; onDuty: boolean }[]; onClose: () => void }) {
   const [agentId, setAgentId] = React.useState("");
+  const failed = row.status === "failed";
   const m = useApiMutation<void>(
     () => api.post(`/store/collections/${row.id}/reassign`, { agentId }),
-    { invalidate: [["store", "collections"]], successMessage: "Sent to a new agent", onDone: onClose }
+    {
+      invalidate: [["store", "collections"]],
+      successMessage: "Sent to a new agent",
+      onDone: onClose,
+    }
+  );
+  // On duty first — the picker is a list of names otherwise, and handing a
+  // recovery to someone who isn't working today just stalls it again.
+  const sorted = React.useMemo(
+    () => [...agents].sort((a, b) => Number(b.onDuty) - Number(a.onDuty)),
+    [agents]
   );
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Retry collection — {row.customer || row.phone}</DialogTitle>
-          <DialogDescription>{inr(row.amount)} · previous attempt failed</DialogDescription>
+          <DialogTitle>
+            {failed ? "Retry collection" : "Reassign collection"} — {row.customer || row.phone}
+          </DialogTitle>
+          <DialogDescription>
+            {inr(row.amount)} ·{" "}
+            {failed
+              ? "previous attempt failed"
+              : row.agent
+                ? `currently with ${row.agent}`
+                : "not assigned to anyone yet"}
+          </DialogDescription>
         </DialogHeader>
-        <Select value={agentId} onValueChange={setAgentId}>
-          <SelectTrigger><SelectValue placeholder="Pick an agent" /></SelectTrigger>
-          <SelectContent>
-            {agents.map((a) => (
-              <SelectItem key={a.id} value={a.id}>
-                {a.name}{!a.onDuty && " (off duty)"}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {sorted.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No agents available for your store. Add or activate an agent first.
+          </p>
+        ) : (
+          <Select value={agentId} onValueChange={setAgentId}>
+            <SelectTrigger><SelectValue placeholder="Pick an agent" /></SelectTrigger>
+            <SelectContent>
+              {sorted.map((a) => (
+                <SelectItem key={a.id} value={a.id}>
+                  {a.name}
+                  {!a.onDuty && " (off duty)"}
+                  {a.name === row.agent && " · current"}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={m.isPending}>Cancel</Button>
           <Button onClick={() => m.mutate()} disabled={m.isPending || !agentId}>
-            {m.isPending && <Loader2 className="size-4 animate-spin" />} Retry
+            {m.isPending && <Loader2 className="size-4 animate-spin" />}
+            {failed ? "Retry" : "Reassign"}
           </Button>
         </DialogFooter>
       </DialogContent>

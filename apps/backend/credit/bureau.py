@@ -1,9 +1,13 @@
 """Credit-bureau score provider (CIBIL / credit score pull by mobile number).
 
-One live provider — Payon (apipayon.in `check_credit_score.php`). It takes a
-form-encoded `apiKey` + `mobile` and returns the score, PAN and name at the TOP
-LEVEL of the JSON. The API key never leaves the server; it's read from runtime
+One live provider — Payon `check_credit_score.php`. It takes a form-encoded
+`apiKey` + `mobile`. The API key never leaves the server; it's read from runtime
 settings (super-admin panel) with an env/settings default.
+
+HOST: reseller keys are served from `reseller.apipayon.in`, NOT the bare
+`apipayon.in`. Probed live 2026-08-05 — the same key returns "Invalid API key"
+on the bare host and is recognised on the reseller host, so pointing at the wrong
+one looks exactly like a dead key.
 
 Services and views depend only on `BureauResult` / `BureauError`, so the provider
 internals stay swappable without touching callers.
@@ -14,7 +18,7 @@ from dataclasses import dataclass, field
 
 from core import runtime_settings as runtime
 
-DEFAULT_BASE = "https://apipayon.in/api/v1/serv2/check_credit_score.php"
+DEFAULT_BASE = "https://reseller.apipayon.in/api/v1/serv2/check_credit_score.php"
 TIMEOUT = 25
 
 # Result states.

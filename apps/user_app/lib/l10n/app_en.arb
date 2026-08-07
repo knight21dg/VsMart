@@ -1,0 +1,3097 @@
+{
+  "@@locale": "en",
+  "appTagline": "Groceries in minutes",
+  "@appTagline": {
+    "description": "Short brand tagline"
+  },
+  "commonOk": "OK",
+  "commonCancel": "Cancel",
+  "commonClose": "Close",
+  "commonRetry": "Retry",
+  "commonApply": "Apply",
+  "commonSave": "Save",
+  "commonContinue": "Continue",
+  "commonNext": "Next",
+  "commonBack": "Back",
+  "commonDone": "Done",
+  "commonYes": "Yes",
+  "commonNo": "No",
+  "commonSearch": "Search",
+  "commonSeeAll": "See all",
+  "commonLoading": "Loading…",
+  "commonSomethingWentWrong": "Something went wrong",
+  "commonNoInternet": "No internet connection",
+  "commonTryAgain": "Please try again",
+  "navHome": "Home",
+  "navCategories": "Categories",
+  "navCart": "Cart",
+  "navOrders": "Orders",
+  "navAccount": "Account",
+  "navCredit": "VS Credit",
+  "homeSearchHint": "Search for groceries, brands and more",
+  "homeDeliverTo": "Deliver to",
+  "homeOffersForYou": "Offers for you",
+  "homeRecommended": "Recommended for you",
+  "homePopular": "Popular near you",
+  "homeShopByCategory": "Shop by category",
+  "serviceDeliveringIn": "Delivery in {minutes} min",
+  "@serviceDeliveringIn": {
+    "description": "ETA chip on the home serviceability banner",
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "serviceFrom": "from {store}",
+  "@serviceFrom": {
+    "description": "Shows the serving store name",
+    "placeholders": {
+      "store": {
+        "type": "String"
+      }
+    }
+  },
+  "serviceNotAvailableTitle": "We are not available in your area yet",
+  "serviceNotAvailableBody": "VS Mart doesn't deliver to this location right now. Tell us where you are and we'll notify you when we launch.",
+  "serviceChangeLocation": "Change location",
+  "serviceNotifyMe": "Notify me",
+  "serviceStoreClosed": "Store currently closed",
+  "serviceStoreClosedResumesAt": "Store is closed. Orders resume at {time}.",
+  "@serviceStoreClosedResumesAt": {
+    "description": "Shown when the serving store is outside business hours",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "serviceSlotsFull": "Today's delivery slots are full",
+  "productAddToCart": "Add to cart",
+  "productAdded": "Added",
+  "productOutOfStock": "Out of stock",
+  "productInCart": "In cart",
+  "productSave": "Save {amount}",
+  "@productSave": {
+    "description": "Discount savings badge",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "cartTitle": "My cart",
+  "cartEmptyTitle": "Your cart is empty",
+  "cartEmptyBody": "Add items to get started",
+  "cartSubtotal": "Subtotal",
+  "cartDeliveryFee": "Delivery fee",
+  "cartGst": "GST",
+  "cartTotal": "Total",
+  "cartFree": "FREE",
+  "cartItemsCount": "{count, plural, =0{No items} =1{1 item} other{{count} items}}",
+  "@cartItemsCount": {
+    "description": "Item count in the cart",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "cartProceedToCheckout": "Proceed to checkout",
+  "checkoutTitle": "Checkout",
+  "checkoutDeliveryAddress": "Delivery address",
+  "checkoutPaymentMethod": "Payment method",
+  "checkoutPlaceOrder": "Place order",
+  "checkoutPayNow": "Pay now",
+  "checkoutCod": "Cash on delivery",
+  "checkoutUpi": "UPI",
+  "checkoutCard": "Card",
+  "checkoutVsCredit": "VS Credit",
+  "checkoutOrderPlacedTitle": "Order placed!",
+  "checkoutOrderPlacedBody": "Your order {code} has been placed.",
+  "@checkoutOrderPlacedBody": {
+    "description": "Order confirmation",
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "creditTitle": "VS Credit",
+  "creditLimit": "Credit limit",
+  "creditAvailable": "Available credit",
+  "creditOutstanding": "Outstanding",
+  "creditOutstandingAmount": "You have {amount} outstanding",
+  "@creditOutstandingAmount": {
+    "description": "Outstanding-due banner. {amount} is a pre-formatted currency string like ₹25,000.",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "creditDueOn": "Due on {date}",
+  "@creditDueOn": {
+    "description": "Repayment due date",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "creditRepay": "Repay",
+  "creditRepayNow": "Repay now",
+  "creditPayBill": "Pay bill",
+  "creditFrozen": "Your credit is temporarily frozen",
+  "creditCompleteKyc": "Complete KYC to use VS Credit",
+  "kycTitle": "Verification",
+  "kycCompleteTitle": "Complete your KYC",
+  "kycPending": "Verification in progress",
+  "kycVerified": "Verified",
+  "kycRejected": "Verification rejected",
+  "kycUploadDocument": "Upload document",
+  "kycVerifyIdentity": "Verify identity",
+  "ordersTitle": "My orders",
+  "ordersEmpty": "You have no orders yet",
+  "ordersTrack": "Track order",
+  "reorderSheetTitle": "Add these to your cart?",
+  "reorderAddAll": "Add {count} to cart",
+  "@reorderAddAll": {"description": "Primary button on the reorder review sheet.", "placeholders": {"count": {"type": "int"}}},
+  "reorderUnavailableHeading": "Not available right now",
+  "reorderDiscontinued": "No longer sold",
+  "reorderOutOfStock": "Out of stock",
+  "reorderNothingAvailable": "None of these items are available right now.",
+  "reorderPricesMayHaveChanged": "Prices shown are today's.",
+  "ordersAmountPaid": "Amount paid",
+  "ordersAmountRefunded": "Refunded",
+  "ordersRefundPending": "Refund not yet issued",
+  "deliveryOtpTitle": "Delivery OTP",
+  "deliveryOtpShare": "Share this code with your rider at the door",
+  "profileOrderArriving": "Your order is arriving",
+  "profileShowOtp": "Tap to track and view your delivery OTP",
+  "ordersReorder": "Reorder",
+  "orderStatusPending": "Pending",
+  "orderStatusConfirmed": "Confirmed",
+  "orderStatusPacked": "Packed",
+  "orderStatusOutForDelivery": "Out for delivery",
+  "orderStatusDelivered": "Delivered",
+  "orderStatusCancelled": "Cancelled",
+  "accountTitle": "Account",
+  "accountSettings": "Settings",
+  "accountLanguage": "Language",
+  "accountLogout": "Log out",
+  "languageTitle": "Language",
+  "languageSelect": "Select language",
+  "languageCurrent": "Current language",
+  "languageApply": "Apply language",
+  "languageUpdated": "Language updated",
+  "languagePreview": "Language preview",
+  "codeOutsideServiceAreaTitle": "Service unavailable",
+  "codeOutsideServiceAreaBody": "VS Mart currently doesn't deliver to your location.",
+  "codeStoreClosedTitle": "Store closed",
+  "codeStoreClosedBody": "The store for your area isn't accepting orders right now.",
+  "codeCapacityReachedTitle": "Delivery slots full",
+  "codeCapacityReachedBody": "Today's delivery capacity for your area is full. Please try again tomorrow.",
+  "codeStoreChangedTitle": "Delivery area changed",
+  "codeStoreChangedBody": "Your delivery address moved to a different store's area, so your cart was refreshed.",
+  "codeProductUnavailableTitle": "Not available at your store",
+  "codeProductUnavailableBody": "Some items in your cart aren't carried by the store serving your area.",
+  "codeOutOfStockTitle": "Item unavailable",
+  "codeOutOfStockBody": "One or more items in your cart are out of stock.",
+  "codeKycRequiredTitle": "Verification required",
+  "codeKycRequiredBody": "Complete KYC before paying with VS Credit.",
+  "codeCreditDisabledTitle": "Credit unavailable",
+  "codeCreditDisabledBody": "VS Credit isn't available for this order.",
+  "codeLimitExceededTitle": "Limit exceeded",
+  "codeLimitExceededBody": "This order exceeds your available credit.",
+  "codeOverduePaymentTitle": "Payment overdue",
+  "codeOverduePaymentBody": "Clear your overdue dues before placing a new credit order.",
+  "codeSessionExpiredTitle": "Session expired",
+  "codeSessionExpiredBody": "Please sign in again to continue.",
+  "commonEdit": "Edit",
+  "commonDelete": "Delete",
+  "commonRemove": "Remove",
+  "commonUpdate": "Update",
+  "commonConfirm": "Confirm",
+  "commonSubmit": "Submit",
+  "commonShare": "Share",
+  "commonViewDetails": "View details",
+  "commonViewAll": "View all",
+  "commonChange": "Change",
+  "commonAdd": "Add",
+  "commonProceed": "Proceed",
+  "commonSkip": "Skip",
+  "commonRefresh": "Refresh",
+  "commonClearAll": "Clear all",
+  "commonComingSoon": "Coming soon",
+  "commonNoData": "Nothing here yet",
+  "authWelcome": "Welcome to VS Mart",
+  "authEnterPhone": "Enter your mobile number",
+  "authPhoneHint": "Mobile number",
+  "authSendOtp": "Send OTP",
+  "authEnterOtp": "Enter OTP",
+  "authOtpSentTo": "OTP sent to {phone}",
+  "@authOtpSentTo": {
+    "placeholders": {
+      "phone": {
+        "type": "String"
+      }
+    }
+  },
+  "authVerify": "Verify",
+  "authResendOtp": "Resend OTP",
+  "authResendIn": "Resend in {seconds}s",
+  "@authResendIn": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "authTermsAgree": "By continuing you agree to our Terms & Privacy Policy",
+  "authLoginToContinue": "Log in to continue",
+  "accountEditProfile": "Edit profile",
+  "accountMyAddresses": "My addresses",
+  "accountPaymentMethods": "Payment methods",
+  "accountHelpSupport": "Help & support",
+  "accountAboutUs": "About us",
+  "accountTerms": "Terms & conditions",
+  "accountPrivacy": "Privacy policy",
+  "accountRateUs": "Rate us",
+  "accountShareApp": "Share app",
+  "accountDeleteAccount": "Delete account",
+  "accountVersion": "Version {version}",
+  "@accountVersion": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "accountPersonalDetails": "Personal details",
+  "accountName": "Name",
+  "accountEmail": "Email",
+  "accountPhone": "Phone",
+  "accountSaveChanges": "Save changes",
+  "orderDetailsTitle": "Order details",
+  "orderId": "Order ID",
+  "orderPlacedOn": "Placed on {date}",
+  "@orderPlacedOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "orderItems": "Items",
+  "orderBillDetails": "Bill details",
+  "orderDownloadInvoice": "Download invoice",
+  "orderNeedHelp": "Need help?",
+  "orderCancel": "Cancel order",
+  "orderRate": "Rate order",
+  "orderSummary": "Order summary",
+  "orderDeliveryDetails": "Delivery details",
+  "orderItemTotal": "Item total",
+  "orderGrandTotal": "Grand total",
+  "orderSaved": "You saved {amount}",
+  "@orderSaved": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "creditStatements": "Statements",
+  "creditPaymentHistory": "Payment history",
+  "creditRepayment": "Repayment",
+  "creditDueDate": "Due date",
+  "creditMinimumDue": "Minimum due",
+  "creditTotalDue": "Total due",
+  "creditTransactionHistory": "Transaction history",
+  "creditScore": "VS Score",
+  "creditUsed": "Used",
+  "creditRepaymentPlan": "Repayment plan",
+  "creditWeekend": "Weekend",
+  "creditMonthEnd": "Month end",
+  "creditPayFull": "Pay full amount",
+  "creditNoDues": "You have no dues",
+  "checkoutSelectAddress": "Select delivery address",
+  "checkoutAddNewAddress": "Add new address",
+  "checkoutApplyCoupon": "Apply coupon",
+  "checkoutCouponApplied": "Coupon applied",
+  "checkoutBillSummary": "Bill summary",
+  "checkoutItemTotal": "Item total",
+  "checkoutSavings": "Savings",
+  "checkoutGrandTotal": "Grand total",
+  "checkoutPaymentOptions": "Payment options",
+  "checkoutDeliverySlot": "Delivery slot",
+  "addressAdd": "Add address",
+  "addressEdit": "Edit address",
+  "addressFullName": "Full name",
+  "addressPhone": "Phone number",
+  "addressPincode": "Pincode",
+  "addressHouseNo": "House / flat no.",
+  "addressArea": "Area / locality",
+  "addressLandmark": "Landmark",
+  "addressCity": "City",
+  "addressState": "State",
+  "addressSave": "Save address",
+  "addressSetDefault": "Set as default",
+  "addressType": "Address type",
+  "addressHome": "Home",
+  "addressWork": "Work",
+  "addressOther": "Other",
+  "addressUseCurrentLocation": "Use current location",
+  "addressNone": "No saved addresses",
+  "notificationsTitle": "Notifications",
+  "notificationsMarkAllRead": "Mark all as read",
+  "notificationsEmpty": "No notifications yet",
+  "notificationsToday": "Today",
+  "notificationsEarlier": "Earlier",
+  "supportTitle": "Help & support",
+  "supportContactUs": "Contact us",
+  "supportFaqs": "FAQs",
+  "supportRaiseTicket": "Raise a ticket",
+  "supportMyTickets": "My tickets",
+  "supportChat": "Chat with us",
+  "supportCall": "Call us",
+  "supportEmail": "Email us",
+  "searchTitle": "Search",
+  "searchHint": "Search products",
+  "searchNoResults": "No results found",
+  "searchRecent": "Recent searches",
+  "searchPopular": "Popular searches",
+  "searchResultsFor": "Results for \"{query}\"",
+  "@searchResultsFor": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsTitle": "Settings",
+  "settingsTheme": "Theme",
+  "settingsDarkMode": "Dark mode",
+  "settingsLightMode": "Light mode",
+  "settingsSystemDefault": "System default",
+  "settingsNotifications": "Notifications",
+  "settingsPrivacy": "Privacy & security",
+  "kycStartCta": "Start verification",
+  "kycSubmitForReview": "Submit for review",
+  "orderStatusDraft": "Draft",
+  "orderStatusPlaced": "Placed",
+  "orderStatusReadyForDispatch": "Ready for dispatch",
+  "orderStatusRejected": "Rejected",
+  "orderStatusReturned": "Returned",
+  "orderStatusPartiallyReturned": "Partially returned",
+  "orderStatusFailedDelivery": "Delivery failed",
+  "payStatusPaid": "Paid",
+  "payStatusFailed": "Failed",
+  "payStatusRefunded": "Refunded",
+  "verifyStatusNotStarted": "Not started",
+  "verifyStatusDraft": "Draft",
+  "verifyStatusPending": "Pending",
+  "verifyStatusUnderReview": "Under review",
+  "verifyStatusApproved": "Approved",
+  "verifyStatusRejected": "Rejected",
+  "kycNotStarted": "Not started",
+  "kycDocAadhaar": "Aadhaar Card",
+  "kycDocPan": "PAN Card",
+  "kycDocSelfie": "Selfie / Video KYC",
+  "kycDocResidence": "Address proof",
+  "catalogAll": "All",
+  "catalogApplyFilters": "Apply filters",
+  "catalogBrand": "Brand",
+  "catalogDescription": "Description",
+  "catalogFilter": "Filter",
+  "catalogFilters": "Filters",
+  "catalogGoToCart": "Go to cart",
+  "catalogInStock": "In stock",
+  "catalogInStockOnly": "In stock only",
+  "catalogMinDiscount": "Minimum discount",
+  "catalogNoCategories": "No categories found",
+  "catalogNoProducts": "No products",
+  "catalogNoProductsFound": "No products found",
+  "catalogPrice": "Price",
+  "catalogProductDetails": "Product details",
+  "catalogProducts": "Products",
+  "catalogQuantity": "Quantity",
+  "catalogSearchCategories": "Search categories",
+  "catalogSelectVariation": "Select variation",
+  "catalogSort": "Sort",
+  "catalogSortBy": "Sort by",
+  "catalogSpecifications": "Specifications",
+  "catalogNoProductsInCategory": "There are no products in this category yet.",
+  "catalogAdjustFilters": "Try adjusting your filters or search.",
+  "catalogViewCart": "View cart",
+  "catalogYouMayAlsoLike": "You may also like",
+  "catalogReviews": "{count} reviews",
+  "@catalogReviews": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "catalogBuyNowPayLater": "Buy now, pay later with zero interest.",
+  "homeExploreCategories": "Explore categories",
+  "homePopularProducts": "Popular products",
+  "homeRecentlyOrdered": "Recently ordered",
+  "homeShopNow": "Shop now",
+  "homeContinueShopping": "Continue shopping",
+  "homeEnableLocation": "Enable location",
+  "homeSpecialSale": "Special Sale 🔥",
+  "homeTapToTrack": "Tap to track your order",
+  "authCreateAccount": "Create account",
+  "authVerifyContinue": "Verify & continue",
+  "authVerifiedNumber": "Verified number",
+  "authUseDifferentNumber": "Use a different number",
+  "authReferralCode": "Referral code",
+  "commonOptional": "Optional",
+  "authAlmostThere": "Almost there!",
+  "authWantCredit": "Want shop-now-pay-later?",
+  "authTermsOfService": "Terms of Service",
+  "authGoToHome": "Go to home",
+  "billingPurchase": "Purchase",
+  "billingPenalty": "Penalty",
+  "billingAdjustment": "Adjustment",
+  "billingRefund": "Refund",
+  "billingCompleted": "Completed",
+  "billingReversed": "Reversed",
+  "billingOverdue": "Overdue",
+  "billingAssigned": "Assigned",
+  "billingBankTransfer": "Bank transfer",
+  "billingCashCollection": "Cash collection",
+  "billingInvoices": "Invoices",
+  "billingInvoice": "Invoice",
+  "billingStatement": "Statement",
+  "billingTransactions": "Transactions",
+  "billingMakePayment": "Make payment",
+  "billingEnterAmount": "Enter amount",
+  "billingAmount": "Amount",
+  "billingAmountDue": "Amount due",
+  "billingAmountPaid": "Amount paid",
+  "billingPayNow": "Pay now",
+  "billingDate": "Date",
+  "billingStatus": "Status",
+  "billingMethod": "Method",
+  "billingReference": "Reference",
+  "billingNotes": "Notes (optional)",
+  "billingDownloadReceipt": "Download receipt",
+  "commonDownload": "Download",
+  "billingViewOrder": "View order",
+  "billingViewStatement": "View statement",
+  "billingRequestCollection": "Request collection",
+  "billingCollections": "Collections",
+  "billingCollected": "Collected",
+  "billingAgent": "Agent",
+  "billingPaymentSuccessful": "Payment successful",
+  "billingTotalOutstanding": "Total outstanding",
+  "billingTotalAmountDue": "Total amount due",
+  "billingCurrentBill": "Current bill",
+  "billingRecentActivity": "Recent activity",
+  "billingBreakdown": "Breakdown",
+  "billingPrincipal": "Principal",
+  "billingInterest": "Interest",
+  "billingLateFee": "Late fee",
+  "billingInvoiceNumber": "Invoice number",
+  "billingInvoiceDate": "Invoice date",
+  "billingCreditSummary": "Credit summary",
+  "billingBackToDashboard": "Back to dashboard",
+  "billingNoInvoices": "No invoices yet",
+  "billingNoPayments": "No payments yet",
+  "billingNoStatements": "No statements yet",
+  "billingNoCollections": "No collection requests",
+  "billingNoTransactions": "No transactions yet",
+  "billingAllCaughtUp": "All caught up",
+  "billingNoPendingDues": "You have no pending dues right now.",
+  "billingInvoicesAppearHere": "Invoices for your credit orders will appear here.",
+  "billingStatementsAppearHere": "Your billing statements will appear here.",
+  "billingRepaymentsAppearHere": "Your repayments will show up here.",
+  "billingRepaymentRecorded": "Your repayment has been recorded.",
+  "billingSecurePayments": "100% secure payments",
+  "billingInvoiceNotFound": "Invoice not found",
+  "billingStatementNotFound": "Statement not found",
+  "profileTitle": "Profile",
+  "profileQuickAccess": "Quick access",
+  "profileCreditCenter": "Credit center",
+  "profileRecentOrders": "Recent orders",
+  "profileRecentPayments": "Recent payments",
+  "profileNoOrders": "No orders yet",
+  "profileNotSignedIn": "Not signed in",
+  "profileSignInPrompt": "Sign in to view and edit your profile.",
+  "profileSignInCreate": "Sign in / Create account",
+  "profilePayDue": "Pay due",
+  "profileManageAddresses": "Manage addresses",
+  "profileMyReturns": "My returns",
+  "profileRewards": "Rewards",
+  "profileReferEarn": "Refer & Earn",
+  "profileOffersRewards": "Offers & rewards",
+  "profileViewOffers": "View offers",
+  "profileFaqHelp": "FAQ & Help",
+  "profileGender": "Gender",
+  "profileDob": "Date of birth",
+  "profileChangeNumberNote": "To change your verified number, contact support.",
+  "profileKycStatus": "KYC status",
+  "profileFamilyInfo": "Family information",
+  "profileHouseholdMembers": "Household members",
+  "profileAddMember": "Add member",
+  "profileInviteMember": "Invite family member",
+  "profileRemoveMember": "Remove member",
+  "profileRelationship": "Relationship",
+  "profileActive": "Active",
+  "profileCouldNotLoadPayments": "Could not load payments.",
+  "creditAmountToPay": "Amount to pay",
+  "creditProceedToPayment": "Proceed to payment",
+  "creditTxnSuccess": "Your transaction was completed successfully.",
+  "creditTransactionId": "Transaction ID",
+  "creditNextPaymentDue": "Next payment due",
+  "creditPayOutstanding": "Pay outstanding",
+  "creditHistory": "History",
+  "creditRemaining": "Remaining credit",
+  "creditPurchases": "Purchases",
+  "creditPaymentsMade": "Payments made",
+  "creditAppUnderReview": "Application under review",
+  "creditAppNotApproved": "Application not approved",
+  "creditScoreIncreased": "VS Score increased",
+  "creditGreatBehavior": "Great financial behavior!",
+  "creditFinancialStatusUpdated": "Financial status updated",
+  "creditTransactionDetails": "Transaction details",
+  "checkoutViewOrders": "View orders",
+  "checkoutChangeAddress": "Change address",
+  "checkoutAmountPayable": "Amount payable",
+  "checkoutInclusiveCharges": "Inclusive of all charges",
+  "checkoutSelectOption": "Select option",
+  "checkoutOnlinePayment": "Online payment",
+  "checkoutInstantPayment": "Instant payment",
+  "checkoutPayOnDelivery": "Pay on delivery",
+  "checkoutPayOnArrival": "Pay when your order arrives",
+  "checkoutBuyNowPayLater": "Buy now, pay later",
+  "checkoutUpiCardsNetbanking": "UPI, cards & net banking",
+  "checkoutCreditDebitCard": "Credit / Debit card",
+  "checkoutChooseRepaymentPlan": "Choose a repayment plan",
+  "checkoutPayoutDate": "Payout date",
+  "checkoutSecuredByRazorpay": "Payments secured by Razorpay.",
+  "checkoutOrderConfirmedBody": "Thank you! Your order is confirmed and being prepared.",
+  "checkoutAgreeTerms": "By placing this order, you agree to our Terms & Conditions and Return Policy.",
+  "checkoutEnterCoupon": "Enter a coupon code",
+  "checkoutCouponValidateFailed": "Could not validate coupon",
+  "kycDetailsTitle": "KYC details",
+  "kycVerificationTitle": "KYC verification",
+  "kycVerificationStatus": "Verification status",
+  "kycActionNeeded": "Action needed",
+  "kycSubmittedDocs": "Submitted documents",
+  "kycNoDocuments": "No documents on file yet.",
+  "kycNeedHelp": "Need help with KYC?",
+  "kycDataSecured": "Your data is secured",
+  "kycChecklist": "Checklist",
+  "kycReason": "Reason: {reason}",
+  "@kycReason": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "verifyTitle": "Verify your identity",
+  "verifyIdentityDocs": "Identity documents",
+  "verifyIdentityVerification": "Identity verification",
+  "verifyAadhaar": "Aadhaar verification",
+  "verifyPan": "PAN verification",
+  "verifyFace": "Face verification",
+  "verifySelfie": "Selfie verification",
+  "verifyLocation": "Location verification",
+  "verifyResidence": "Residence verification",
+  "verifyCreditApp": "Credit application",
+  "verifyCreditAssessment": "Credit assessment",
+  "verifyReviewApp": "Review your application",
+  "verifyPersonalDetails": "Personal details",
+  "verifyEmploymentDetails": "Employment details",
+  "verifyIncomeInfo": "Income information",
+  "verifyFinancialInfo": "Financial information",
+  "verifyAddressDetails": "Address details",
+  "verifyDocuments": "Documents",
+  "verifyUploadAadhaar": "Upload Aadhaar",
+  "verifyUploadPan": "Upload PAN photo",
+  "verifyUploadDocs": "Upload documents",
+  "verifyUploadContinue": "Upload & continue",
+  "verifyCapture": "Capture",
+  "verifyRetake": "Retake",
+  "verifyCamera": "Camera",
+  "verifyGallery": "Gallery",
+  "verifyChooseGallery": "Choose from gallery",
+  "verifyStartingCamera": "Starting camera…",
+  "verifyCameraNeeded": "Camera access needed",
+  "verifyUploaded": "Uploaded",
+  "verifyUploadFailed": "Upload failed",
+  "verifySaveDraft": "Save draft",
+  "verifySubmitApp": "Submit application",
+  "verifyReviewBeforeSubmit": "Review each section before submitting for approval.",
+  "verifyAppSubmitted": "Application submitted!",
+  "verifyAppReceived": "We received your application",
+  "verifyTeamVerifying": "Our team is verifying your details",
+  "verifyPending": "Verification pending",
+  "verifyTrackApp": "Track application",
+  "verifyReapply": "Reapply",
+  "verifyMonthlyIncome": "Monthly income",
+  "verifyOccupation": "Occupation",
+  "verifyHouseType": "House type",
+  "verifyOwnership": "Ownership",
+  "verifyFamilyMembers": "Family members",
+  "verifyRequestedLimit": "Requested limit",
+  "verifyRequestedCreditLimit": "Requested credit limit",
+  "verifyApprovedLimit": "Approved credit limit",
+  "verifyPotentialLimit": "Potential credit limit",
+  "verifyAadhaarNumber": "12-digit Aadhaar number",
+  "verifyPanNumber": "PAN number",
+  "verifyAvailableNow": "Available now",
+  "verifyApplicationId": "Application ID",
+  "verifySubmittedOn": "Submitted on",
+  "verifyExpectedReview": "Expected review",
+  "verifyCurrentStatus": "Current status",
+  "verifyReason": "Reason",
+  "verifyWhyNeed": "Why we need this",
+  "verifyPhotoRequirements": "Photo requirements",
+  "verifyFaceVisible": "Ensure your face is clearly visible.",
+  "verifyPhotoFormat": "JPG or PNG, up to 5 MB",
+  "verifySecureEncrypted": "100% secure & encrypted",
+  "verifyStepOf": "Step {step} of {total}",
+  "@verifyStepOf": {
+    "placeholders": {
+      "step": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "supportHowCanWeHelp": "How can we help you today?",
+  "supportQuickHelp": "Quick help topics",
+  "supportSearchFaqs": "Search FAQs",
+  "supportNewConversation": "New conversation",
+  "supportOpenConversation": "Open conversation",
+  "supportStartConversation": "Start a conversation",
+  "supportNoMessages": "No messages yet",
+  "supportNoTickets": "No tickets here",
+  "supportNoTicketsCategory": "You have no tickets in this category yet.",
+  "supportTicketDetails": "Ticket details",
+  "supportTicketProgress": "Ticket progress",
+  "supportIssueCategory": "Issue category",
+  "supportIssueDescription": "Issue description",
+  "supportPriorityLevel": "Priority level",
+  "supportSelectCategory": "Select an issue category",
+  "supportDescribeIssue": "Please describe your issue in detail…",
+  "supportRelatedOrder": "Related order (optional)",
+  "supportAttachments": "Attachments (optional)",
+  "supportUploadFile": "Upload file",
+  "supportSubmitTicket": "Submit ticket",
+  "supportAddReply": "Add reply",
+  "supportTypeMessage": "Type your message…",
+  "supportSendToStart": "Send a message to start the conversation.",
+  "supportCloseTicket": "Close ticket",
+  "supportStillNeedHelp": "Still need help?",
+  "supportLiveChat": "Live chat",
+  "supportCallSupport": "Call support",
+  "supportContactInfo": "Contact information",
+  "supportRegisteredEmail": "Registered email",
+  "supportRegisteredMobile": "Registered mobile",
+  "supportResponseTime": "Estimated response time",
+  "supportTypicalReply": "We typically reply within 2 hours",
+  "supportCategory": "Category",
+  "supportCreated": "Created",
+  "supportStatusOpen": "Open",
+  "supportStatusClosed": "Closed",
+  "supportStatusResolved": "Resolved",
+  "supportStatusInProgress": "In progress",
+  "supportPriorityHigh": "High priority",
+  "commonStartShopping": "Start shopping",
+  "commonBuyNow": "Buy now",
+  "commonShareVia": "Share via",
+  "offersAndDeals": "Offers & deals",
+  "offersCouponsTitle": "Coupons & offers",
+  "offersActiveCoupons": "Active coupons",
+  "offersAvailableCoupons": "Available coupons",
+  "offersCashback": "Cashback offers",
+  "offersCombo": "Combo offers",
+  "offersFlashDeals": "Flash deals",
+  "offersTopDeals": "Top deals",
+  "offersSpecialDeals": "Special deals",
+  "offersExpiringSoon": "Expiring soon",
+  "offersLimitedTime": "Limited time",
+  "offersSellingFast": "Selling fast",
+  "offersHowToUse": "How to use a coupon",
+  "offersCopy": "Copy",
+  "offersNoCoupons": "No coupons available",
+  "offersNoCouponsYet": "No coupons yet",
+  "offersNoDeals": "No deals right now",
+  "offersLoadingDeals": "Loading deals…",
+  "offersCouponsAppearHere": "Coupons you collect will appear here.",
+  "offersCheckBackSoon": "Check back soon for fresh savings.",
+  "offersSaveMore": "Save more on every order",
+  "offersCodeCopied": "Code copied",
+  "cartBuyOnCredit": "Buy on Credit",
+  "cartPayLaterZeroInterest": "Pay later with zero interest.",
+  "cartPurchaseMode": "Purchase mode",
+  "cartSignInToCheckout": "Sign in to checkout",
+  "cartKeepBrowsing": "Keep browsing",
+  "cartItemsNeedAttention": "Some items need attention before checkout.",
+  "wishlistTitle": "Wishlist",
+  "wishlistSaved": "Saved items",
+  "wishlistEmpty": "Your wishlist is empty",
+  "wishlistEmptyBody": "Tap the heart on any product to save it for later.",
+  "wishlistNoMatch": "Nothing matches this filter.",
+  "wishlistTotalValue": "Total value of wishlist",
+  "wishlistPriceDropAlerts": "Price drop alerts",
+  "wishlistViewProduct": "View product",
+  "searchFiltersAndSort": "Filters & sort",
+  "searchPopularity": "Popularity",
+  "searchPriceLowHigh": "Price: Low to High",
+  "searchRating": "Rating",
+  "searchTopRated": "Top rated",
+  "searchTopRated4Star": "Top rated (4★ and above)",
+  "settingsAccountSettings": "Account settings",
+  "settingsAppPreferences": "App preferences",
+  "settingsSecuritySettings": "Security settings",
+  "settingsCreditSettings": "Credit settings",
+  "settingsSupportLegal": "Support & legal",
+  "settingsEmergencyContacts": "Emergency contacts",
+  "settingsNotificationPrefs": "Notification preferences",
+  "settingsLocationPermissions": "Location permissions",
+  "settingsChangeMpin": "Change MPIN",
+  "settingsChangePassword": "Change password",
+  "settingsManageDevices": "Manage devices",
+  "settingsLoginActivity": "Login activity",
+  "settingsBiometricLogin": "Biometric login",
+  "settingsBiometricLock": "Biometric lock",
+  "settingsAppLock": "App lock",
+  "settingsSecurityAlerts": "Security alerts",
+  "settingsNotifyNewLogin": "Notify on new login",
+  "settingsNotifyProfileChanges": "Notify on profile changes",
+  "settingsCreditNotifications": "Credit notifications",
+  "settingsPaymentReminders": "Payment reminders",
+  "settingsDueDateAlerts": "Due date alerts",
+  "settingsStatementNotifications": "Statement notifications",
+  "settingsChannelSettings": "Channel settings",
+  "settingsHelpCenter": "Help center",
+  "settingsDeleteAccountQ": "Delete account?",
+  "settingsLogoutQ": "Log out?",
+  "settingsAccountDeleted": "Account deleted. Signing you out…",
+  "settingsEmergencyContact": "Emergency contact",
+  "settingsEmergencyContactSaved": "Emergency contact saved.",
+  "settingsContactMobile": "Contact mobile number",
+  "settingsCompanyInfo": "Company information",
+  "settingsMissionStatement": "Mission statement",
+  "settingsWhatWeOffer": "What we offer",
+  "settingsGetInTouch": "Get in touch",
+  "settingsOfficeAddress": "Office address",
+  "settingsLegalCompliance": "Legal & compliance",
+  "settingsLicenses": "Licenses & accreditations",
+  "settingsWebsite": "Website",
+  "reviewsTitle": "Ratings & reviews",
+  "reviewsWriteReview": "Write a review",
+  "reviewsSubmitReview": "Submit review",
+  "reviewsYourRating": "Your rating",
+  "reviewsPickRating": "Please pick a star rating",
+  "reviewsTitleOptional": "Title (optional)",
+  "reviewsSummarise": "Summarise your experience",
+  "reviewsYourReview": "Your review (optional)",
+  "reviewsLikeDislike": "What did you like or dislike?",
+  "reviewsThanks": "Thanks for your review!",
+  "reviewsSubmitFailed": "Could not submit review. Please try again.",
+  "referralInviteFriends": "Invite friends",
+  "referralInviteFriendsNow": "Invite friends now",
+  "referralHowItWorks": "How it works",
+  "referralHaveCode": "Have a referral code?",
+  "referralEnterCode": "Enter a referral code",
+  "referralCodeApplied": "Referral code applied",
+  "referralCodeCopied": "Code copied",
+  "referralYouEarn": "You earn",
+  "referralFirstOrder": "First order",
+  "referralFriendRegisters": "Friend registers",
+  "referralInviteCopied": "Invite message copied — paste it to your friends",
+  "notifGroupOrders": "Order notifications",
+  "notifGroupPayments": "Payment notifications",
+  "notifGroupCredit": "Credit notifications",
+  "notifGroupPromotional": "Promotional notifications",
+  "notifOrderConfirmed": "Order confirmed",
+  "notifOrderPacked": "Order packed",
+  "notifOrderOutForDelivery": "Order out for delivery",
+  "notifOrderDelivered": "Order delivered",
+  "notifPaymentSuccess": "Payment success",
+  "notifPaymentFailure": "Payment failure",
+  "notifCollectionReminders": "Collection reminders",
+  "notifCreditApproval": "Credit approval",
+  "notifCreditLimitUpdates": "Credit limit updates",
+  "notifOutstandingDueAlerts": "Outstanding due alerts",
+  "notifVsScoreUpdates": "VS Score updates",
+  "notifOffers": "Offers",
+  "notifCoupons": "Coupons",
+  "notifCashback": "Cashback",
+  "notifReferralRewards": "Referral rewards",
+  "notifPush": "Push notifications",
+  "notifSms": "SMS notifications",
+  "notifWhatsapp": "WhatsApp notifications",
+  "notifEmail": "Email notifications",
+  "notifLoadError": "Couldn't load your notification settings.",
+  "returnsTitle": "Returns & Refunds",
+  "@returnsTitle": {
+    "description": "MT: needs native review"
+  },
+  "returnStatusRequested": "Requested",
+  "@returnStatusRequested": {
+    "description": "MT: needs native review"
+  },
+  "returnStatusApproved": "Approved",
+  "@returnStatusApproved": {
+    "description": "MT: needs native review"
+  },
+  "returnStatusRejected": "Rejected",
+  "@returnStatusRejected": {
+    "description": "MT: needs native review"
+  },
+  "returnStatusPicked": "Picked Up",
+  "@returnStatusPicked": {
+    "description": "MT: needs native review"
+  },
+  "returnStatusRefunded": "Refunded",
+  "@returnStatusRefunded": {
+    "description": "MT: needs native review"
+  },
+  "returnsEmptyTitle": "No returns yet",
+  "@returnsEmptyTitle": {
+    "description": "MT: needs native review"
+  },
+  "returnsEmptyBody": "Returns and refunds you request will appear here.",
+  "@returnsEmptyBody": {
+    "description": "MT: needs native review"
+  },
+  "returnsOrderNumber": "Order {code}",
+  "@returnsOrderNumber": {
+    "description": "MT: needs native review",
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "returnsReasonLabel": "Reason",
+  "@returnsReasonLabel": {
+    "description": "MT: needs native review"
+  },
+  "returnsRefundLabel": "Refund",
+  "@returnsRefundLabel": {
+    "description": "MT: needs native review"
+  },
+  "returnRequestTitle": "Return / Refund",
+  "@returnRequestTitle": {
+    "description": "MT: needs native review"
+  },
+  "returnRequestOrderLabel": "Order",
+  "@returnRequestOrderLabel": {
+    "description": "MT: needs native review"
+  },
+  "returnRequestReasonLabel": "Reason for Return",
+  "@returnRequestReasonLabel": {
+    "description": "MT: needs native review"
+  },
+  "returnRequestSelectReason": "Select a reason",
+  "@returnRequestSelectReason": {
+    "description": "MT: needs native review"
+  },
+  "returnRequestDescriptionLabel": "Description (Optional)",
+  "@returnRequestDescriptionLabel": {
+    "description": "MT: needs native review"
+  },
+  "returnRequestDescriptionHint": "Tell us more about the issue...",
+  "@returnRequestDescriptionHint": {
+    "description": "MT: needs native review"
+  },
+  "returnRequestSubmit": "Submit Request",
+  "@returnRequestSubmit": {
+    "description": "MT: needs native review"
+  },
+  "returnRequestError": "Could not request a return. Please try again.",
+  "@returnRequestError": {
+    "description": "MT: needs native review"
+  },
+  "returnRequestPhotosLabel": "Photos of the item",
+  "@returnRequestPhotosLabel": {
+    "description": "MT: needs native review"
+  },
+  "returnRequestPhotosHint": "Add clear photos showing the item and the issue. Our pickup partner will check these at your door.",
+  "@returnRequestPhotosHint": {
+    "description": "MT: needs native review"
+  },
+  "returnRequestAddPhoto": "Add photo",
+  "@returnRequestAddPhoto": {
+    "description": "MT: needs native review"
+  },
+  "returnRequestPhotoRequired": "Add at least one photo of the item.",
+  "@returnRequestPhotoRequired": {
+    "description": "MT: needs native review"
+  },
+  "returnRequestPhotoLimit": "You can add up to {count} photos.",
+  "@returnRequestPhotoLimit": {
+    "description": "MT: needs native review",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "returnRequestRemovePhoto": "Remove photo",
+  "@returnRequestRemovePhoto": {
+    "description": "MT: needs native review"
+  },
+  "returnReasonDamaged": "Damaged item",
+  "@returnReasonDamaged": {
+    "description": "MT: needs native review"
+  },
+  "returnReasonWrong": "Wrong item",
+  "@returnReasonWrong": {
+    "description": "MT: needs native review"
+  },
+  "returnReasonQuality": "Quality issue",
+  "@returnReasonQuality": {
+    "description": "MT: needs native review"
+  },
+  "returnReasonChangedMind": "Changed my mind",
+  "@returnReasonChangedMind": {
+    "description": "MT: needs native review"
+  },
+  "returnReasonOther": "Other",
+  "@returnReasonOther": {
+    "description": "MT: needs native review"
+  },
+  "onboardingSlide1Caption": "Fresh Groceries, Delivered Fast!",
+  "@onboardingSlide1Caption": {
+    "description": "MT: needs native review"
+  },
+  "onboardingSlide1Title": "Fresh Groceries Delivered To Your Doorstep",
+  "@onboardingSlide1Title": {
+    "description": "MT: needs native review"
+  },
+  "onboardingSlide1Body": "Order vegetables, fruits, dairy products, household essentials, and daily groceries with fast delivery.",
+  "@onboardingSlide1Body": {
+    "description": "MT: needs native review"
+  },
+  "onboardingSlide2Caption": "Shop Now, Pay Later",
+  "@onboardingSlide2Caption": {
+    "description": "MT: needs native review"
+  },
+  "onboardingSlide2Title": "Shop With VS Credit, Pay On Your Terms",
+  "@onboardingSlide2Title": {
+    "description": "MT: needs native review"
+  },
+  "onboardingSlide2Body": "Buy what you need today and settle later with flexible weekly or monthly credit — no hidden charges.",
+  "@onboardingSlide2Body": {
+    "description": "MT: needs native review"
+  },
+  "onboardingSlide3Caption": "Grow Your VS Score",
+  "@onboardingSlide3Caption": {
+    "description": "MT: needs native review"
+  },
+  "onboardingSlide3Title": "Build Your Credit Score As You Shop",
+  "@onboardingSlide3Title": {
+    "description": "MT: needs native review"
+  },
+  "onboardingSlide3Body": "Every on-time payment strengthens your VS Score and unlocks higher credit limits and better offers.",
+  "@onboardingSlide3Body": {
+    "description": "MT: needs native review"
+  },
+  "onboardingGetStarted": "Get Started",
+  "@onboardingGetStarted": {
+    "description": "MT: needs native review"
+  },
+  "systemUpdateTitle": "Update Required",
+  "@systemUpdateTitle": {
+    "description": "MT: needs native review"
+  },
+  "systemUpdateBody": "A newer version of VS Mart is available with important improvements. Please update from the Play Store to continue.",
+  "@systemUpdateBody": {
+    "description": "MT: needs native review"
+  },
+  "systemUpdateNow": "Update Now",
+  "@systemUpdateNow": {
+    "description": "MT: needs native review"
+  },
+  "systemUpdatedCheckAgain": "I've updated — Check again",
+  "@systemUpdatedCheckAgain": {
+    "description": "MT: needs native review"
+  },
+  "systemPlayStoreError": "Could not open the Play Store. Please search for \"VS Mart\" to update.",
+  "@systemPlayStoreError": {
+    "description": "MT: needs native review"
+  },
+  "systemMaintenanceTitle": "Under Maintenance",
+  "@systemMaintenanceTitle": {
+    "description": "MT: needs native review"
+  },
+  "systemMaintenanceBody": "We're sprucing things up and will be back shortly. Thanks for your patience.",
+  "@systemMaintenanceBody": {
+    "description": "MT: needs native review"
+  },
+  "systemTryAgain": "Try Again",
+  "@systemTryAgain": {
+    "description": "MT: needs native review"
+  },
+  "systemNoInternetTitle": "No Internet Connection",
+  "@systemNoInternetTitle": {
+    "description": "MT: needs native review"
+  },
+  "systemNoInternetBody": "Check your connection and try again.",
+  "@systemNoInternetBody": {
+    "description": "MT: needs native review"
+  },
+  "collectionConfirmTitle": "Confirm Payment",
+  "@collectionConfirmTitle": {
+    "description": "MT: needs native review"
+  },
+  "collectionConfirmLoadError": "Couldn't load the confirmation.",
+  "@collectionConfirmLoadError": {
+    "description": "MT: needs native review"
+  },
+  "collectionConfirmNothingTitle": "Nothing to confirm",
+  "@collectionConfirmNothingTitle": {
+    "description": "MT: needs native review"
+  },
+  "collectionConfirmNothingBody": "You have no pending cash collection right now.",
+  "@collectionConfirmNothingBody": {
+    "description": "MT: needs native review"
+  },
+  "collectionConfirmCollecting": "{name} is collecting",
+  "@collectionConfirmCollecting": {
+    "description": "MT: needs native review",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "collectionConfirmShareCode": "SHARE THIS CODE",
+  "@collectionConfirmShareCode": {
+    "description": "MT: needs native review"
+  },
+  "collectionConfirmSafetyWarning": "Only share this code if you are paying {amount} in cash. Never share it otherwise.",
+  "@collectionConfirmSafetyWarning": {
+    "description": "MT: needs native review. {amount} is a pre-formatted currency string like ₹250.00.",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "collectionConfirmDoneTitle": "Payment confirmed",
+  "@collectionConfirmDoneTitle": {
+    "description": "MT: needs native review"
+  },
+  "collectionConfirmDoneBody": "{name} has received {amount} in cash.",
+  "@collectionConfirmDoneBody": {
+    "description": "MT: needs native review. {amount} is a pre-formatted currency string like ₹250.00.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "locationPickerTitle": "Set your location",
+  "@locationPickerTitle": {
+    "description": "MT: needs native review"
+  },
+  "locationConfirm": "Confirm location",
+  "@locationConfirm": {
+    "description": "MT: needs native review"
+  },
+  "locationDragHint": "Drag the map or tap to place the pin",
+  "@locationDragHint": {
+    "description": "MT: needs native review"
+  },
+  "locationCouldNotGet": "Couldn't get your location.",
+  "@locationCouldNotGet": {
+    "description": "MT: needs native review"
+  },
+  "locationPermissionNeeded": "Location permission needed.",
+  "@locationPermissionNeeded": {
+    "description": "MT: needs native review"
+  },
+  "locationSearchSubtitle": "Find your area, then drop the pin on your exact spot.",
+  "@locationSearchSubtitle": {
+    "description": "MT: needs native review"
+  },
+  "locationSearchHint": "Search area, street or landmark",
+  "@locationSearchHint": {
+    "description": "MT: needs native review"
+  },
+  "locationPlaceLoadError": "Couldn't load that place. Try another.",
+  "@locationPlaceLoadError": {
+    "description": "MT: needs native review"
+  },
+  "locationSearchUnavailable": "Search isn't available right now. Use your current location, or check your connection and retry.",
+  "@locationSearchUnavailable": {
+    "description": "MT: needs native review"
+  },
+  "locationNoMatches": "No matches. Try a different search.",
+  "@locationNoMatches": {
+    "description": "MT: needs native review"
+  },
+  "paymentReminderTitle": "Payment Reminders",
+  "@paymentReminderTitle": {
+    "description": "MT: needs native review"
+  },
+  "paymentReminderLoadError": "Couldn't load your reminder preferences.",
+  "@paymentReminderLoadError": {
+    "description": "MT: needs native review"
+  },
+  "paymentReminderSaved": "Reminder preferences saved.",
+  "@paymentReminderSaved": {
+    "description": "MT: needs native review"
+  },
+  "paymentReminderSaveError": "Could not save preferences.",
+  "@paymentReminderSaveError": {
+    "description": "MT: needs native review"
+  },
+  "paymentReminderHeadline": "Stay on track",
+  "@paymentReminderHeadline": {
+    "description": "MT: needs native review"
+  },
+  "paymentReminderSubtitle": "Configure your alerts to avoid late fees and maintain a healthy credit score with VS Mart.",
+  "@paymentReminderSubtitle": {
+    "description": "MT: needs native review"
+  },
+  "paymentReminderEnableTitle": "Enable Reminders",
+  "@paymentReminderEnableTitle": {
+    "description": "MT: needs native review"
+  },
+  "paymentReminderEnableSubtitle": "Get notified before your due date",
+  "@paymentReminderEnableSubtitle": {
+    "description": "MT: needs native review"
+  },
+  "paymentReminderWhenTitle": "When should we remind you?",
+  "@paymentReminderWhenTitle": {
+    "description": "MT: needs native review"
+  },
+  "paymentReminderThreeDays": "3 Days Before",
+  "@paymentReminderThreeDays": {
+    "description": "MT: needs native review"
+  },
+  "paymentReminderThreeDaysSub": "Best for planning ahead",
+  "@paymentReminderThreeDaysSub": {
+    "description": "MT: needs native review"
+  },
+  "paymentReminderOneDay": "1 Day Before",
+  "@paymentReminderOneDay": {
+    "description": "MT: needs native review"
+  },
+  "paymentReminderOneDaySub": "Quick reminder",
+  "@paymentReminderOneDaySub": {
+    "description": "MT: needs native review"
+  },
+  "paymentReminderOnDueDate": "On Due Date",
+  "@paymentReminderOnDueDate": {
+    "description": "MT: needs native review"
+  },
+  "paymentReminderOnDueDateSub": "Morning of payment",
+  "@paymentReminderOnDueDateSub": {
+    "description": "MT: needs native review"
+  },
+  "paymentReminderWeekBefore": "A Week Before",
+  "@paymentReminderWeekBefore": {
+    "description": "MT: needs native review"
+  },
+  "paymentReminderWeekBeforeSub": "Maximum lead time",
+  "@paymentReminderWeekBeforeSub": {
+    "description": "MT: needs native review"
+  },
+  "paymentReminderHowTitle": "How should we reach you?",
+  "@paymentReminderHowTitle": {
+    "description": "MT: needs native review"
+  },
+  "paymentReminderWhatsApp": "WhatsApp",
+  "@paymentReminderWhatsApp": {
+    "description": "MT: needs native review"
+  },
+  "paymentReminderWhatsAppSub": "Instant message delivery",
+  "@paymentReminderWhatsAppSub": {
+    "description": "MT: needs native review"
+  },
+  "paymentReminderPush": "Push Notification",
+  "@paymentReminderPush": {
+    "description": "MT: needs native review"
+  },
+  "paymentReminderPushSub": "Direct to your VS Mart app",
+  "@paymentReminderPushSub": {
+    "description": "MT: needs native review"
+  },
+  "paymentReminderSms": "SMS Text",
+  "@paymentReminderSms": {
+    "description": "MT: needs native review"
+  },
+  "paymentReminderSmsSub": "Standard text message",
+  "@paymentReminderSmsSub": {
+    "description": "MT: needs native review"
+  },
+  "paymentReminderPreferredTime": "Preferred Time",
+  "@paymentReminderPreferredTime": {
+    "description": "MT: needs native review"
+  },
+  "paymentReminderTimeOfDay": "Time of day",
+  "@paymentReminderTimeOfDay": {
+    "description": "MT: needs native review"
+  },
+  "paymentReminderInfoBanner": "Setting reminders helps you avoid late fees and positively impacts your credit health by ensuring timely payments.",
+  "@paymentReminderInfoBanner": {
+    "description": "MT: needs native review"
+  },
+  "paymentReminderSave": "Save Preferences",
+  "@paymentReminderSave": {
+    "description": "MT: needs native review"
+  },
+  "supportFaqsHeadline": "Frequently Asked Questions",
+  "@supportFaqsHeadline": {
+    "description": "MT: needs native review"
+  },
+  "supportFaqsLoadError": "Couldn't load FAQs.",
+  "@supportFaqsLoadError": {
+    "description": "MT: needs native review"
+  },
+  "supportNoFaqsMatch": "No FAQs match your search.",
+  "@supportNoFaqsMatch": {
+    "description": "MT: needs native review"
+  },
+  "supportTeamHereToAssist": "Our support team is here to assist you.",
+  "@supportTeamHereToAssist": {
+    "description": "MT: needs native review"
+  },
+  "supportContactSupport": "Contact Support",
+  "@supportContactSupport": {
+    "description": "MT: needs native review"
+  },
+  "supportAttachLimit": "You can attach up to 3 files.",
+  "@supportAttachLimit": {
+    "description": "MT: needs native review"
+  },
+  "supportTicketSubmitted": "Ticket submitted",
+  "@supportTicketSubmitted": {
+    "description": "MT: needs native review"
+  },
+  "supportTapToUploadPhotos": "Tap to upload photos",
+  "@supportTapToUploadPhotos": {
+    "description": "MT: needs native review"
+  },
+  "supportMaxFilesSize": "Max 3 files, 5MB each",
+  "@supportMaxFilesSize": {
+    "description": "MT: needs native review"
+  },
+  "supportRespondsWithin24h": "Our team typically responds within 24 hours.",
+  "@supportRespondsWithin24h": {
+    "description": "MT: needs native review"
+  },
+  "supportTicketCode": "Ticket VS-TKT-{id}",
+  "@supportTicketCode": {
+    "description": "MT: needs native review. VS-TKT- is a fixed ticket-code prefix; do not translate.",
+    "placeholders": {
+      "id": {
+        "type": "String"
+      }
+    }
+  },
+  "supportTicketOpened": "Ticket VS-TKT-{id} opened",
+  "@supportTicketOpened": {
+    "description": "MT: needs native review. VS-TKT- is a fixed ticket-code prefix; do not translate.",
+    "placeholders": {
+      "id": {
+        "type": "String"
+      }
+    }
+  },
+  "supportSearchPrompt": "Search for help, orders, payments, credit issues…",
+  "@supportSearchPrompt": {
+    "description": "MT: needs native review"
+  },
+  "supportTicketNotFound": "Ticket not found.",
+  "@supportTicketNotFound": {
+    "description": "MT: needs native review"
+  },
+  "supportCloseTicketQ": "Close this ticket?",
+  "@supportCloseTicketQ": {
+    "description": "MT: needs native review"
+  },
+  "supportCloseTicketBody": "This tells our team the issue is resolved and stops further work on it. You can always raise a new ticket later.",
+  "@supportCloseTicketBody": {
+    "description": "MT: needs native review"
+  },
+  "supportTicketClosed": "Ticket closed.",
+  "@supportTicketClosed": {
+    "description": "MT: needs native review"
+  },
+  "settingsCouldNotOpen": "Could not open {target}.",
+  "@settingsCouldNotOpen": {
+    "description": "MT: needs native review. {target} is a localized phrase like 'the dialer' or 'your email app'.",
+    "placeholders": {
+      "target": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsOpenTargetDialer": "the dialer",
+  "@settingsOpenTargetDialer": {
+    "description": "MT: needs native review. Fills the {target} slot in settingsCouldNotOpen."
+  },
+  "settingsOpenTargetEmail": "your email app",
+  "@settingsOpenTargetEmail": {
+    "description": "MT: needs native review. Fills the {target} slot in settingsCouldNotOpen."
+  },
+  "settingsOpenTargetLink": "the link",
+  "@settingsOpenTargetLink": {
+    "description": "MT: needs native review. Fills the {target} slot in settingsCouldNotOpen."
+  },
+  "settingsCompanyDescription": "VS Mart is a pioneering hybrid ecosystem bridging the gap between daily grocery commerce and flexible financial credit, ensuring families have seamless access to essentials when they need them most.",
+  "@settingsCompanyDescription": {
+    "description": "MT: needs native review"
+  },
+  "settingsMissionText": "\"To empower communities by providing fresh, affordable groceries coupled with trustworthy, flexible credit solutions, creating a stress-free shopping experience.\"",
+  "@settingsMissionText": {
+    "description": "MT: needs native review"
+  },
+  "settingsOfferGroceryTitle": "Grocery Shopping",
+  "@settingsOfferGroceryTitle": {
+    "description": "MT: needs native review"
+  },
+  "settingsOfferGrocerySubtitle": "Fresh daily essentials",
+  "@settingsOfferGrocerySubtitle": {
+    "description": "MT: needs native review"
+  },
+  "settingsOfferCreditSubtitle": "Flexible payment options",
+  "@settingsOfferCreditSubtitle": {
+    "description": "MT: needs native review"
+  },
+  "settingsOfferDeliveryTitle": "Delivery Services",
+  "@settingsOfferDeliveryTitle": {
+    "description": "MT: needs native review"
+  },
+  "settingsOfferDeliverySubtitle": "Fast & reliable delivery",
+  "@settingsOfferDeliverySubtitle": {
+    "description": "MT: needs native review"
+  },
+  "settingsOfferCollectionsTitle": "Digital Collections",
+  "@settingsOfferCollectionsTitle": {
+    "description": "MT: needs native review"
+  },
+  "settingsOfferCollectionsSubtitle": "Seamless repayment",
+  "@settingsOfferCollectionsSubtitle": {
+    "description": "MT: needs native review"
+  },
+  "settingsAllRightsReserved": "© 2026 {app}. All rights reserved.",
+  "@settingsAllRightsReserved": {
+    "description": "MT: needs native review. {app} is the app name (VS Mart).",
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsBiometricLockSubtitle": "Require fingerprint / Face ID to open VS Mart",
+  "@settingsBiometricLockSubtitle": {
+    "description": "MT: needs native review"
+  },
+  "settingsNotifyNewLoginSubtitle": "Get notified when your account signs in",
+  "@settingsNotifyNewLoginSubtitle": {
+    "description": "MT: needs native review"
+  },
+  "settingsNotifyProfileChangesSubtitle": "Alert me when account details change",
+  "@settingsNotifyProfileChangesSubtitle": {
+    "description": "MT: needs native review"
+  },
+  "settingsOtpSecurityNote": "Your VS Mart account is secured with one-time password (OTP) login on every sign-in.",
+  "@settingsOtpSecurityNote": {
+    "description": "MT: needs native review"
+  },
+  "settingsNoAccountContact": "We could not find your account contact. Please sign in again.",
+  "@settingsNoAccountContact": {
+    "description": "MT: needs native review"
+  },
+  "settingsDeletionRequested": "Deletion requested — we'll process it and remove your account.",
+  "@settingsDeletionRequested": {
+    "description": "MT: needs native review"
+  },
+  "billingCreditTab": "Credit",
+  "@billingCreditTab": {
+    "description": "MT: needs native review"
+  },
+  "billingCreditPendingBody": "We're verifying your details. Your VS Credit line will unlock here once approved — usually within a few hours.",
+  "@billingCreditPendingBody": {
+    "description": "MT: needs native review"
+  },
+  "billingViewStatus": "View Status",
+  "@billingViewStatus": {
+    "description": "MT: needs native review"
+  },
+  "billingCreditRejectedBody": "Your last credit application wasn't approved. You can review your details and apply again.",
+  "@billingCreditRejectedBody": {
+    "description": "MT: needs native review"
+  },
+  "billingUnlockCredit": "Unlock VS Credit",
+  "@billingUnlockCredit": {
+    "description": "MT: needs native review"
+  },
+  "billingCreditApplyBody": "Shop now and pay later with a VS Credit line. Complete a quick KYC verification to apply — it only takes a few minutes.",
+  "@billingCreditApplyBody": {
+    "description": "MT: needs native review"
+  },
+  "billingApplyForCredit": "Apply for Credit",
+  "@billingApplyForCredit": {
+    "description": "MT: needs native review"
+  },
+  "billingCreditEncryptedNote": "Your information is encrypted and used only for credit verification.",
+  "@billingCreditEncryptedNote": {
+    "description": "MT: needs native review"
+  },
+  "billingBenefitShopPayLater": "Shop Now, Pay Later",
+  "@billingBenefitShopPayLater": {
+    "description": "MT: needs native review"
+  },
+  "billingBenefitFlexiblePlans": "Flexible Weekly / Monthly Plans",
+  "@billingBenefitFlexiblePlans": {
+    "description": "MT: needs native review"
+  },
+  "billingBenefitMemberOffers": "Exclusive Member Offers",
+  "@billingBenefitMemberOffers": {
+    "description": "MT: needs native review"
+  },
+  "billingBenefitBuildScore": "Build Your VS Score",
+  "@billingBenefitBuildScore": {
+    "description": "MT: needs native review"
+  },
+  "billingWhyVsCredit": "Why VS Credit?",
+  "@billingWhyVsCredit": {
+    "description": "MT: needs native review"
+  },
+  "billingPercentUsed": "{percent}% used",
+  "@billingPercentUsed": {
+    "description": "MT: needs native review. Credit utilization badge.",
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "billingUsedAmount": "Used: {amount}",
+  "@billingUsedAmount": {
+    "description": "MT: needs native review. {amount} is a pre-formatted currency string like ₹25,000.",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "billingTotalLimitAmount": "Total Limit: {amount}",
+  "@billingTotalLimitAmount": {
+    "description": "MT: needs native review. {amount} is a pre-formatted currency string like ₹50,000.",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "billingCollectionRequestRaised": "Collection request raised. An agent will be assigned to visit you.",
+  "@billingCollectionRequestRaised": {
+    "description": "MT: needs native review"
+  },
+  "billingCollectionAddress": "Collection Address",
+  "@billingCollectionAddress": {
+    "description": "MT: needs native review"
+  },
+  "billingRegisteredAddress": "Registered address",
+  "@billingRegisteredAddress": {
+    "description": "MT: needs native review"
+  },
+  "billingAgentVisitAddress": "The agent will visit your saved delivery address",
+  "@billingAgentVisitAddress": {
+    "description": "MT: needs native review"
+  },
+  "billingCollectionNotesHint": "Any instructions for the collection agent (optional)",
+  "@billingCollectionNotesHint": {
+    "description": "MT: needs native review"
+  },
+  "billingCollectionAgentInfo": "A VS Mart collection agent will be assigned and visit your location to collect the payment securely. You will be notified once an agent is confirmed.",
+  "@billingCollectionAgentInfo": {
+    "description": "MT: needs native review"
+  },
+  "billingAmountToCollect": "Amount to Collect",
+  "@billingAmountToCollect": {
+    "description": "MT: needs native review"
+  },
+  "billingEnterValidAmount": "Enter a valid amount",
+  "@billingEnterValidAmount": {
+    "description": "MT: needs native review"
+  },
+  "billingRequest": "Request",
+  "@billingRequest": {
+    "description": "MT: needs native review"
+  },
+  "billingCollectionsAppearHere": "Cash collection pickups you request will appear here.",
+  "@billingCollectionsAppearHere": {
+    "description": "MT: needs native review"
+  },
+  "billingRequestedOn": "Requested {date}",
+  "@billingRequestedOn": {
+    "description": "MT: needs native review. {date} is a formatted date like 5 Jul 2026.",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "billingAddress": "Address",
+  "@billingAddress": {
+    "description": "MT: needs native review"
+  },
+  "billingOrderDate": "Order {order} • {date}",
+  "@billingOrderDate": {
+    "description": "MT: needs native review. {order} is an order id, {date} a formatted date.",
+    "placeholders": {
+      "order": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "billingInvoiceLoadError": "Could not load the invoice",
+  "@billingInvoiceLoadError": {
+    "description": "MT: needs native review"
+  },
+  "billingOutstandingDue": "Outstanding Due",
+  "@billingOutstandingDue": {
+    "description": "MT: needs native review"
+  },
+  "billingDuesLoadError": "Couldn't load your dues.",
+  "@billingDuesLoadError": {
+    "description": "MT: needs native review"
+  },
+  "billingDueOnDate": "Due: {date}",
+  "@billingDueOnDate": {
+    "description": "MT: needs native review. {date} is a formatted date like 5 July 2026.",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "billingOverdueByDays": "Overdue by {days} Days",
+  "@billingOverdueByDays": {
+    "description": "MT: needs native review. Number of days a payment is overdue.",
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "billingDueInDays": "Due in {days} Days",
+  "@billingDueInDays": {
+    "description": "MT: needs native review. Number of days until a payment is due.",
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "billingTotalOutstandingAmount": "Total Outstanding Amount",
+  "@billingTotalOutstandingAmount": {
+    "description": "MT: needs native review"
+  },
+  "billingPayBeforeDueNote": "Pay before the due date to maintain a healthy VS Score and avoid late fees.",
+  "@billingPayBeforeDueNote": {
+    "description": "MT: needs native review"
+  },
+  "billingPayingTotalAmount": "Paying Total Amount",
+  "@billingPayingTotalAmount": {
+    "description": "MT: needs native review"
+  },
+  "billingReceiptDownloaded": "Receipt downloaded",
+  "@billingReceiptDownloaded": {
+    "description": "MT: needs native review"
+  },
+  "billingCollectionRequested": "Collection requested. An agent will be assigned.",
+  "@billingCollectionRequested": {
+    "description": "MT: needs native review"
+  },
+  "billingCollectionRequestError": "Could not raise the request. Try again.",
+  "@billingCollectionRequestError": {
+    "description": "MT: needs native review"
+  },
+  "billingPaymentFailed": "Payment failed. Please try again.",
+  "@billingPaymentFailed": {
+    "description": "MT: needs native review"
+  },
+  "billingProceedToPay": "Proceed to Pay",
+  "@billingProceedToPay": {
+    "description": "MT: needs native review"
+  },
+  "billingOutstandingAmount": "Outstanding amount",
+  "@billingOutstandingAmount": {
+    "description": "MT: needs native review. Displayed uppercased in the UI."
+  },
+  "billingDebitCreditCard": "Debit / Credit card",
+  "@billingDebitCreditCard": {
+    "description": "MT: needs native review"
+  },
+  "billingNeftImpsTransfer": "NEFT / IMPS transfer",
+  "@billingNeftImpsTransfer": {
+    "description": "MT: needs native review. NEFT and IMPS are bank-transfer scheme names, keep as-is."
+  },
+  "billingRequestAgentPickup": "Request an agent pickup",
+  "@billingRequestAgentPickup": {
+    "description": "MT: needs native review"
+  },
+  "billingCreditUpdated": "Credit updated",
+  "@billingCreditUpdated": {
+    "description": "MT: needs native review. Displayed uppercased in the UI."
+  },
+  "billingStatementDownloaded": "Statement downloaded",
+  "@billingStatementDownloaded": {
+    "description": "MT: needs native review"
+  },
+  "billingNoTransactionsInCycle": "No transactions in this cycle.",
+  "@billingNoTransactionsInCycle": {
+    "description": "MT: needs native review"
+  },
+  "billingPayAmount": "Pay {amount}",
+  "@billingPayAmount": {
+    "description": "MT: needs native review. {amount} is a pre-formatted currency string like ₹1,200.",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "billingStatusDue": "Due",
+  "@billingStatusDue": {
+    "description": "MT: needs native review. Statement status chip."
+  },
+  "billingGenerated": "Generated",
+  "@billingGenerated": {
+    "description": "MT: needs native review"
+  },
+  "billingBalanceAmount": "Bal {amount}",
+  "@billingBalanceAmount": {
+    "description": "MT: needs native review. Running credit balance after a ledger entry. {amount} is a pre-formatted currency string.",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "billingPaymentDue": "Payment due {date}",
+  "@billingPaymentDue": {
+    "description": "MT: needs native review. {date} is a formatted date like 5 Jul.",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "billingAmountDueMin": "{amount} due • min {min}",
+  "@billingAmountDueMin": {
+    "description": "MT: needs native review. {amount} and {min} are pre-formatted currency strings.",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      },
+      "min": {
+        "type": "String"
+      }
+    }
+  },
+  "billingAmountDueShort": "{amount} due",
+  "@billingAmountDueShort": {
+    "description": "MT: needs native review. {amount} is a pre-formatted currency string.",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "billingPay": "Pay",
+  "@billingPay": {
+    "description": "MT: needs native review"
+  },
+  "kycDobHelpText": "Date of birth (as per PAN)",
+  "@kycDobHelpText": {
+    "description": "MT: needs native review. Date-picker header."
+  },
+  "kycApplyVsCredit": "Apply for VS Credit",
+  "@kycApplyVsCredit": {
+    "description": "MT: needs native review"
+  },
+  "kycStep1VerifyDetails": "Step 1 of 2 · Verify your details",
+  "@kycStep1VerifyDetails": {
+    "description": "MT: needs native review"
+  },
+  "kycDetailsIntro": "Enter your details as on your PAN. We'll fetch your CIBIL score on your registered number to verify your identity.",
+  "@kycDetailsIntro": {
+    "description": "MT: needs native review. CIBIL is a credit-bureau brand name, keep as-is."
+  },
+  "kycNameAsPerPan": "Name as per PAN",
+  "@kycNameAsPerPan": {
+    "description": "MT: needs native review"
+  },
+  "kycFullNameHint": "e.g. Srinivasu Magapu",
+  "@kycFullNameHint": {
+    "description": "MT: needs native review. Example name hint; may be localised to a locale-appropriate sample name."
+  },
+  "kycSelectDob": "Select your date of birth",
+  "@kycSelectDob": {
+    "description": "MT: needs native review"
+  },
+  "kycCheckCibil": "Check CIBIL",
+  "@kycCheckCibil": {
+    "description": "MT: needs native review. CIBIL is a credit-bureau brand name, keep as-is."
+  },
+  "kycIdentityVerified": "Identity verified",
+  "@kycIdentityVerified": {
+    "description": "MT: needs native review"
+  },
+  "kycCibilScore": "CIBIL {score}",
+  "@kycCibilScore": {
+    "description": "MT: needs native review. CIBIL is a brand name; {score} is the numeric credit score.",
+    "placeholders": {
+      "score": {
+        "type": "String"
+      }
+    }
+  },
+  "kycStep2Documents": "Step 2 of 2 · Upload documents",
+  "@kycStep2Documents": {
+    "description": "MT: needs native review"
+  },
+  "kycDocsIntro": "Clear photos of both sides of your Aadhaar and PAN cards. An agent will verify them.",
+  "@kycDocsIntro": {
+    "description": "MT: needs native review"
+  },
+  "kycAadhaarFront": "Aadhaar — front",
+  "@kycAadhaarFront": {
+    "description": "MT: needs native review"
+  },
+  "kycAadhaarBack": "Aadhaar — back",
+  "@kycAadhaarBack": {
+    "description": "MT: needs native review"
+  },
+  "kycPanFront": "PAN — front",
+  "@kycPanFront": {
+    "description": "MT: needs native review"
+  },
+  "kycPanBack": "PAN — back",
+  "@kycPanBack": {
+    "description": "MT: needs native review"
+  },
+  "kycSubmitForVerification": "Submit for verification",
+  "@kycSubmitForVerification": {
+    "description": "MT: needs native review"
+  },
+  "kycApplicationSubmitted": "Application submitted",
+  "@kycApplicationSubmitted": {
+    "description": "MT: needs native review"
+  },
+  "kycApplicationSubmittedBody": "An agent will be assigned to verify your documents. Your VS Credit limit unlocks once they approve.",
+  "@kycApplicationSubmittedBody": {
+    "description": "MT: needs native review"
+  },
+  "kycYourCibilScore": "Your CIBIL Score",
+  "@kycYourCibilScore": {
+    "description": "MT: needs native review. CIBIL is a brand name, keep as-is."
+  },
+  "kycTapToChange": "Tap to change",
+  "@kycTapToChange": {
+    "description": "MT: needs native review"
+  },
+  "kycTapToUpload": "Tap to upload",
+  "@kycTapToUpload": {
+    "description": "MT: needs native review"
+  },
+  "kycConsentText": "I authorise VS Mart to fetch my credit score from the bureau to verify my identity and assess my credit eligibility.",
+  "@kycConsentText": {
+    "description": "MT: needs native review"
+  },
+  "kycLiveSelfie": "Live Selfie",
+  "@kycLiveSelfie": {
+    "description": "MT: needs native review"
+  },
+  "kycMobileVerified": "Mobile Verified",
+  "@kycMobileVerified": {
+    "description": "MT: needs native review"
+  },
+  "kycAddressAdded": "Address Added",
+  "@kycAddressAdded": {
+    "description": "MT: needs native review"
+  },
+  "kycStatusLoadError": "Couldn't load your verification status.",
+  "@kycStatusLoadError": {
+    "description": "MT: needs native review"
+  },
+  "kycResubmitDocuments": "Re-submit Documents",
+  "@kycResubmitDocuments": {
+    "description": "MT: needs native review"
+  },
+  "kycCompleteToUnlock": "Complete verification to unlock VS Credit benefits.",
+  "@kycCompleteToUnlock": {
+    "description": "MT: needs native review"
+  },
+  "kycInstantVerification": "Instant verification",
+  "@kycInstantVerification": {
+    "description": "MT: needs native review"
+  },
+  "kycInstantVerifyBody": "Verify with your PAN & credit score in a minute",
+  "@kycInstantVerifyBody": {
+    "description": "MT: needs native review"
+  },
+  "kycStepsCompleted": "{completed} of {total} Steps Completed",
+  "@kycStepsCompleted": {
+    "description": "MT: needs native review. Progress caption on the KYC dashboard.",
+    "placeholders": {
+      "completed": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "kycBenefitOnApproval": "On approval",
+  "@kycBenefitOnApproval": {
+    "description": "MT: needs native review"
+  },
+  "kycBenefitFlexiblePlans": "Flexible Plans",
+  "@kycBenefitFlexiblePlans": {
+    "description": "MT: needs native review"
+  },
+  "kycBenefitWeeklyMonthly": "Weekly / Monthly",
+  "@kycBenefitWeeklyMonthly": {
+    "description": "MT: needs native review"
+  },
+  "kycBenefitExclusiveOffers": "Exclusive Offers",
+  "@kycBenefitExclusiveOffers": {
+    "description": "MT: needs native review"
+  },
+  "kycBenefitMemberOnly": "Member Only",
+  "@kycBenefitMemberOnly": {
+    "description": "MT: needs native review"
+  },
+  "kycBenefitBuildCredit": "Build Credit",
+  "@kycBenefitBuildCredit": {
+    "description": "MT: needs native review"
+  },
+  "kycUnlockBenefits": "Unlock VS Credit Benefits",
+  "@kycUnlockBenefits": {
+    "description": "MT: needs native review"
+  },
+  "kycSecurityNote": "Your information is encrypted and securely stored following bank-grade security standards.",
+  "@kycSecurityNote": {
+    "description": "MT: needs native review"
+  },
+  "kycSecurityBannerBody": "KYC verification is required to unlock your full credit limit and ensure compliance with RBI regulations. We use bank-grade encryption.",
+  "@kycSecurityBannerBody": {
+    "description": "MT: needs native review. RBI is the Reserve Bank of India, keep as-is."
+  },
+  "kycCaptionVerified": "All required documents have been successfully verified.",
+  "@kycCaptionVerified": {
+    "description": "MT: needs native review"
+  },
+  "kycCaptionPending": "Your documents are under review. This usually takes 1–2 days.",
+  "@kycCaptionPending": {
+    "description": "MT: needs native review"
+  },
+  "kycCaptionRejected": "Some documents could not be verified. Please re-submit.",
+  "@kycCaptionRejected": {
+    "description": "MT: needs native review"
+  },
+  "kycCaptionNotStarted": "Complete your KYC to unlock your full credit limit.",
+  "@kycCaptionNotStarted": {
+    "description": "MT: needs native review"
+  },
+  "kycPercentComplete": "{percent}% Complete",
+  "@kycPercentComplete": {
+    "description": "MT: needs native review. KYC completion percentage chip.",
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "kycStartCardBody": "Submit your Aadhaar, PAN and a selfie to verify your identity.",
+  "@kycStartCardBody": {
+    "description": "MT: needs native review"
+  },
+  "kycSubmitted": "Submitted",
+  "@kycSubmitted": {
+    "description": "MT: needs native review. Document submitted state."
+  },
+  "commonOr": "OR",
+  "@commonOr": {
+    "description": "MT: needs native review. Divider label between two alternatives."
+  },
+  "discountPercentOff": "{percent}% OFF",
+  "@discountPercentOff": {
+    "description": "MT: needs native review. Discount badge, e.g. 20% OFF.",
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "serviceCheckingArea": "Checking your area…",
+  "@serviceCheckingArea": {
+    "description": "MT: needs native review. Loader while GPS serviceability check resolves."
+  },
+  "serviceConfirmingDelivery": "Confirming we deliver where you are.",
+  "@serviceConfirmingDelivery": {
+    "description": "MT: needs native review."
+  },
+  "serviceSetLocationTitle": "Set your location to continue",
+  "@serviceSetLocationTitle": {
+    "description": "MT: needs native review. Shown when the device location couldn't be confirmed."
+  },
+  "serviceNotInAreaTitle": "VS Mart isn't in your area yet",
+  "@serviceNotInAreaTitle": {
+    "description": "MT: needs native review. Out-of-coverage headline."
+  },
+  "serviceCouldntConfirmBody": "We couldn't confirm your location. Set it so we can check if VS Mart delivers near you.",
+  "@serviceCouldntConfirmBody": {
+    "description": "MT: needs native review."
+  },
+  "serviceExpandingBody": "We're expanding fast. Change your location to shop from a serviceable area near you.",
+  "@serviceExpandingBody": {
+    "description": "MT: needs native review."
+  },
+  "serviceNotifyWhenHere": "Notify me when you're here",
+  "@serviceNotifyWhenHere": {
+    "description": "MT: needs native review. CTA to register interest for an out-of-area location."
+  },
+  "serviceLocationOffNote": "Location is turned off on your phone. Turn it on, then try again.",
+  "@serviceLocationOffNote": {
+    "description": "MT: needs native review."
+  },
+  "serviceOpenLocationSettings": "Open location settings",
+  "@serviceOpenLocationSettings": {
+    "description": "MT: needs native review."
+  },
+  "serviceLocationBlockedNote": "Location permission is blocked for VS Mart. Enable it in Settings, then try again.",
+  "@serviceLocationBlockedNote": {
+    "description": "MT: needs native review."
+  },
+  "serviceOpenAppSettings": "Open app settings",
+  "@serviceOpenAppSettings": {
+    "description": "MT: needs native review."
+  },
+  "serviceNoGpsFixNote": "Couldn't get a GPS fix. Move near a window or step outside and try again, or search for your area instead.",
+  "@serviceNoGpsFixNote": {
+    "description": "MT: needs native review."
+  },
+  "serviceDontDeliverThereNote": "We don't deliver there yet. Try a different location.",
+  "@serviceDontDeliverThereNote": {
+    "description": "MT: needs native review."
+  },
+  "serviceChangeLocationBody": "Use your current location, or search your area and drop the pin.",
+  "@serviceChangeLocationBody": {
+    "description": "MT: needs native review."
+  },
+  "serviceUseMyCurrentLocation": "Use my current location",
+  "@serviceUseMyCurrentLocation": {
+    "description": "MT: needs native review."
+  },
+  "serviceSearchAreaDropPin": "Search area & drop pin",
+  "@serviceSearchAreaDropPin": {
+    "description": "MT: needs native review."
+  },
+  "serviceOpenSettings": "Open settings",
+  "@serviceOpenSettings": {
+    "description": "MT: needs native review."
+  },
+  "serviceEnterValidPhone": "Enter a valid phone number",
+  "@serviceEnterValidPhone": {
+    "description": "MT: needs native review."
+  },
+  "serviceNotifyBody": "Leave your number and we'll message you the moment VS Mart starts delivering in your area.",
+  "@serviceNotifyBody": {
+    "description": "MT: needs native review."
+  },
+  "serviceNameOptional": "Name (optional)",
+  "@serviceNameOptional": {
+    "description": "MT: needs native review. Optional name field label."
+  },
+  "servicePhoneHintExample": "e.g. +9198XXXXXXXX",
+  "@servicePhoneHintExample": {
+    "description": "MT: needs native review. Phone input hint."
+  },
+  "serviceWellNotifyYou": "We'll notify you",
+  "@serviceWellNotifyYou": {
+    "description": "MT: needs native review. Success title after registering interest."
+  },
+  "serviceNotifySuccessBody": "Thanks! We've registered your interest and will message you as soon as we start delivering near you.",
+  "@serviceNotifySuccessBody": {
+    "description": "MT: needs native review."
+  },
+  "wishlistBrowseProducts": "Browse Products",
+  "@wishlistBrowseProducts": {
+    "description": "MT: needs native review. Empty-wishlist CTA."
+  },
+  "wishlistPriceDrop": "Price Drop",
+  "@wishlistPriceDrop": {
+    "description": "MT: needs native review. Wishlist filter tab."
+  },
+  "wishlistRemoved": "{name} removed from wishlist",
+  "@wishlistRemoved": {
+    "description": "MT: needs native review. Snackbar after removing a product from wishlist.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "searchUnderPrice": "Under ₹99",
+  "@searchUnderPrice": {
+    "description": "MT: needs native review. Quick price filter chip."
+  },
+  "searchResultsFound": "{count} Results found",
+  "@searchResultsFound": {
+    "description": "MT: needs native review. Result count header.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "searchNoResultsFor": "We couldn't find anything for \"{query}\".",
+  "@searchNoResultsFor": {
+    "description": "MT: needs native review. Empty search results message.",
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "searchSortPrefix": "Sort: ",
+  "@searchSortPrefix": {
+    "description": "MT: needs native review. Prefix before the selected sort option."
+  },
+  "searchFiltersApplied": "{count, plural, =1{1 Filter Applied} other{{count} Filters Applied}}",
+  "@searchFiltersApplied": {
+    "description": "MT: needs native review. Active-filters pill.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "searchForPrefix": "Search for ",
+  "@searchForPrefix": {
+    "description": "MT: needs native review. Prefix before the typed query in the autocomplete row."
+  },
+  "reviewsTooLong": "Your review is too long (max {max} characters).",
+  "@reviewsTooLong": {
+    "description": "MT: needs native review. Validation error when a review body exceeds the max length.",
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "reviewsRatingValue": "{rating} out of 5 stars",
+  "@reviewsRatingValue": {
+    "description": "MT: needs native review. Accessibility value for a star rating row.",
+    "placeholders": {
+      "rating": {
+        "type": "int"
+      }
+    }
+  },
+  "reviewsCount": "{count, plural, =1{1 review} other{{count} reviews}}",
+  "@reviewsCount": {
+    "description": "MT: needs native review. Review count under the rating summary.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "reviewsNoneYet": "No reviews yet — be the first",
+  "@reviewsNoneYet": {
+    "description": "MT: needs native review. Empty reviews state."
+  },
+  "reviewsRateStars": "{star, plural, =1{Rate 1 star} other{Rate {star} stars}}",
+  "@reviewsRateStars": {
+    "description": "MT: needs native review. Accessibility tooltip on a selectable star.",
+    "placeholders": {
+      "star": {
+        "type": "int"
+      }
+    }
+  },
+  "referralCodeHint": "e.g. VS00042",
+  "@referralCodeHint": {
+    "description": "MT: needs native review. Referral code input hint."
+  },
+  "referralTermsApply": "Terms & Conditions Apply",
+  "@referralTermsApply": {
+    "description": "MT: needs native review."
+  },
+  "referralEarnPerReferral": "Earn {amount} Per Successful Referral",
+  "@referralEarnPerReferral": {
+    "description": "MT: needs native review. {amount} is a pre-formatted currency string like ₹50.",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "referralNoneYet": "No referrals yet — invite to start earning",
+  "@referralNoneYet": {
+    "description": "MT: needs native review."
+  },
+  "referralSuccessfulCount": "{count, plural, =1{1 successful referral} other{{count} successful referrals}}",
+  "@referralSuccessfulCount": {
+    "description": "MT: needs native review. Count of completed referrals.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "referralYourCode": "Your Referral Code",
+  "@referralYourCode": {
+    "description": "MT: needs native review. Label above the referral code."
+  },
+  "referralStepShareBody": "Share your unique link or code.",
+  "@referralStepShareBody": {
+    "description": "MT: needs native review. How-it-works step body."
+  },
+  "referralStepRegisterBody": "They sign up using your code.",
+  "@referralStepRegisterBody": {
+    "description": "MT: needs native review. How-it-works step body."
+  },
+  "referralStepOrderBody": "They place their first valid order.",
+  "@referralStepOrderBody": {
+    "description": "MT: needs native review. How-it-works step body."
+  },
+  "referralStepEarnBody": "Get {amount} added to your wallet.",
+  "@referralStepEarnBody": {
+    "description": "MT: needs native review. {amount} is a pre-formatted currency string like ₹50.",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "offersCouldntLoadDeals": "Couldn't load deals.",
+  "@offersCouldntLoadDeals": {
+    "description": "MT: needs native review. Error row when deals fail to load."
+  },
+  "offersCouldntLoadCoupons": "Couldn't load coupons.",
+  "@offersCouldntLoadCoupons": {
+    "description": "MT: needs native review. Error row when coupons fail to load."
+  },
+  "offersUpTo60Off": "Up to 60% OFF",
+  "@offersUpTo60Off": {
+    "description": "MT: needs native review. Promo hero headline."
+  },
+  "offersOnGroceries": "On groceries & daily essentials",
+  "@offersOnGroceries": {
+    "description": "MT: needs native review. Promo hero subtitle."
+  },
+  "offersTodaysDeals": "Today's Deals",
+  "@offersTodaysDeals": {
+    "description": "MT: needs native review. Screen title / section heading."
+  },
+  "offersMegaSavings": "Today's Mega Savings",
+  "@offersMegaSavings": {
+    "description": "MT: needs native review. Flash-sale banner headline."
+  },
+  "offersUpTo60OffProduce": "Up to 60% off on fresh produce & essentials",
+  "@offersUpTo60OffProduce": {
+    "description": "MT: needs native review. Flash-sale banner subtitle."
+  },
+  "offersFilterFlashSale": "Flash Sale",
+  "@offersFilterFlashSale": {
+    "description": "MT: needs native review. Deals filter chip."
+  },
+  "offersFilterTopDiscounts": "Top Discounts",
+  "@offersFilterTopDiscounts": {
+    "description": "MT: needs native review. Deals filter chip."
+  },
+  "offersFilterBuy1Get1": "Buy 1 Get 1",
+  "@offersFilterBuy1Get1": {
+    "description": "MT: needs native review. Deals filter chip."
+  },
+  "offersOnlyFiveLeft": "Only 5 left!",
+  "@offersOnlyFiveLeft": {
+    "description": "MT: needs native review. Low-stock urgency label on a featured deal."
+  },
+  "offersClaimedPercent": "80% Claimed",
+  "@offersClaimedPercent": {
+    "description": "MT: needs native review. Stock-claimed progress label on a featured deal."
+  },
+  "offersCodeLabel": "Code: {code}",
+  "@offersCodeLabel": {
+    "description": "MT: needs native review. Coupon code chip on a banner. {code} is the coupon code.",
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "loyaltyRedeemPoints": "Redeem Points",
+  "@loyaltyRedeemPoints": {
+    "description": "MT: needs native review. CTA / dialog title to redeem reward points."
+  },
+  "loyaltyRewardPoints": "Reward Points",
+  "@loyaltyRewardPoints": {
+    "description": "MT: needs native review. Hero card label."
+  },
+  "loyaltyPointsAvailable": "points available",
+  "@loyaltyPointsAvailable": {
+    "description": "MT: needs native review. Caption under the points balance."
+  },
+  "loyaltyLifetimeEarned": "Lifetime earned: {points} pts",
+  "@loyaltyLifetimeEarned": {
+    "description": "MT: needs native review. {points} is a pre-formatted number string.",
+    "placeholders": {
+      "points": {
+        "type": "String"
+      }
+    }
+  },
+  "loyaltyNoActivity": "No points activity yet",
+  "@loyaltyNoActivity": {
+    "description": "MT: needs native review. Empty ledger title."
+  },
+  "loyaltyNoActivityBody": "Earn and redeem points to see your history here.",
+  "@loyaltyNoActivityBody": {
+    "description": "MT: needs native review. Empty ledger body."
+  },
+  "loyaltyPointsEarned": "Points earned",
+  "@loyaltyPointsEarned": {
+    "description": "MT: needs native review. Ledger row fallback label."
+  },
+  "loyaltyPointsRedeemed": "Points redeemed",
+  "@loyaltyPointsRedeemed": {
+    "description": "MT: needs native review. Ledger row fallback label."
+  },
+  "loyaltyPointsExpired": "Points expired",
+  "@loyaltyPointsExpired": {
+    "description": "MT: needs native review. Ledger row fallback label."
+  },
+  "loyaltyPointsAdjustment": "Points adjustment",
+  "@loyaltyPointsAdjustment": {
+    "description": "MT: needs native review. Ledger row fallback label."
+  },
+  "loyaltyEnterValidPoints": "Enter a valid number of points",
+  "@loyaltyEnterValidPoints": {
+    "description": "MT: needs native review. Redeem validation error."
+  },
+  "loyaltyOnlyHavePoints": "You only have {points} points",
+  "@loyaltyOnlyHavePoints": {
+    "description": "MT: needs native review. Redeem validation error. {points} is a pre-formatted number string.",
+    "placeholders": {
+      "points": {
+        "type": "String"
+      }
+    }
+  },
+  "loyaltyPointsAvailableSentence": "You have {points} points available.",
+  "@loyaltyPointsAvailableSentence": {
+    "description": "MT: needs native review. Redeem dialog body. {points} is a pre-formatted number string.",
+    "placeholders": {
+      "points": {
+        "type": "String"
+      }
+    }
+  },
+  "loyaltyPointsToRedeem": "Points to redeem",
+  "@loyaltyPointsToRedeem": {
+    "description": "MT: needs native review. Redeem input label."
+  },
+  "loyaltyPointsHint": "e.g. 100",
+  "@loyaltyPointsHint": {
+    "description": "MT: needs native review. Redeem input hint."
+  },
+  "loyaltyRedeem": "Redeem",
+  "@loyaltyRedeem": {
+    "description": "MT: needs native review. Redeem confirm button."
+  },
+  "notificationsAllCaughtUp": "You're all caught up.",
+  "@notificationsAllCaughtUp": {
+    "description": "MT: needs native review. Empty notifications message."
+  },
+  "notificationsYesterday": "Yesterday",
+  "@notificationsYesterday": {
+    "description": "MT: needs native review. Notifications group heading."
+  },
+  "homeOrderNumber": "Order #{id}",
+  "@homeOrderNumber": {
+    "description": "MT: needs native review. Active-order tracker card. {id} is the order id.",
+    "placeholders": {
+      "id": {
+        "type": "String"
+      }
+    }
+  },
+  "homeCouldntLoad": "Couldn't load",
+  "@homeCouldntLoad": {
+    "description": "MT: needs native review. Inline section load-error label."
+  },
+  "checkoutCouldNotPlaceOrder": "Could not place order. Please review your cart.",
+  "@checkoutCouldNotPlaceOrder": {
+    "description": "MT: needs native review. Snackbar when order placement is blocked locally."
+  },
+  "checkoutQty": "Qty {count}",
+  "@checkoutQty": {
+    "description": "MT: needs native review. Line-item quantity in the order summary.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "checkoutCouponAppliedOff": "“{code}” applied — {amount} off",
+  "@checkoutCouponAppliedOff": {
+    "description": "MT: needs native review. Applied-coupon confirmation. {code} is the coupon code, {amount} a pre-formatted currency string.",
+    "placeholders": {
+      "code": {
+        "type": "String"
+      },
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "checkoutDueDate": "Due {date}",
+  "@checkoutDueDate": {
+    "description": "MT: needs native review. Repayment plan payout date. {date} is a pre-formatted date string.",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "paymentCouldNotComplete": "Could not complete payment. Check your cart and address.",
+  "@paymentCouldNotComplete": {
+    "description": "MT: needs native review. Snackbar when payment setup fails."
+  },
+  "paymentNotCompleted": "Payment not completed. Your order is saved — you can retry from My Orders.",
+  "@paymentNotCompleted": {
+    "description": "MT: needs native review. Snackbar when an online payment is not completed."
+  },
+  "cartItemsUnavailableTitle": "Some items are unavailable",
+  "@cartItemsUnavailableTitle": {
+    "description": "MT: needs native review. Out-of-stock sheet title."
+  },
+  "cartItemsUnavailableBody": "These went out of stock at your store. Remove them to continue.",
+  "@cartItemsUnavailableBody": {
+    "description": "MT: needs native review. Out-of-stock sheet body."
+  },
+  "cartRemoveAndContinue": "Remove & continue",
+  "@cartRemoveAndContinue": {
+    "description": "MT: needs native review. Removes unavailable items and proceeds to checkout."
+  },
+  "cartReviewCart": "Review cart",
+  "@cartReviewCart": {
+    "description": "MT: needs native review. Dismisses the out-of-stock sheet to review the cart."
+  },
+  "cartSignInBody": "Create an account or sign in to place your order and pay. Your cart will be waiting for you.",
+  "@cartSignInBody": {
+    "description": "MT: needs native review. Sign-in-to-checkout prompt body."
+  },
+  "cartTotalEstimateError": "Couldn't fetch the latest total — showing an estimate. Tap to retry.",
+  "@cartTotalEstimateError": {
+    "description": "MT: needs native review. Shown when the server bill total can't be fetched."
+  },
+  "ordersOrderNumber": "Order #{id}",
+  "@ordersOrderNumber": {
+    "description": "MT: needs native review. Order id header/label.",
+    "placeholders": {
+      "id": {}
+    }
+  },
+  "ordersCancelConfirmTitle": "Cancel order?",
+  "@ordersCancelConfirmTitle": {
+    "description": "MT: needs native review"
+  },
+  "ordersCancelConfirmBody": "Cancel this order? This can't be undone.",
+  "@ordersCancelConfirmBody": {
+    "description": "MT: needs native review"
+  },
+  "ordersKeepOrder": "Keep order",
+  "@ordersKeepOrder": {
+    "description": "MT: needs native review"
+  },
+  "ordersCancelled": "Order cancelled",
+  "@ordersCancelled": {
+    "description": "MT: needs native review. Snackbar after cancelling an order."
+  },
+  "ordersTimeline": "Order Timeline",
+  "@ordersTimeline": {
+    "description": "MT: needs native review. Card title for order progress timeline."
+  },
+  "ordersItemQuantity": "{name}  ×{quantity}",
+  "@ordersItemQuantity": {
+    "description": "MT: needs native review. Order line item name with quantity. name is product data.",
+    "placeholders": {
+      "name": {},
+      "quantity": {
+        "type": "int"
+      }
+    }
+  },
+  "ordersPayment": "Payment",
+  "@ordersPayment": {
+    "description": "MT: needs native review. Payment section card title on order details."
+  },
+  "ordersCreditUsed": "Credit Used",
+  "@ordersCreditUsed": {
+    "description": "MT: needs native review. Label for credit amount applied to an order."
+  },
+  "ordersOrderPlaced": "Order Placed",
+  "@ordersOrderPlaced": {
+    "description": "MT: needs native review. First timeline node label (order created)."
+  },
+  "ordersOrderStatus": "Order status",
+  "@ordersOrderStatus": {
+    "description": "MT: needs native review. Tracking sheet section heading."
+  },
+  "ordersArrivingIn": "Arriving in {eta}",
+  "@ordersArrivingIn": {
+    "description": "Tracking headline showing the real road-route ETA from Directions.",
+    "placeholders": {
+      "eta": {
+        "type": "String",
+        "example": "18 min"
+      }
+    }
+  },
+  "ordersOnTheWayHeadline": "Your order is on the way",
+  "@ordersOnTheWayHeadline": {
+    "description": "MT: needs native review. Tracking headline subtitle when out for delivery."
+  },
+  "ordersWeWillUpdate": "We'll update you as it moves",
+  "@ordersWeWillUpdate": {
+    "description": "MT: needs native review. Tracking headline subtitle before dispatch."
+  },
+  "ordersContactWhenAssigned": "Contact appears once a rider is assigned.",
+  "@ordersContactWhenAssigned": {
+    "description": "MT: needs native review. Snackbar when rider phone not yet available."
+  },
+  "ordersDialerError": "Could not open the dialer.",
+  "@ordersDialerError": {
+    "description": "MT: needs native review. Snackbar when tel: launch fails."
+  },
+  "ordersDeliveryPartner": "Delivery Partner",
+  "@ordersDeliveryPartner": {
+    "description": "MT: needs native review. Label above rider name on tracking."
+  },
+  "ordersRiderOnTheWay": "On the way",
+  "@ordersRiderOnTheWay": {
+    "description": "MT: needs native review. Fallback rider name until backend supplies one."
+  },
+  "ordersPreparingYourOrder": "We're preparing your order",
+  "ordersDeliveryFailedHint": "We couldn't complete this delivery. Our team will be in touch about the next attempt.",
+  "ordersOrderClosedHint": "This order is closed. You can review what was ordered below.",
+  "ordersMapUnavailable": "Live map appears once your delivery address has a pinned location.",
+  "@ordersMapUnavailable": {
+    "description": "MT: needs native review. Placeholder in tracking map area when no coords."
+  },
+  "ordersMoreItems": "+{count} more",
+  "@ordersMoreItems": {
+    "description": "MT: needs native review. Overflow count for order items list.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "ordersItemsAddedToCart": "{count, plural, =1{1 item added to cart} other{{count} items added to cart}}",
+  "@ordersItemsAddedToCart": {
+    "description": "MT: needs native review. Snackbar after reorder adds items to cart.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "ordersItemsUnavailable": "Those items are unavailable right now",
+  "@ordersItemsUnavailable": {
+    "description": "MT: needs native review. Snackbar when reorder finds nothing available."
+  },
+  "ordersOrderedAt": "Ordered at",
+  "@ordersOrderedAt": {
+    "description": "MT: needs native review. Delivered-summary time row label."
+  },
+  "ordersDeliveredAt": "Delivered at",
+  "@ordersDeliveredAt": {
+    "description": "MT: needs native review. Delivered-summary time row label."
+  },
+  "ordersFeedbackThanks": "Thanks for the feedback!",
+  "@ordersFeedbackThanks": {
+    "description": "MT: needs native review. Snackbar after submitting order rating."
+  },
+  "ordersYouRated": "You rated this order",
+  "@ordersYouRated": {
+    "description": "MT: needs native review. Header when feedback already given."
+  },
+  "ordersHowWasDelivery": "How was your delivery?",
+  "@ordersHowWasDelivery": {
+    "description": "MT: needs native review. Feedback card prompt title."
+  },
+  "ordersFeedbackHelps": "Your feedback helps us improve.",
+  "@ordersFeedbackHelps": {
+    "description": "MT: needs native review. Feedback card subtitle when agent name unknown."
+  },
+  "ordersAgentDelivered": "{name} delivered this order.",
+  "@ordersAgentDelivered": {
+    "description": "MT: needs native review. Feedback card subtitle naming the delivery agent.",
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "ordersFeedbackHint": "Anything to add? (optional)",
+  "@ordersFeedbackHint": {
+    "description": "MT: needs native review. Optional comment field hint on feedback card."
+  },
+  "ordersSendFeedback": "Send feedback",
+  "@ordersSendFeedback": {
+    "description": "MT: needs native review. Submit button on feedback card."
+  },
+  "ordersStarCount": "{count, plural, =1{1 star} other{{count} stars}}",
+  "@ordersStarCount": {
+    "description": "MT: needs native review. Accessibility label for star rating icons.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "profileLogoutConfirmBody": "You will need to sign in again to access your account.",
+  "@profileLogoutConfirmBody": {
+    "description": "MT: needs native review. Logout confirmation dialog body."
+  },
+  "profileBrowsingAsGuest": "You're browsing as a guest",
+  "@profileBrowsingAsGuest": {
+    "description": "MT: needs native review. Guest sign-in card title."
+  },
+  "profileGuestSignInBody": "Sign in to place orders, track deliveries and unlock VS Credit.",
+  "@profileGuestSignInBody": {
+    "description": "MT: needs native review. Guest sign-in card body."
+  },
+  "profileGuest": "Guest",
+  "@profileGuest": {
+    "description": "MT: needs native review. Fallback display name for a guest user."
+  },
+  "profileCreditAmount": "Credit {amount}",
+  "@profileCreditAmount": {
+    "description": "MT: needs native review. Compact available-credit chip on profile card.",
+    "placeholders": {
+      "amount": {}
+    }
+  },
+  "profileScoreValue": "Score {score}",
+  "@profileScoreValue": {
+    "description": "MT: needs native review. Compact VS Score chip on profile card.",
+    "placeholders": {
+      "score": {}
+    }
+  },
+  "profileUsedAmount": "Used: {amount}",
+  "@profileUsedAmount": {
+    "description": "MT: needs native review. Credit used figure on available-credit card.",
+    "placeholders": {
+      "amount": {}
+    }
+  },
+  "profileLimitAmount": "Limit: {amount}",
+  "@profileLimitAmount": {
+    "description": "MT: needs native review. Credit limit figure on available-credit card.",
+    "placeholders": {
+      "amount": {}
+    }
+  },
+  "profileAddresses": "Addresses",
+  "@profileAddresses": {
+    "description": "MT: needs native review. Quick-access tile label."
+  },
+  "profilePayments": "Payments",
+  "@profilePayments": {
+    "description": "MT: needs native review. Quick-access tile label."
+  },
+  "profileSupport": "Support",
+  "@profileSupport": {
+    "description": "MT: needs native review. Quick-access tile label."
+  },
+  "profileMonthlyStatement": "Monthly Statement",
+  "@profileMonthlyStatement": {
+    "description": "MT: needs native review. Credit center row label."
+  },
+  "profileOutstandingDue": "Outstanding Due",
+  "@profileOutstandingDue": {
+    "description": "MT: needs native review. Credit center row label."
+  },
+  "profileCreditUsage": "Credit Usage",
+  "@profileCreditUsage": {
+    "description": "MT: needs native review. Credit center row label."
+  },
+  "profileVsScoreDetails": "VS Score Details",
+  "@profileVsScoreDetails": {
+    "description": "MT: needs native review. Credit center row label."
+  },
+  "profileNoSavedAddress": "No saved address yet.",
+  "@profileNoSavedAddress": {
+    "description": "MT: needs native review. Address preview empty state."
+  },
+  "profilePaymentUpi": "UPI Payment",
+  "@profilePaymentUpi": {
+    "description": "MT: needs native review. Recent payments row label for UPI."
+  },
+  "profilePaymentCard": "Card Payment",
+  "@profilePaymentCard": {
+    "description": "MT: needs native review. Recent payments row label for card."
+  },
+  "profilePaymentBankTransfer": "Bank Transfer",
+  "@profilePaymentBankTransfer": {
+    "description": "MT: needs native review. Recent payments row label for bank transfer."
+  },
+  "profilePaymentCashCollection": "Cash Collection",
+  "@profilePaymentCashCollection": {
+    "description": "MT: needs native review. Recent payments row label for cash collection."
+  },
+  "profileViewHistory": "View History",
+  "@profileViewHistory": {
+    "description": "MT: needs native review. Recent payments card action."
+  },
+  "profileKycAadhaar": "Aadhaar",
+  "@profileKycAadhaar": {
+    "description": "MT: needs native review. KYC checklist item."
+  },
+  "profileKycSelfie": "Selfie",
+  "@profileKycSelfie": {
+    "description": "MT: needs native review. KYC checklist item."
+  },
+  "profileKycHouse": "House Verification",
+  "@profileKycHouse": {
+    "description": "MT: needs native review. KYC checklist item."
+  },
+  "profileActiveCoupons": "{count, plural, =1{1 Active Coupon} other{{count} Active Coupons}}",
+  "@profileActiveCoupons": {
+    "description": "MT: needs native review. Offers card subtitle showing active coupon count.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "profileLanguageEnglish": "Language (English)",
+  "@profileLanguageEnglish": {
+    "description": "MT: needs native review. Settings list row; current UI shows fixed English label."
+  },
+  "profileAboutVsMart": "About VS Mart",
+  "@profileAboutVsMart": {
+    "description": "MT: needs native review. Settings list row (VS Mart is a brand name)."
+  },
+  "profileCareers": "Careers",
+  "@profileCareers": {
+    "description": "MT: needs native review. Settings list row."
+  },
+  "profileYou": "You",
+  "@profileYou": {
+    "description": "MT: needs native review. Primary family member display name."
+  },
+  "profilePrimaryHolder": "Primary Account Holder",
+  "@profilePrimaryHolder": {
+    "description": "MT: needs native review. Family member relationship label."
+  },
+  "profileFamilyMember": "Family Member",
+  "@profileFamilyMember": {
+    "description": "MT: needs native review. Fallback family member display name."
+  },
+  "profileInvitationPending": "Invitation pending",
+  "@profileInvitationPending": {
+    "description": "MT: needs native review. Family member status subtitle."
+  },
+  "profileHouseholdMember": "Household member",
+  "@profileHouseholdMember": {
+    "description": "MT: needs native review. Family member relationship subtitle."
+  },
+  "profileMemberRemoved": "{name} removed.",
+  "@profileMemberRemoved": {
+    "description": "MT: needs native review. Snackbar after removing a family member.",
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "profileRelationshipHint": "Relationship (e.g. Spouse)",
+  "@profileRelationshipHint": {
+    "description": "MT: needs native review. Add-member dialog relationship field hint."
+  },
+  "profileInvite": "Invite",
+  "@profileInvite": {
+    "description": "MT: needs native review. Add-member dialog confirm button."
+  },
+  "profileInviteSent": "Invite sent to {phone}.",
+  "@profileInviteSent": {
+    "description": "MT: needs native review. Snackbar after inviting a family member.",
+    "placeholders": {
+      "phone": {}
+    }
+  },
+  "profileHouseholdLoadError": "Couldn't load your household.",
+  "@profileHouseholdLoadError": {
+    "description": "MT: needs native review. Family screen error state."
+  },
+  "profileFamilySubtitle": "Manage shared credit limits and shopping profiles for your family.",
+  "@profileFamilySubtitle": {
+    "description": "MT: needs native review. Family screen intro paragraph."
+  },
+  "profileSharedLimitUsage": "Shared Limit Usage",
+  "@profileSharedLimitUsage": {
+    "description": "MT: needs native review. Family member card usage label."
+  },
+  "profileAddHouseholdMember": "Add a Household Member",
+  "@profileAddHouseholdMember": {
+    "description": "MT: needs native review. Add-member CTA card title."
+  },
+  "profileAddMemberBody": "Invite family to share your VS Mart credit limit and shopping lists.",
+  "@profileAddMemberBody": {
+    "description": "MT: needs native review. Add-member CTA card body (VS Mart is a brand name)."
+  },
+  "profileUpdated": "Profile updated",
+  "@profileUpdated": {
+    "description": "MT: needs native review. Snackbar after saving profile."
+  },
+  "profilePhotoUpdated": "Profile photo updated.",
+  "@profilePhotoUpdated": {
+    "description": "MT: needs native review. Snackbar after avatar upload."
+  },
+  "profileNameHint": "e.g. Jane Doe",
+  "@profileNameHint": {
+    "description": "MT: needs native review. Full name field example hint."
+  },
+  "profileEmailHint": "you@example.com",
+  "@profileEmailHint": {
+    "description": "MT: needs native review. Email field example hint."
+  },
+  "catalogProductNotFound": "Product not found.",
+  "@catalogProductNotFound": {
+    "description": "MT: needs native review. Product detail error when id missing."
+  },
+  "catalogRemovedFromWishlist": "Removed from wishlist",
+  "@catalogRemovedFromWishlist": {
+    "description": "MT: needs native review. Snackbar when un-wishlisting a product."
+  },
+  "catalogAddedToWishlist": "Added to wishlist",
+  "@catalogAddedToWishlist": {
+    "description": "MT: needs native review. Snackbar when wishlisting a product."
+  },
+  "catalogShareSheetError": "Couldn't open the share sheet.",
+  "@catalogShareSheetError": {
+    "description": "MT: needs native review. Snackbar when OS share sheet fails to open."
+  },
+  "catalogDefaultDescription": "Farm-fresh and hand-selected for quality, delivered at peak freshness.",
+  "@catalogDefaultDescription": {
+    "description": "MT: needs native review. Fallback product description when none supplied."
+  },
+  "catalogEligibleForCredit": "Eligible for VS Credit",
+  "@catalogEligibleForCredit": {
+    "description": "MT: needs native review. Credit eligibility card title (VS Credit is a brand name)."
+  },
+  "catalogBrowseAllIn": "Browse all in {name}",
+  "@catalogBrowseAllIn": {
+    "description": "MT: needs native review. Department fallback pane heading. name is category data.",
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "catalogViewProducts": "View products",
+  "@catalogViewProducts": {
+    "description": "MT: needs native review. Department fallback pane button."
+  },
+  "catalogDecreaseQuantity": "Decrease quantity",
+  "@catalogDecreaseQuantity": {
+    "description": "MT: needs native review. Accessibility tooltip on quantity minus button."
+  },
+  "catalogIncreaseQuantity": "Increase quantity",
+  "@catalogIncreaseQuantity": {
+    "description": "MT: needs native review. Accessibility tooltip on quantity plus button."
+  },
+  "catalogHandpickedDaily": "Handpicked daily from trusted farms",
+  "@catalogHandpickedDaily": {
+    "description": "MT: needs native review. Listing header subtitle."
+  },
+  "catalogNothingHere": "Nothing here",
+  "@catalogNothingHere": {
+    "description": "MT: needs native review. Empty section title."
+  },
+  "catalogFreshPicksIn": "Fresh picks in",
+  "@catalogFreshPicksIn": {
+    "description": "MT: needs native review. Subcategory banner eyebrow text."
+  },
+  "catalogHandpickedQuality": "Handpicked, quality-checked, delivered fast",
+  "@catalogHandpickedQuality": {
+    "description": "MT: needs native review. Subcategory banner subtitle."
+  },
+  "catalogShareLinkCopied": "Share link copied",
+  "@catalogShareLinkCopied": {
+    "description": "MT: needs native review. Snackbar after copying a product share link."
+  },
+  "catalogAddedToCart": "{name} added to cart",
+  "@catalogAddedToCart": {
+    "description": "MT: needs native review. Snackbar after adding a product to cart. name is product data.",
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "catalogPercentOff": "{percent}% OFF",
+  "@catalogPercentOff": {
+    "description": "MT: needs native review. Discount badge on price widget.",
+    "placeholders": {
+      "percent": {}
+    }
+  },
+  "catalogPriceOnCredit": "{price} on VS Credit",
+  "@catalogPriceOnCredit": {
+    "description": "MT: needs native review. Credit price line under a product price (VS Credit is a brand name). price is a formatted currency string.",
+    "placeholders": {
+      "price": {}
+    }
+  },
+  "catalogPriceRange": "₹{min} – ₹{max}",
+  "@catalogPriceRange": {
+    "description": "MT: needs native review. Active price-filter chip label. min/max are formatted numbers.",
+    "placeholders": {
+      "min": {},
+      "max": {}
+    }
+  },
+  "catalogDiscountOff": "{percent}%+ off",
+  "@catalogDiscountOff": {
+    "description": "MT: needs native review. Active discount-filter chip label.",
+    "placeholders": {
+      "percent": {}
+    }
+  },
+  "verificationAadhaarInvalid": "Enter a valid 12-digit Aadhaar number",
+  "@verificationAadhaarInvalid": {
+    "description": "MT: needs native review"
+  },
+  "verificationOtpSentAadhaar": "OTP sent to your Aadhaar-linked mobile",
+  "@verificationOtpSentAadhaar": {
+    "description": "MT: needs native review"
+  },
+  "verificationEnterOtpReceived": "Enter the OTP you received",
+  "@verificationEnterOtpReceived": {
+    "description": "MT: needs native review"
+  },
+  "verificationAadhaarVerified": "Aadhaar verified",
+  "@verificationAadhaarVerified": {
+    "description": "MT: needs native review"
+  },
+  "verificationCouldNotCaptureImage": "Could not capture image",
+  "@verificationCouldNotCaptureImage": {
+    "description": "MT: needs native review"
+  },
+  "verificationUploadAadhaarBoth": "Please upload Aadhaar front and back",
+  "@verificationUploadAadhaarBoth": {
+    "description": "MT: needs native review"
+  },
+  "verificationRequiredForCredit": "Required to activate VS Credit.",
+  "@verificationRequiredForCredit": {
+    "description": "MT: needs native review"
+  },
+  "verificationOtpOptionalNote": "Optional — only needed if you can't receive the OTP.",
+  "@verificationOtpOptionalNote": {
+    "description": "MT: needs native review"
+  },
+  "verificationAadhaarFront": "Aadhaar Front",
+  "@verificationAadhaarFront": {
+    "description": "MT: needs native review"
+  },
+  "verificationAadhaarBack": "Aadhaar Back",
+  "@verificationAadhaarBack": {
+    "description": "MT: needs native review"
+  },
+  "verificationCantReceiveOtp": "Can't receive OTP? Continue with documents",
+  "@verificationCantReceiveOtp": {
+    "description": "MT: needs native review"
+  },
+  "verificationWhyAadhaarTitle": "We use Aadhaar verification to:",
+  "@verificationWhyAadhaarTitle": {
+    "description": "MT: needs native review"
+  },
+  "verificationReviewingDetails": "Our team is reviewing your details. Your credit limit will reflect in your profile once approved.",
+  "@verificationReviewingDetails": {
+    "description": "MT: needs native review"
+  },
+  "verificationCreditReflectionNote": "Credit reflection may take up to 2–4 hours after approval.",
+  "@verificationCreditReflectionNote": {
+    "description": "MT: needs native review"
+  },
+  "verificationCompleteSelections": "Please complete all selections",
+  "@verificationCompleteSelections": {
+    "description": "MT: needs native review"
+  },
+  "verificationHelpDetermineEligibility": "Help us determine your credit eligibility.",
+  "@verificationHelpDetermineEligibility": {
+    "description": "MT: needs native review"
+  },
+  "verificationHousehold": "Household",
+  "@verificationHousehold": {
+    "description": "MT: needs native review"
+  },
+  "verificationDraftSaved": "Draft saved",
+  "@verificationDraftSaved": {
+    "description": "MT: needs native review"
+  },
+  "verificationInitialAssessment": "Based on initial profile assessment.",
+  "@verificationInitialAssessment": {
+    "description": "MT: needs native review"
+  },
+  "verificationUploadAllDocs": "Please upload all required documents",
+  "@verificationUploadAllDocs": {
+    "description": "MT: needs native review"
+  },
+  "verificationWhyDocumentsTitle": "We use your documents to:",
+  "@verificationWhyDocumentsTitle": {
+    "description": "MT: needs native review"
+  },
+  "verificationPanConsentRequired": "Please allow us to verify your PAN to continue",
+  "@verificationPanConsentRequired": {
+    "description": "MT: needs native review"
+  },
+  "verificationPanVerified": "PAN verified",
+  "@verificationPanVerified": {
+    "description": "MT: needs native review"
+  },
+  "verificationPanComplianceNote": "Your PAN is required for financial compliance.",
+  "@verificationPanComplianceNote": {
+    "description": "MT: needs native review"
+  },
+  "verificationRiskEvaluation": "Risk Evaluation",
+  "@verificationRiskEvaluation": {
+    "description": "MT: needs native review"
+  },
+  "verificationPanConsentText": "I consent to VS Mart verifying my PAN with the Income Tax department for KYC.",
+  "@verificationPanConsentText": {
+    "description": "MT: needs native review"
+  },
+  "verificationVerifyPan": "Verify PAN",
+  "@verificationVerifyPan": {
+    "description": "MT: needs native review"
+  },
+  "verificationSubmitYourDetails": "Please submit your details.",
+  "@verificationSubmitYourDetails": {
+    "description": "MT: needs native review"
+  },
+  "verificationResidencePhotoAttached": "Residence photo attached.",
+  "@verificationResidencePhotoAttached": {
+    "description": "MT: needs native review"
+  },
+  "verificationCameraGalleryError": "Could not access the camera/gallery.",
+  "@verificationCameraGalleryError": {
+    "description": "MT: needs native review"
+  },
+  "verificationAddResidencePhoto": "Please add a photo of your residence.",
+  "@verificationAddResidencePhoto": {
+    "description": "MT: needs native review"
+  },
+  "verificationCaptureLocationFirst": "Capture your location before submitting.",
+  "@verificationCaptureLocationFirst": {
+    "description": "MT: needs native review"
+  },
+  "verificationResidenceSubmitted": "Residence verification submitted.",
+  "@verificationResidenceSubmitted": {
+    "description": "MT: needs native review"
+  },
+  "verificationResidenceIntro": "Please upload a clear photo of your residence to verify your address for faster processing and secure deliveries.",
+  "@verificationResidenceIntro": {
+    "description": "MT: needs native review"
+  },
+  "verificationSampleApprovedImage": "Sample Approved Image",
+  "@verificationSampleApprovedImage": {
+    "description": "MT: needs native review"
+  },
+  "verificationIdeal": "Ideal",
+  "@verificationIdeal": {
+    "description": "MT: needs native review"
+  },
+  "verificationLatitude": "Latitude",
+  "@verificationLatitude": {
+    "description": "MT: needs native review"
+  },
+  "verificationLongitude": "Longitude",
+  "@verificationLongitude": {
+    "description": "MT: needs native review"
+  },
+  "verificationSubmissionFailed": "Submission failed. Please try again.",
+  "@verificationSubmissionFailed": {
+    "description": "MT: needs native review"
+  },
+  "verificationAddress": "Address",
+  "@verificationAddress": {
+    "description": "MT: needs native review"
+  },
+  "verificationSelfie": "Selfie",
+  "@verificationSelfie": {
+    "description": "MT: needs native review"
+  },
+  "verificationCreditInformation": "Credit Information",
+  "@verificationCreditInformation": {
+    "description": "MT: needs native review"
+  },
+  "verificationHouse": "House",
+  "@verificationHouse": {
+    "description": "MT: needs native review"
+  },
+  "verificationCompleteAllSections": "Complete all sections to submit your application.",
+  "@verificationCompleteAllSections": {
+    "description": "MT: needs native review"
+  },
+  "verificationApplicationSubmitted": "Application Submitted",
+  "@verificationApplicationSubmitted": {
+    "description": "MT: needs native review"
+  },
+  "verificationCreditDecision": "Credit eligibility decision",
+  "@verificationCreditDecision": {
+    "description": "MT: needs native review"
+  },
+  "verificationApplicationRef": "Application {id}",
+  "@verificationApplicationRef": {
+    "description": "MT: needs native review. {id} is the application reference id.",
+    "placeholders": {
+      "id": {}
+    }
+  },
+  "verificationNotifyDecision": "We'll notify you the moment a decision is made. You can keep browsing in the meantime.",
+  "@verificationNotifyDecision": {
+    "description": "MT: needs native review"
+  },
+  "verificationUploading": "Uploading {title}…",
+  "@verificationUploading": {
+    "description": "MT: needs native review. {title} is the document name being uploaded.",
+    "placeholders": {
+      "title": {}
+    }
+  },
+  "verificationLimitLabel": "limit",
+  "@verificationLimitLabel": {
+    "description": "MT: needs native review. Small caption under a credit-limit amount."
+  },
+  "verificationCaptureFailed": "Capture failed",
+  "@verificationCaptureFailed": {
+    "description": "MT: needs native review"
+  },
+  "verificationSelfieCaptured": "Selfie captured",
+  "@verificationSelfieCaptured": {
+    "description": "MT: needs native review"
+  }
+}

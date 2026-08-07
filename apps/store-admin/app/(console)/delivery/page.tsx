@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { fmtDate } from "@/lib/utils";
 
@@ -86,9 +86,33 @@ function DeliveryInner() {
   // Returns) instead of sitting mixed into the main list looking like just
   // another still-in-progress row — a failed delivery isn't "pending",
   // it's stalled and needs an explicit decision.
-  const allRows = listQ.data ?? [];
-  const activeRows = allRows.filter((r) => r.status !== "failed");
-  const failedRows = allRows.filter((r) => r.status === "failed");
+  //
+  // `rejected` belongs here too. The agent turning a job down auto-reassigns it
+  // to the next best rider, but when nobody is eligible it stays rejected — and
+  // "rejected" is in TERMINAL_STATUSES, so the row lost its Reassign button and
+  // wasn't in this card either. Nobody was delivering it and the store had no
+  // way to act. Matches the backend's own grouping (`delivery_list`'s
+  // `status=failed` filter covers failed + rejected).
+  const allRows = React.useMemo(() => listQ.data ?? [], [listQ.data]);
+  const { failedRows, activeRows } = React.useMemo(() => {
+    const stalled = new Set(["failed", "rejected"]);
+    // An order that already has a live task doesn't need a decision — the
+    // rejection was auto-reassigned, or the store just retried it. Without this
+    // the card kept nagging about attempts that had already been superseded,
+    // and the one row that genuinely needed attention was lost among them.
+    const liveOrders = new Set(
+      allRows.filter((r) => LIVE_STATUSES.has(r.status)).map((r) => r.orderCode)
+    );
+    const needsDecision = allRows.filter(
+      (r) => stalled.has(r.status) && !liveOrders.has(r.orderCode)
+    );
+    const decisionIds = new Set(needsDecision.map((r) => r.id));
+    // Superseded attempts stay visible in the table as history.
+    return {
+      failedRows: needsDecision,
+      activeRows: allRows.filter((r) => !decisionIds.has(r.id)),
+    };
+  }, [allRows]);
 
   const columns: ColumnDef<DeliveryRow, unknown>[] = [
     { header: "Order", cell: ({ row }) => <span className="font-mono text-sm">{row.original.orderCode ?? "—"}</span> },
@@ -203,19 +227,54 @@ function DeliveryInner() {
 }
 
 function ReassignDialog({ row, agents, onClose }: { row: DeliveryRow; agents: AgentRow[]; onClose: () => void }) {
-  const [agentId, setAgentId] = React.useState(row.agentId ?? "");
+  // Deliberately blank rather than pre-selecting `row.agentId`: on a failed or
+  // rejected delivery that default is the agent who just failed or refused it,
+  // so the fastest path through the dialog was to hand the job straight back to
+  // them. Choosing is the whole point of this dialog.
+  const [agentId, setAgentId] = React.useState("");
+  const stalled = row.status === "failed" || row.status === "rejected";
   const m = useApiMutation<void>(
     () => api.post(`/store/delivery/${row.id}/reassign`, { agentId }),
     { invalidate: [["store", "delivery"]], successMessage: "Reassigned", onDone: onClose }
   );
+  // On duty first, then the lightest load — the two things that decide whether
+  // this delivery actually moves.
+  const sorted = React.useMemo(
+    () => [...agents].sort((a, b) => Number(b.onDuty) - Number(a.onDuty) || a.active - b.active),
+    [agents]
+  );
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-md">
-        <DialogHeader><DialogTitle>Reassign delivery — {row.orderCode}</DialogTitle></DialogHeader>
-        <Select value={agentId} onValueChange={setAgentId}>
-          <SelectTrigger><SelectValue placeholder="Pick an agent" /></SelectTrigger>
-          <SelectContent>{agents.map((a) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}</SelectContent>
-        </Select>
+        <DialogHeader>
+          <DialogTitle>
+            {stalled ? "Retry delivery" : "Reassign delivery"} — {row.orderCode}
+          </DialogTitle>
+          <DialogDescription>
+            {row.agent
+              ? `${stalled ? "Failed with" : "Currently with"} ${row.agent} · a fresh task is opened for the new agent to accept`
+              : "Unassigned · a fresh task is opened for the new agent to accept"}
+          </DialogDescription>
+        </DialogHeader>
+        {sorted.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No agents available for your store. Add or activate an agent first.
+          </p>
+        ) : (
+          <Select value={agentId} onValueChange={setAgentId}>
+            <SelectTrigger><SelectValue placeholder="Pick an agent" /></SelectTrigger>
+            <SelectContent>
+              {sorted.map((a) => (
+                <SelectItem key={a.id} value={a.id}>
+                  {a.name}
+                  {!a.onDuty && " (off duty)"}
+                  {a.active > 0 && ` · ${a.active} active`}
+                  {a.id === row.agentId && " · current"}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={m.isPending}>Cancel</Button>
           <Button onClick={() => m.mutate()} disabled={m.isPending || !agentId}>

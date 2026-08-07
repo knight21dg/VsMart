@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Full-white launch screen so there's no colored flash before the Flutter
+     splash (which shows the VS Mart logo) renders. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@android:color/white" />
+</layer-list>

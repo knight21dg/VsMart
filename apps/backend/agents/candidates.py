@@ -68,6 +68,44 @@ def candidate_agents(store=None):
     return scoped or storeless
 
 
+def assignable_agents(store=None):
+    """Agents a HUMAN may (re)assign a task to from a panel.
+
+    Same store-boundary rule as ``candidate_agents`` (that store's agents, else
+    the store-less legacy pool), minus the on-duty filter: someone picking a
+    name may knowingly choose an agent who is about to start their shift, and
+    the panel shows each row's duty state so the choice is informed.
+
+    This is the ONE definition the store panel's agent picker and the reassign
+    endpoints both read. When they were computed separately the endpoint
+    accepted agents the picker never offered — and a picker is a convenience,
+    not a control.
+    """
+    from accounts.models import User
+
+    pool = list(User.objects.filter(role="agent", is_active=True))
+    if store is None:
+        return pool
+    store_id = getattr(store, "id", store)
+    scoped, storeless = [], []
+    for a in pool:
+        owner = agent_store(a)
+        if owner is None:
+            storeless.append(a)
+        elif getattr(owner, "id", owner) == store_id:
+            scoped.append(a)
+    return scoped or storeless
+
+
+def eligible_for_store(agent, store):
+    """Whether ``agent`` may be handed a task belonging to ``store`` — the
+    server-side guard behind every manual (re)assignment. Defined as membership
+    of [assignable_agents], so it can never drift from what the picker shows."""
+    if store is None:
+        return True
+    return any(a.id == agent.id for a in assignable_agents(store))
+
+
 def unassignable_reason(store=None):
     """Why ``candidate_agents`` came back empty — for the alert sent to staff."""
     from accounts.models import User

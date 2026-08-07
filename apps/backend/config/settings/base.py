@@ -285,13 +285,13 @@ MSG91_OTP_TEMPLATE_ID = env("MSG91_OTP_TEMPLATE_ID", default="")
 SMSLOGIN_BASE_URL = env("SMSLOGIN_BASE_URL", default="https://smslogin.co/v3/api.php")
 SMSLOGIN_USERNAME = env("SMSLOGIN_USERNAME", default="Vsmart")
 SMSLOGIN_API_KEY = env("SMSLOGIN_API_KEY", default="a2fc04f1c219998a2ff1")
-# Both of these come from the DLT registration and MUST be filled in before live
-# sending — the gateway rejects a request without them.
-SMSLOGIN_SENDER_ID = env("SMSLOGIN_SENDER_ID", default="")
+SMSLOGIN_SENDER_ID = env("SMSLOGIN_SENDER_ID", default="VSMRTS")
+# Per-purpose DLT template ids + bodies live in `accounts/otp.py::DLT_TEMPLATES`
+# — id and text are a matched pair that must not drift, so they are kept
+# together there rather than as separate admin-editable fields. These two are
+# only the fallback for a purpose with no registered template yet.
 SMSLOGIN_TEMPLATE_ID = env("SMSLOGIN_TEMPLATE_ID", default="")
-SMSLOGIN_OTP_MESSAGE = env(
-    "SMSLOGIN_OTP_MESSAGE",
-    default="{code} is your VS Mart verification code. Do not share it with anyone.")
+SMSLOGIN_OTP_MESSAGE = env("SMSLOGIN_OTP_MESSAGE", default="")
 # Push (FCM). Used by notifications.services when a server key is configured.
 FCM_SERVER_KEY = env("FCM_SERVER_KEY", default="")
 # Google Maps server key (directions/geocoding/static) — admin-managed via the panel.
@@ -329,7 +329,8 @@ CREDIT_BUREAU_PROVIDER = env("CREDIT_BUREAU_PROVIDER", default="payon")
 CREDIT_BUREAU_BASE_URL = env(
     "CREDIT_BUREAU_BASE_URL",
     default="https://reseller.apipayon.in/api/v1/serv2/check_credit_score.php")
-CREDIT_BUREAU_API_KEY = env("CREDIT_BUREAU_API_KEY", default="")
+CREDIT_BUREAU_API_KEY = env(
+    "CREDIT_BUREAU_API_KEY", default="G6kXYi8HJHOmCxvPDUScsI83xe3OgxNZ")
 
 # Email (password reset, transactional). With no EMAIL_HOST set, the console
 # backend prints mail to the server log; set EMAIL_HOST etc. to send real SMTP.

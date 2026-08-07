@@ -449,7 +449,14 @@ class StoreCollectionReassignView(StoreScopedMixin, APIView):
         if not agent_id:
             raise ValidationError({"agentId": ["Pick an agent to retry with."]})
         agent = get_object_or_404(User, pk=agent_id, role=Role.AGENT, is_active=True)
-        manual_assign(c, agent, by=request.user, reason="store retry")
+        # Store boundary is enforced here, not just in the picker — otherwise a
+        # store could hand its recovery to another store's agent, who then holds
+        # this store's cash.
+        from agents.candidates import eligible_for_store
+
+        if not eligible_for_store(agent, self.store):
+            raise ValidationError({"agentId": ["That agent belongs to another store."]})
+        manual_assign(c, agent, by=request.user, reason="store reassign")
         c.refresh_from_db()
         return Response({"id": str(c.id), "status": c.status, "agent": agent.name})
 

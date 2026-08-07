@@ -2,6 +2,173 @@
 
 All notable engineering changes to VS Mart. Newest first.
 
+## [Unreleased] — Monorepo consolidation + documentation refresh (2026-08-07)
+
+The repo held four of the six surfaces. `apps/user_app` (the customer app — the flagship
+product) and `apps/vsmartlanding` were standalone nested git repos excluded by
+`.gitignore`, and neither had ever reached GitHub: `user_app`'s `origin` pointed at
+the same VsMart.git URL, but only the monorepo's initial commit was ever on it.
+A clone of this repository was missing the customer app entirely.
+
+- **Both nested repos absorbed into the monorepo.** Their `.git` directories were
+  removed and their working trees committed as ordinary directories; their prior
+  independent histories (10 and 2 commits) were dropped deliberately. Their own
+  `.gitignore` files still apply on top of the root one.
+- **Root `.gitignore` gained secret guards** for what those trees carry:
+  `*.jks`, `*.keystore`, `key.properties` and `.env*.local`. The Android **upload
+  keystore** is the app's identity on Play — whoever holds it can ship an update
+  under VS Mart's name. All three were already ignored inside their own repos and
+  had never been tracked; the root rules make that independent of a nested file.
+- **Documentation brought current.** `HANDOFF.md` was six weeks stale and still
+  claimed there was "no more code to write"; it is rewritten against the system as
+  it actually stands. New `README.md` (repo front door) and `docs/ARCHITECTURE.md`
+  (topology, domain flow, the load-bearing invariants and why each exists).
+  `PROJECT_STATUS.md` refreshed.
+- **Test counts in the docs are measured, not remembered** — every suite was run
+  for this commit: backend 1,229 passing, `user_app` 165, `agent_app` 76, both
+  Flutter apps `analyze` clean.
+
+## [Unreleased] — Store panel: reassigning collections and stalled deliveries (2026-08-05)
+
+Both reassign endpoints already existed; what was missing was reach and scope.
+1218 backend tests green.
+
+- **The agent picker listed every agent on the platform.** `/store/delivery/agents`
+  called `agent_load()` unscoped, and it populates the reassign pickers on BOTH
+  the Delivery and Collections pages — so a store could hand its delivery or its
+  cash recovery to another store's rider, at which point the task drops off the
+  owning store's board and lands with somebody who can't physically do it (and,
+  for a collection, ends up holding this store's cash). Now store-scoped, with
+  deactivated accounts excluded. The store boundary is enforced at both reassign
+  endpoints too — a picker is a convenience, not a control.
+- **Picker and guard now read one definition** (`agents.candidates.assignable_agents`).
+  Computed separately, they disagreed: the endpoint accepted store-less agents
+  the picker never offered. Eligibility follows the same store-then-legacy-pool
+  rule as `candidate_agents`, minus the on-duty filter — a human may knowingly
+  pick someone starting their shift, and every row shows its duty state and
+  current load.
+- **Collections could only be reassigned after a failure.** The panel offered it
+  on `failed` alone, so the everyday case — the agent holding it went off duty,
+  is unreachable, or was the wrong person — had no lever at all.
+  `manual_assign` has always accepted requested/assigned/failed/disputed; the UI
+  now matches, labelled "Retry" after a failure and "Reassign" otherwise. A
+  collection mid-visit (accepted/en route/reached) stays untouchable — a rider at
+  the door shouldn't have the task pulled from under them.
+- **A rejected delivery was stranded.** Rejection auto-reassigns, but when nobody
+  else is eligible the order keeps a rejected task and no live one — nobody is
+  delivering it. `rejected` is TERMINAL, so the row lost its Reassign button and
+  wasn't in the failed card either. The store endpoint now goes through
+  `manual_assign`, which hands over a live task when there is one and otherwise
+  opens the next attempt.
+- **A re-dispatch after a failed drop said "attempt 1".** `manual_assign`'s
+  new-task path hardcoded `attempt_no=1`, so the agent, the customer's tracking
+  and `agent_performance` all lost the fact that the address had already been
+  tried. It now continues the count.
+- **A failed attempt keeps its status** instead of being rewritten to
+  "reassigned" on retry — those goods are still in the first agent's bag, so the
+  row has to stay in "Returns to receive". Retrying used to make it vanish from
+  there.
+- The "needs a decision" card only lists stalled tasks whose order has no live
+  task, so superseded attempts stop nagging; they remain in the table as history.
+  The retry dialog no longer pre-selects the agent who just failed or refused
+  the job.
+
+## [Unreleased] — Agent app field-readiness audit (2026-08-04)
+
+Audit of `apps/agent_app` for what actually happens in the field — no signal, no
+GPS fix, a killed camera, a task in an unexpected state — and fixes for what it
+turned up. 76 tests green, `flutter analyze` clean.
+
+### Integrity
+- **The arrival geofence could be bypassed by turning location off.**
+  `LocationService.current()` accepted a caller-supplied fallback which every
+  delivery caller filled with *the task's destination*, so with GPS off the app
+  answered "where are you?" with the delivery address: `/arrive` cleared the
+  backend's 100 m check from anywhere, the proof-of-delivery photo was stamped
+  with the destination rather than where it was taken, and `/deliveries/location`
+  breadcrumbs (dispatch scoring, audit trail) were fed coordinates the device
+  never visited. The service now only ever reports where the device has actually
+  been: `currentLive()` for anything treated as evidence of presence, a
+  stale-but-real last fix for map centring and breadcrumbs, and no substitution
+  at all. Arrival with no fix now prompts the agent to enable GPS — the same rule
+  the verification flow already applied to its GPS evidence.
+
+### Money and state
+- **A collection step that never reached the server was reported as done.** The
+  screen's `_run` returned `CollectionApiException?` — null for a success *and*
+  for every non-API failure — and callers gated their success toast on
+  `err == null`. With no signal the agent was told "OTP sent to the customer to
+  confirm ₹X" for a request that never left the phone, then waited for a code
+  nobody was sent; a failed verify cleared the field and said "OTP verified".
+  Both flows (and the identical delivery one, where it opened the live map for a
+  trip that never started) now return the caught error and only advance on a
+  real success.
+
+### Field conditions
+- **Network failures say so.** New `core/net_errors.dart` classifies a caught
+  error into offline / timeout / server / API-rejection; every screen previously
+  collapsed all of them into "Something went wrong. Please try again.", which is
+  the one message that tells a rider nothing about what to do next.
+- **GPS calls are bounded.** `getCurrentPosition` had no timeout anywhere, so on
+  a cold antenna or indoors "Arrive" and the photo step could hang forever with
+  no spinner and no error — a dead-looking app. Now a 12 s limit in the app
+  (30 s in the background service, which also gained HTTP timeouts), with the
+  busy state held across the fix attempt so the button can't be double-tapped.
+- **A proof photo that fails to upload is no longer lost.** The bytes are kept
+  and the step offers "Retry upload" (or a fresh photo), instead of sending the
+  agent back to the camera to re-shoot a doorway they've already left.
+- **The app can no longer boot into a blank screen.** `_AuthGate` decided on
+  `agentProfileProvider.valueOrNull == null`, which is also what an *error* looks
+  like — so a failed `/agents/me` (offline, 5xx, dead session) parked the app on
+  an endless spinner with no message, no retry and no way out. It now shows the
+  classified error with Retry and a Sign-out escape hatch.
+- A delivery in a status this build doesn't know renders an explanation and a
+  refresh hint instead of an empty action area.
+
+## [Unreleased] — Customer sign-in on the website (2026-08-04)
+
+### thevsmart.com (apps/vsmartlanding)
+- **OTP entry rewritten around per-slot state** after the first cut broke on real
+  use. The boxes had no `maxLength`, so typing beside an existing digit produced
+  a two-character value that the handler read as a *paste* and used as the whole
+  code — correcting one digit of `92345` collapsed it to `97`. Each box now owns
+  its position (array of slots, not a shifting string), takes `maxLength=1`, and
+  selects on focus so a keystroke replaces rather than appends. Editing a digit
+  now moves to the next box instead of jumping to the end, and Backspace clears
+  in place (then steps back) instead of shifting every later digit left.
+- **Fast typing no longer drops digits.** Keystrokes outrun React's re-render, so
+  each handler was composing its edit onto the stale render-time array; the
+  component now chains edits through a ref that re-syncs after each commit.
+- **Focus survives a rejected code.** The boxes were disabled during
+  verification and then cleared, leaving no focus anywhere — you had to click
+  back in. They now stay enabled, clear and re-focus the first box on failure,
+  drop the red state as soon as you retype, and make "Resend code" available
+  immediately instead of finishing the countdown.
+- **Phone + OTP sign-in for customers**, reusing the app's `/auth/otp/send` +
+  `/auth/otp/verify` endpoints — no new backend. New `/login` (number → 6-digit
+  code → name capture for first-time customers) and `/account` (profile with
+  inline name/email edit, order history, sign out). The nav now shows either
+  "Sign in" or the signed-in customer, on desktop and in the mobile menu.
+- **Tokens are never exposed to page scripts.** The browser calls this site's own
+  route handlers (`/api/auth/*`, `/api/account/*`); the JWT pair lives in
+  httpOnly `SameSite=Lax` cookies and is attached server-side. Consequences worth
+  knowing: the API's CORS allow-list doesn't need the landing domain, and the
+  mutating routes are CSRF-safe by cookie policy plus an origin check.
+- **Expired access tokens refresh transparently** (once per request, re-writing
+  the cookie); a dead refresh token clears the session rather than bouncing the
+  customer between `/login` and `/account`.
+- **The caller's IP is forwarded** on OTP requests — taken from the *last*
+  `X-Forwarded-For` hop (the one Caddy actually observed), so the API's 5/min OTP
+  throttle keys on the customer and not on the landing container, and can't be
+  evaded with a spoofed header.
+- Server-side API origin is configurable (`LANDING_INTERNAL_API_BASE_URL` →
+  `API_INTERNAL_BASE_URL`). Left unset it uses the public origin, like the
+  existing CMS fetches; pointing it at `http://backend:8000/api/v1` keeps the
+  traffic on the compose network but needs `backend` in `ALLOWED_HOSTS`, so it
+  stays opt-in rather than making a landing deploy restart the API.
+- The site is still not shoppable: checkout remains in the mobile app, and the
+  empty-orders state points there.
+
 ## [Unreleased] — Zone scoping edge cases + tracking gated on dispatch (2026-07-21)
 
 ### Zone / location

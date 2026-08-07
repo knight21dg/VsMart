@@ -238,11 +238,25 @@ def auto_assign(order, *, by=None):
 
 
 def manual_assign(order, agent, *, by, reason=""):
-    """Store admin manually assigns / reassigns to a specific agent."""
+    """Store admin manually assigns / reassigns to a specific agent.
+
+    Two shapes, and the difference matters:
+      • the order has a LIVE task → hand that task over (``reassign``), which
+        closes it out and carries the attempt number across;
+      • it doesn't (nobody assigned yet, or the last attempt failed / was
+        rejected) → open a fresh task as the NEXT attempt.
+
+    The second case used to always create ``attempt_no=1``, so a re-dispatch
+    after a failed drop reported itself as the first attempt — the agent, the
+    customer's tracking and `agent_performance` all lost the fact that this
+    address had already been tried.
+    """
     active = order.delivery_tasks.filter(status__in=[S.ASSIGNED, S.ACCEPTED]).first()
     if active:
         return reassign(active, agent, by=by, reason=reason or "Manual reassign")
-    return _new_task(order, agent, action="manual_assigned", by=by)
+    last = order.delivery_tasks.order_by("-attempt_no").first()
+    return _new_task(order, agent, action="manual_assigned", by=by,
+                     attempt_no=(last.attempt_no + 1) if last else 1)
 
 
 @transaction.atomic

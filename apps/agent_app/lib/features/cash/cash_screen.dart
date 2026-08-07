@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../core/api_exception.dart';
+import '../../core/net_errors.dart';
 import '../../core/ui.dart';
 import 'cash_data.dart';
 import 'cash_providers.dart';
@@ -25,7 +25,7 @@ class CashScreen extends ConsumerWidget {
       body: async.when(
         loading: () => const Loading(),
         error: (e, _) => ErrorRetry(
-          message: e is ApiException ? e.display : 'Could not load your cash.',
+          message: describeFailure(e, fallback: 'Could not load your cash.').display,
           onRetry: () => ref.invalidate(cashSummaryProvider),
         ),
         data: (summary) => RefreshIndicator(
@@ -278,7 +278,7 @@ class _DeclareSheetState extends ConsumerState<_DeclareSheet>
 
   void _showError(Object e, String fallback) {
     if (!mounted) return;
-    showToast(context, e is ApiException ? e.display : fallback, error: true);
+    showToast(context, describeFailure(e, fallback: fallback).display, error: true);
   }
 
   @override
@@ -577,7 +577,7 @@ class _DepositRowState extends ConsumerState<_DepositRow> {
     } catch (e) {
       if (mounted) {
         showToast(context,
-            e is ApiException ? e.display : 'Could not cancel the hand-over.',
+            describeFailure(e, fallback: 'Could not cancel the hand-over.').display,
             error: true);
       }
     } finally {

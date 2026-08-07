@@ -100,12 +100,20 @@ Future<bool> _pingOnce() async {
     var access = await tokens.access;
     if (access == null || access.isEmpty) return false;
 
+    // Bounded: an unbounded fix request can hang for the whole 90 s tick (and
+    // beyond), stacking one never-completing location request per tick while
+    // the notification still claims the agent is being tracked.
     final position = await Geolocator.getCurrentPosition(
-      locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
-    );
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        timeLimit: Duration(seconds: 30),
+      ),
+    ).timeout(const Duration(seconds: 35));
 
     final dio = Dio(BaseOptions(
       baseUrl: Env.apiBaseUrl,
+      connectTimeout: const Duration(seconds: 20),
+      receiveTimeout: const Duration(seconds: 20),
       validateStatus: (_) => true,
     ));
     Future<Response<dynamic>> post(String token) => dio.post<dynamic>(

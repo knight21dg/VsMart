@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/api_exception.dart';
+import '../../core/net_errors.dart';
 import '../../core/ui.dart';
 import '../collections/presentation/collection_detail_screen.dart';
 import '../deliveries/presentation/delivery_detail_screen.dart';
@@ -107,9 +107,9 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     if (state.loading) return const Loading();
 
     if (state.error != null && state.items.isEmpty) {
-      final e = state.error;
+      final e = state.error!;
       return ErrorRetry(
-        message: e is ApiException ? e.display : 'Could not load your history.',
+        message: describeFailure(e, fallback: 'Could not load your history.').display,
         onRetry: () => ref.read(historyControllerProvider.notifier).refresh(),
       );
     }

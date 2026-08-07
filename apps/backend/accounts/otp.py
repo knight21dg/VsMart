@@ -55,6 +55,46 @@ def verify(verification_id: str, phone: str, code: str) -> bool:
     return False
 
 
+# ── DLT-registered templates (India TRAI) ────────────────────────────────
+# Every OTP purpose needs its OWN template approved on the DLT portal, and the
+# body sent must match the registered text byte-for-byte — otherwise the gateway
+# rejects the send. Note the URL runs straight on after "anyone." with NO space:
+# that is how the templates were approved, so it is reproduced exactly.
+#
+# The id and the body are a matched pair — changing either requires a fresh DLT
+# registration — so they live together here rather than as two separately
+# admin-editable fields that could silently drift apart. `test_otp_templates.py`
+# locks the exact strings.
+_SUFFIX = "https://thevsmart.com/login"
+DLT_TEMPLATES = {
+    "login": (
+        "1777178591139204185",
+        "{code} is your VS Mart login OTP. Valid for 5 minutes."
+        " Do not share this code with anyone." + _SUFFIX,
+    ),
+    "agent_login": (
+        "1777178591135927753",
+        "{code} is your VS Mart Partner App login OTP. Valid for 5 minutes."
+        " Do not share this code with anyone." + _SUFFIX,
+    ),
+    "kyc_credit": (
+        "1777178591129663873",
+        "{code} is your OTP to verify your mobile number for a VS Mart credit"
+        " check. Valid for 5 minutes. Do not share this code with anyone." + _SUFFIX,
+    ),
+    # No password-reset-specific template was registered. Rather than leave the
+    # admin/store password-reset OTP unable to send, it uses the second approved
+    # "VS Mart login OTP" template — same wording, different id, so the two stay
+    # separable in the gateway's delivery reports. Swap in a dedicated template
+    # here if one is ever approved.
+    "password_reset": (
+        "1777178591167080776",
+        "{code} is your VS Mart login OTP. Valid for 5 minutes."
+        " Do not share this code with anyone.https://thevsmart.com/",
+    ),
+}
+
+
 def send_sms(phone: str, code: str, purpose: str) -> None:
     # Default to "console" (log the code) when unset, so a blank provider never
     # 500s the OTP-send endpoint — it just logs instead of sending. Read from the
@@ -67,9 +107,29 @@ def send_sms(phone: str, code: str, purpose: str) -> None:
         _send_via_msg91(phone, code)
         return
     if provider == "smslogin":
-        _send_via_smslogin(phone, code)
+        _send_via_smslogin(phone, code, purpose)
         return
     raise NotImplementedError(f"SMS provider '{provider}' not configured yet.")
+
+
+def template_for(purpose: str) -> tuple[str, str]:
+    """(template_id, message body) for `purpose`.
+
+    Falls back to the legacy single-template config for purposes that have no
+    DLT registration yet, so adding a new OTP purpose doesn't hard-break before
+    its template is approved.
+    """
+    if purpose in DLT_TEMPLATES:
+        return DLT_TEMPLATES[purpose]
+    template_id = runtime.cfg("smslogin_template_id")
+    body = runtime.cfg("smslogin_otp_message")
+    if not template_id or not body:
+        raise RuntimeError(
+            f"No DLT template registered for OTP purpose '{purpose}', and no "
+            f"fallback smslogin_template_id/smslogin_otp_message is configured. "
+            f"Register the template on the DLT portal and add it to DLT_TEMPLATES."
+        )
+    return template_id, body
 
 
 def _local_mobile(phone: str) -> str:
@@ -85,7 +145,7 @@ def _local_mobile(phone: str) -> str:
     return digits
 
 
-def _send_via_smslogin(phone: str, code: str) -> None:
+def _send_via_smslogin(phone: str, code: str, purpose: str = "login") -> None:
     """Send the OTP via smslogin.co's v3 HTTP API (SMS_PROVIDER=smslogin).
 
     The gateway is a plain GET that returns a MessageID on success and a plain
@@ -97,8 +157,9 @@ def _send_via_smslogin(phone: str, code: str) -> None:
     api_key = runtime.cfg("smslogin_api_key")
     username = runtime.cfg("smslogin_username")
     sender_id = runtime.cfg("smslogin_sender_id")
-    template_id = runtime.cfg("smslogin_template_id")
-    body = runtime.cfg("smslogin_otp_message") or "{code} is your VS Mart verification code."
+    # Each purpose carries its own DLT-approved template id + body; they must be
+    # sent as a matched pair or the gateway rejects the message.
+    template_id, body = template_for(purpose)
 
     missing = [
         name for name, value in (

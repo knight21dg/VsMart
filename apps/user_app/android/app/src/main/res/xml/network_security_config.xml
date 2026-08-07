@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Production stays HTTPS-only (the default below). Cleartext HTTP is permitted ONLY
+  for local development hosts so a debug/test build can reach the Django backend over
+  USB (adb reverse → 127.0.0.1) or the LAN. These hosts don't exist in production.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">127.0.0.1</domain>
+        <domain includeSubdomains="true">localhost</domain>
+        <domain includeSubdomains="true">10.0.2.2</domain>
+        <domain includeSubdomains="true">192.168.1.9</domain>
+        <domain includeSubdomains="true">192.168.137.1</domain>
+    </domain-config>
+</network-security-config>

@@ -1,0 +1,23 @@
+# Static analysis configuration for the VS Mart Customer App.
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  # Generated files (Freezed / json_serializable / Riverpod / Hive) are not
+  # hand-authored and should be excluded from lint reporting.
+  exclude:
+    - "**/*.g.dart"
+    - "**/*.freezed.dart"
+    - "lib/firebase_options.dart"
+  errors:
+    # Freezed places @JsonKey/@Default on constructor params (a known false
+    # positive for this lint). Silence it project-wide per Freezed's guidance.
+    invalid_annotation_target: ignore
+
+linter:
+  rules:
+    prefer_single_quotes: true
+    require_trailing_commas: true
+    avoid_print: true
+    prefer_const_constructors: true
+    prefer_const_declarations: true
+    unawaited_futures: true
