@@ -15,6 +15,23 @@ import { ErrorState } from "@/components/states";
 import type { CursorMeta, PageMeta } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
+/**
+ * True when a click landed on a control inside the row rather than on the row.
+ *
+ * A clickable row almost always also carries action buttons. Without this the
+ * row handler fires for those clicks too, so pressing a destructive action both
+ * opened its confirm dialog and navigated away in the same tick — the dialog
+ * unmounted before it could be seen and the action never happened. That is
+ * exactly how zone deletion broke in the admin console. Today every clickable
+ * table here calls `stopPropagation` by hand; this makes remembering optional.
+ */
+function isInteractiveTarget(target: EventTarget | null): boolean {
+  return (
+    target instanceof Element &&
+    !!target.closest('button, a, input, select, textarea, label, [role="button"], [role="checkbox"], [role="menuitem"], [data-row-click="ignore"]')
+  );
+}
+
 interface DataTableProps<T> {
   columns: ColumnDef<T, unknown>[];
   data: T[];
@@ -71,6 +88,27 @@ export function DataTable<T>({
     getCoreRowModel: getCoreRowModel(),
     manualPagination: true,
   });
+
+  /*
+   * Keep the requested page inside the range the server actually has.
+   *
+   * The page number lives in the caller's state while the total lives in the
+   * response, so anything that shrinks the result set behind a stationary page
+   * cursor strands the operator: deleting the last row on page 5 leaves them on
+   * "Page 5 of 4" looking at "No records found." — the row they deleted appears
+   * to have taken the whole table with it. Next is disabled at that point, so the
+   * only way out is to notice the Prev arrow.
+   */
+  const current = page ?? pageMeta?.page;
+  const totalPages = pageMeta?.totalPages;
+  React.useEffect(() => {
+    if (!onPageChange || current == null || totalPages == null) return;
+    // `loading` guards the gap between a page change and its response, where the
+    // previous page's meta is still mounted and would bounce the page straight back.
+    if (loading) return;
+    const target = Math.max(totalPages, 1);
+    if (current > target) onPageChange(target);
+  }, [current, totalPages, loading, onPageChange]);
 
   const selectable = !!(rowId && selected && onSelectedChange);
   const chosen = React.useMemo(() => new Set(selected ?? []), [selected]);
@@ -158,7 +196,7 @@ export function DataTable<T>({
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
-                  onClick={onRowClick ? () => onRowClick(row.original) : undefined}
+                  onClick={onRowClick ? (e) => { if (!isInteractiveTarget(e.target)) onRowClick(row.original); } : undefined}
                   className={cn(onRowClick && "cursor-pointer")}
                 >
                   {selectable && (

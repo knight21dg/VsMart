@@ -41,19 +41,10 @@ class MockProvider(base.VerificationProvider):
                  name_match=base.names_match(name, verified_name) if name else None,
                  message="PAN verified.", raw={"category": "person", "mock": True})
 
-    def start_digilocker(self, *, redirect_url, docs=None):
-        ref = uuid.uuid4().hex
-        return R(kind=base.DIGILOCKER, status=base.PENDING, reference_id=ref,
-                 redirect_url=f"https://mock.setu.local/digilocker/{ref}",
-                 message="Consent pending.")
-
-    def fetch_digilocker(self, *, request_id, name=""):
-        verified_name = name or "Verified Holder"
-        return R(kind=base.AADHAAR, status=base.VERIFIED, verified_name=verified_name,
-                 id_masked="XXXXXXXX1234", reference_id=request_id,
-                 name_match=base.names_match(name, verified_name) if name else None,
-                 message="Aadhaar fetched from DigiLocker.",
-                 raw={"source": "digilocker", "mock": True})
+    # DigiLocker deliberately absent: Payon is the ONE DigiLocker
+    # provider (kyc/providers/payon.py). A second implementation here
+    # would be a way for a misconfiguration to silently answer instead
+    # of failing, which for a mock means fabricating a verified Aadhaar.
 
     def aadhaar_okyc_init(self, *, aadhaar):
         return R(kind=base.AADHAAR, status=base.PENDING, reference_id=uuid.uuid4().hex,

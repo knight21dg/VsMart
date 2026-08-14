@@ -104,7 +104,9 @@ export default function ProductMasterPage() {
     { accessorKey: "sku", header: "SKU", cell: ({ row }) => <span className="font-mono text-xs">{row.original.sku || "—"}</span> },
     { accessorKey: "categoryName", header: "Category", cell: ({ row }) => <span className="text-muted-foreground">{row.original.categoryName}</span> },
     { accessorKey: "hsn", header: "HSN", cell: ({ row }) => <span className="font-mono text-xs">{row.original.hsn || "—"}</span> },
-    { id: "gst", header: "GST", cell: ({ row }) => (row.original.gstRate != null ? `${(row.original.gstRate * 100).toFixed(0)}%` : "—") },
+    // gstRate is a percentage (18 = 18%). It used to be a fraction here and was
+    // rendered as `gstRate * 100`, which is why the form asked for "0–1".
+    { id: "gst", header: "GST", cell: ({ row }) => (row.original.gstRate != null ? `${row.original.gstRate}%` : "Default") },
     {
       id: "stores",
       header: "Stores",
@@ -160,7 +162,22 @@ export default function ProductMasterPage() {
             <F label="Unit"><Input value={form.unit ?? ""} onChange={(e) => setForm({ ...form, unit: e.target.value })} /></F>
             <F label="SKU"><Input value={form.sku ?? ""} onChange={(e) => setForm({ ...form, sku: e.target.value })} /></F>
             <F label="HSN"><Input value={form.hsn ?? ""} onChange={(e) => setForm({ ...form, hsn: e.target.value })} /></F>
-            <F label="GST rate (0–1)"><Input type="number" step="0.01" value={form.gstRate ?? ""} onChange={(e) => setForm({ ...form, gstRate: e.target.value as unknown as number })} /></F>
+            {/* A free-text decimal let operators type 0.18 for 18% (the old
+                label literally asked for 0–1), and accepted typos like 1.8 or
+                180 just as happily — a silent tax error on every invoice. The
+                slabs are the only legal values, so offer exactly those. */}
+            <F label="GST rate">
+              <Select
+                value={form.gstRate != null ? String(form.gstRate) : "default"}
+                onValueChange={(v) => setForm({ ...form, gstRate: v === "default" ? null : (Number(v) as number) })}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="default">Platform default</SelectItem>
+                  {GST_SLABS.map((s) => <SelectItem key={s} value={String(s)}>{s}%</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </F>
             <F label="Category">
               <Select value={form.categoryId != null ? String(form.categoryId) : ""} onValueChange={(v) => setForm({ ...form, categoryId: v })}>
                 <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
@@ -212,6 +229,10 @@ export default function ProductMasterPage() {
     </>
   );
 }
+
+/** The statutory Indian GST slabs, as percentages. Mirrors `core.pricing.GST_SLABS`
+ *  on the backend, which rejects anything else. */
+const GST_SLABS = [0, 0.25, 3, 5, 12, 18, 28] as const;
 
 function numOrNull(v: unknown): number | null {
   if (v === "" || v == null) return null;

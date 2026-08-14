@@ -87,7 +87,9 @@ export default function SettingsPage() {
       <Card>
         <CardHeader><CardTitle className="text-sm">Platform rules (set by VS Mart HQ)</CardTitle></CardHeader>
         <CardContent className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <Field label="GST rate" value={`${(q.data.platform.gstRate * 100).toFixed(0)}%`} />
+          {/* Already a percentage from the API — multiplying by 100 again
+              turned 18% into 1800%. */}
+          <Field label="GST rate" value={`${q.data.platform.gstRate}%`} />
           <Field label="Delivery fee" value={inr(q.data.platform.deliveryFee)} />
           <Field label="Free delivery over" value={inr(q.data.platform.freeDeliveryThreshold)} />
           <Field label="Default credit limit" value={inr(q.data.platform.creditDefaultLimit)} />

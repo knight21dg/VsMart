@@ -1,0 +1,56 @@
+# Line endings.
+#
+# This repo is developed on Windows with `core.autocrlf=true`, which checks
+# files out of git with CRLF endings. That is fine for source we only ever
+# compile — and fatal for anything Linux executes directly.
+#
+# A `#!/bin/sh\r` shebang makes the kernel look for an interpreter literally
+# named "/bin/sh\r", and the container dies with the maximally unhelpful
+# `exec /app/docker-entrypoint.sh: no such file or directory` on a file that
+# plainly exists. That took production down during the 2026-08-09 deploy: the
+# release was shipped as a tar of the Windows working tree, so every CRLF came
+# with it and the backend crash-looped.
+#
+# Forcing LF on the files the container executes or parses removes the whole
+# class of failure at the source, rather than relying on remembering to convert
+# on the way out.
+
+# Let git decide for ordinary text, normalising to LF in the repository.
+* text=auto
+
+# MUST be LF — Linux executes or parses these directly.
+*.sh            text eol=lf
+Dockerfile      text eol=lf
+Dockerfile.*    text eol=lf
+*.dockerfile    text eol=lf
+docker-entrypoint.sh text eol=lf
+Caddyfile       text eol=lf
+*.yml           text eol=lf
+*.yaml          text eol=lf
+docker-compose*.yml  text eol=lf
+.env.example    text eol=lf
+
+# Windows-only tooling stays CRLF.
+*.bat           text eol=crlf
+*.cmd           text eol=crlf
+*.ps1           text eol=crlf
+
+# Binary — never touch.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.apk binary
+*.aab binary
+*.keystore binary
+*.jks binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.zip binary
+*.gz binary
+*.sqlite3 binary

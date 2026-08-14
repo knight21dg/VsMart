@@ -4,6 +4,7 @@ import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { api, useApiMutation } from "@/lib/api/hooks";
+import { API_BASE } from "@/lib/api/client";
 import { useStore } from "@/lib/store/store-context";
 import { PageHeader } from "@/components/page-header";
 import { DataTable } from "@/components/data-table";
@@ -17,6 +18,7 @@ import {
 import { ErrorState, LoadingState } from "@/components/states";
 import { KV, Section, sheetClass } from "@/components/detail-sheet";
 import { ProductLink } from "@/components/product-link";
+import { AuthImage } from "@/components/auth-image";
 import { inr, fmtDate, titleize } from "@/lib/utils";
 
 interface ReturnRow {
@@ -30,7 +32,16 @@ interface ReturnDetail {
   decisionNote: string; decidedBy: string | null;
   order: { code: string | null; total: number; paymentMethod: string | null; paymentStatus: string | null; status: string | null };
   customer: { id: string | null; name: string | null; phone: string | null };
-  items: { name: string; quantity: number; amount: number }[];
+  items: {
+    name: string; quantity: number; amount: number;
+    acceptedQuantity: number | null; acceptedAmount: number | null;
+    settledQuantity: number; settledAmount: number;
+  }[];
+  /** Customer proof at submission + the agent's proof at the door. */
+  evidence: {
+    id: string; source: "customer" | "agent"; url: string;
+    capturedAt: string | null;
+  }[];
 }
 
 // Next actions available from each status.
@@ -188,6 +199,8 @@ function ReturnDetailSheet({ code, onClose }: { code: string | null; onClose: ()
               )}
             </Section>
 
+            <ReturnEvidence evidence={d.evidence ?? []} />
+
             {(d.decisionNote || d.decidedBy) && (
               <Section title="Decision">
                 {d.decidedBy && <KV label="By" value={d.decidedBy} />}
@@ -223,5 +236,61 @@ function ReturnDetailSheet({ code, onClose }: { code: string | null; onClose: ()
         )}
       </DialogContent>
     </Dialog>
+  );
+}
+
+/**
+ * The photos backing a return.
+ *
+ * A return can't even be submitted without them, yet the review payload carried
+ * none — so a reviewer approved or declined without ever seeing the evidence the
+ * customer was forced to upload. Customer proof (condition on submission) and
+ * agent proof (condition at the door) are labelled separately because they
+ * answer different questions: what was claimed, versus what was found.
+ *
+ * `AuthImage` because the endpoint is permission-gated and a bare <img src>
+ * carries no bearer token.
+ */
+function ReturnEvidence({
+  evidence,
+}: {
+  evidence: { id: string; source: "customer" | "agent"; url: string; capturedAt: string | null }[];
+}) {
+  if (evidence.length === 0) {
+    return (
+      <Section title="Photos">
+        <p className="text-muted-foreground">No photos were attached.</p>
+      </Section>
+    );
+  }
+  const groups: { key: "customer" | "agent"; label: string }[] = [
+    { key: "customer", label: "Customer's photos (as submitted)" },
+    { key: "agent", label: "Agent's photos (at pickup)" },
+  ];
+  return (
+    <>
+      {groups.map(({ key, label }) => {
+        const shots = evidence.filter((e) => e.source === key);
+        if (shots.length === 0) return null;
+        return (
+          <Section key={key} title={`${label} · ${shots.length}`}>
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+              {shots.map((e) => (
+                <a
+                  key={e.id}
+                  href={`${API_BASE}${e.url}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  title={e.capturedAt ? `Taken ${fmtDate(e.capturedAt, true)}` : "Open full size"}
+                  className="block overflow-hidden rounded-md border transition-opacity hover:opacity-80"
+                >
+                  <AuthImage path={e.url} alt="Return photo" className="aspect-square w-full object-cover" />
+                </a>
+              ))}
+            </div>
+          </Section>
+        );
+      })}
+    </>
   );
 }

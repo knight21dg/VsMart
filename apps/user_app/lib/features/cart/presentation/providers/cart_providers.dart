@@ -89,6 +89,7 @@ class CartSummary extends Equatable {
     required this.subtotal,
     required this.savings,
     required this.deliveryCharges,
+    this.deliveryFeeWaived = 0,
     required this.gstAmount,
     required this.total,
     this.platformFee = 0,
@@ -108,6 +109,7 @@ class CartSummary extends Equatable {
         subtotal: bill.subtotal,
         savings: bill.savings,
         deliveryCharges: bill.deliveryFee,
+        deliveryFeeWaived: bill.deliveryFeeWaived,
         gstAmount: bill.gst,
         platformFee: bill.platformFee,
         handlingFee: bill.handlingFee,
@@ -122,6 +124,10 @@ class CartSummary extends Equatable {
   final num subtotal;
   final num savings;
   final num deliveryCharges;
+
+  /// Server-supplied: what delivery would have cost when it is waived.
+  /// Never hardcode this — the fee is per zone.
+  final num deliveryFeeWaived;
   final num gstAmount;
   final num total;
   final num platformFee;
@@ -137,6 +143,24 @@ class CartSummary extends Equatable {
   /// All non-delivery service fees, shown as a single "Fees & charges" line.
   num get feesTotal => platformFee + handlingFee + surgeFee + smallCartFee;
 
+  /// How much more of *goods* the shopper must add to reach the zone's minimum
+  /// order value; 0 when there is no minimum or it is already met.
+  ///
+  /// Measured against [subtotal], not [total], because fees and GST aren't
+  /// goods — counting them would clear a ₹1,000 minimum with a ₹900 basket and
+  /// the server (which gates on the subtotal) would then reject the order the
+  /// button had just promised. `minOrder` reached the app on every bill and was
+  /// simply never read; the checkout CTA stayed live and the order failed at
+  /// the very last step.
+  num get minOrderShortfall {
+    if (minOrder <= 0) return 0;
+    final gap = minOrder - subtotal;
+    return gap > 0 ? gap : 0;
+  }
+
+  /// Whether the cart clears the zone's minimum order value.
+  bool get meetsMinimumOrder => minOrderShortfall <= 0;
+
   /// Amount when paying on VS Credit (same as [total] today).
   num get creditTotal => total;
 
@@ -147,6 +171,7 @@ class CartSummary extends Equatable {
         subtotal: subtotal,
         savings: savings,
         deliveryCharges: deliveryCharges,
+        deliveryFeeWaived: deliveryFeeWaived,
         gstAmount: gstAmount,
         total: total ?? this.total,
         platformFee: platformFee,
@@ -164,6 +189,7 @@ class CartSummary extends Equatable {
         subtotal,
         savings,
         deliveryCharges,
+        deliveryFeeWaived,
         gstAmount,
         total,
         platformFee,

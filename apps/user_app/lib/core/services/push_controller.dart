@@ -10,6 +10,8 @@ import 'package:go_router/go_router.dart';
 import '../../app/constants/api_constants.dart';
 import '../../app/routes/app_router.dart';
 import '../../app/theme/app_colors.dart';
+import '../../features/notifications/presentation/providers/notification_providers.dart';
+import '../../features/orders/presentation/providers/order_providers.dart';
 import '../../shared/providers/core_providers.dart';
 import '../network/api_client.dart';
 import '../utils/app_logger.dart';
@@ -28,9 +30,11 @@ class PushController {
     required ApiClient api,
     required NotificationService Function() notifications,
     required GoRouter Function() router,
+    required void Function(Map<String, dynamic> data) onDataChanged,
   })  : _api = api,
         _notificationsFactory = notifications,
-        _router = router;
+        _router = router,
+        _onDataChanged = onDataChanged;
 
   final ApiClient _api;
 
@@ -46,6 +50,15 @@ class PushController {
   NotificationService? _notifications;
 
   final GoRouter Function() _router;
+
+  /// Called for every push that arrives while the app is in the FOREGROUND, so
+  /// the screen the customer is already looking at can refresh itself.
+  ///
+  /// Without this a foreground push only drew a banner: "Order Out For
+  /// Delivery" appeared while the order screen underneath still read
+  /// "Confirmed", and stayed wrong until a pull-to-refresh or a navigation.
+  /// (The tracking screen's own 12s poll hid it there, but nowhere else.)
+  final void Function(Map<String, dynamic> data) _onDataChanged;
 
   final FlutterLocalNotificationsPlugin _local =
       FlutterLocalNotificationsPlugin();
@@ -133,7 +146,11 @@ class PushController {
       await _initLocal();
 
       // Foreground messages: surface them as a system notification ourselves.
-      notifications.onMessage.listen(_showLocal);
+      notifications.onMessage.listen((m) {
+        _showLocal(m);
+        // Refresh the data the push is ABOUT — not a blanket poll.
+        _onDataChanged(m.data);
+      });
       // Tap that opened the app from background.
       notifications.onMessageOpenedApp.listen((m) => _route(m.data));
       // Tap that launched the app from terminated.
@@ -289,5 +306,41 @@ final pushControllerProvider = Provider<PushController>((ref) {
     // isn't configured.
     notifications: () => ref.read(notificationServiceProvider),
     router: () => ref.read(goRouterProvider),
+    onDataChanged: (data) => invalidateForPush(ref, data),
   );
 });
+
+/// Invalidate exactly the state a foreground push invalidates — no more.
+///
+/// Targeted rather than a blanket refresh: a push carries the order it concerns,
+/// so only that order (plus the list it appears in and the inbox badge) needs
+/// re-fetching. Broad invalidation on every push would re-download the catalog
+/// on a promo message.
+void invalidateForPush(Ref ref, Map<String, dynamic> data) {
+  // The inbox badge is affected by every push.
+  ref.invalidate(notificationsProvider);
+
+  final code = pushOrderCode(data);
+  if (code == null) return;
+  ref.invalidate(ordersProvider);
+  ref.invalidate(orderByIdProvider(code));
+  ref.invalidate(orderTrackingProvider(code));
+}
+
+/// The order a push concerns, or null when it concerns none.
+///
+/// The whole invalidation decision lives here, as a pure function, so it can be
+/// asserted directly instead of through a provider container. Accepts both key
+/// spellings: the backend renders `orderCode` through the camelCase renderer,
+/// but older payloads (and the delivery service's own data maps) have carried
+/// `order_code`. Reading only one of them silently disabled the refresh for
+/// half the pushes — the exact failure this function exists to prevent.
+String? pushOrderCode(Map<String, dynamic> data) {
+  for (final key in const ['orderCode', 'order_code']) {
+    final raw = data[key];
+    if (raw == null) continue;
+    final code = raw.toString().trim();
+    if (code.isNotEmpty) return code;
+  }
+  return null;
+}

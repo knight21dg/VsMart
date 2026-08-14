@@ -122,12 +122,26 @@ class StockTransferSerializer(serializers.ModelSerializer):
     from_warehouse_id = serializers.CharField(read_only=True)
     to_warehouse_id = serializers.CharField(read_only=True)
 
+    # Which pack moved. `variantLabel` is what the board shows — "Rice · 1 kg"
+    # reads as the SKU it actually is, where a bare product name hid the fact
+    # that packs are stocked separately.
+    variant_id = serializers.CharField(read_only=True)
+    variant_label = serializers.SerializerMethodField()
+
     class Meta:
         model = StockTransfer
         fields = [
-            "id", "product_id", "from_warehouse_id", "to_warehouse_id",
+            "id", "product_id", "variant_id", "variant_label",
+            "from_warehouse_id", "to_warehouse_id",
             "quantity", "status", "note",
         ]
+
+    def get_variant_label(self, obj):
+        # NULL is the unallocated pool, not "no pack" — say so, or the row is
+        # indistinguishable from a product that has no variants at all.
+        if obj.variant_id is None:
+            return "Unallocated" if obj.product.variants.exists() else ""
+        return obj.variant.label
 
 
 class StockTransferCreateSerializer(serializers.Serializer):
@@ -138,6 +152,13 @@ class StockTransferCreateSerializer(serializers.Serializer):
         queryset=Warehouse.objects.all()
     )
     to_warehouse = serializers.PrimaryKeyRelatedField(queryset=Warehouse.objects.all())
+    # Which pack to move. Optional so a product with no variants transfers
+    # exactly as before; required (below) the moment the product HAS packs,
+    # because "10 Rice" is not a thing that can be moved — 10 of *which* pack is.
+    variant_id = serializers.PrimaryKeyRelatedField(
+        source="variant", queryset=ProductVariant.objects.all(),
+        required=False, allow_null=True,
+    )
     quantity = serializers.IntegerField(min_value=1)
     note = serializers.CharField(required=False, allow_blank=True)
 
@@ -146,11 +167,47 @@ class StockTransferCreateSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 "Source and destination warehouses must differ."
             )
+        product = data["product"]
+        variant = data.get("variant")
+
+        if variant is not None and variant.product_id != product.id:
+            raise serializers.ValidationError(
+                {"variantId": ["That pack doesn't belong to this product."]}
+            )
+        if variant is None:
+            packs = list(product.variants.all()[:12])
+            if packs:
+                # Deliberately no "just move the unallocated pool" escape hatch:
+                # `post_movement` refuses a pack-less movement on a packed
+                # product anyway, so offering one here would only fail later.
+                # Unallocated stock is "assign me" stock — allocate it to a pack
+                # first (Inventory → Operations), then move the pack.
+                raise serializers.ValidationError({"variantId": [
+                    "This product is stocked per pack — choose which one to "
+                    "move (" + ", ".join(p.label for p in packs) + "). "
+                    "Unallocated stock has to be allocated to a pack before it "
+                    "can be transferred."
+                ]})
+
+        # Refuse up front if the SOURCE bucket can't cover it. Without this the
+        # transfer sat PENDING and only blew up on completion, by which point
+        # the operator had already told the other store it was on the way.
+        from .services import StockCalculationService
+
+        available = StockCalculationService.available(
+            product, data["from_warehouse"], variant
+        )
+        if data["quantity"] > available:
+            where = variant.label if variant is not None else "unallocated stock"
+            raise serializers.ValidationError({"quantity": [
+                f"Only {available} of {where} available at the source warehouse."
+            ]})
         return data
 
     def create(self, validated_data):
         return StockTransfer.objects.create(
             product=validated_data["product"],
+            variant=validated_data.get("variant"),
             from_warehouse=validated_data["from_warehouse"],
             to_warehouse=validated_data["to_warehouse"],
             quantity=validated_data["quantity"],

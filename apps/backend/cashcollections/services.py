@@ -14,8 +14,10 @@ Every action writes an Audit Log + an Analytics Event. Money posts atomically vi
 the existing payments → credit ledger path.
 """
 import secrets
+from datetime import timedelta
 from decimal import Decimal
 
+from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
@@ -33,6 +35,11 @@ from .models import (
 )
 
 S = CashCollection.Status
+
+#: How long a collection confirmation code stays valid. It authorises a specific
+#: cash amount and is minted with the agent already at the customer, so the
+#: window is short by design.
+OTP_TTL_MINUTES = getattr(settings, "COLLECTION_OTP_TTL_MINUTES", 15)
 ZERO = Decimal("0.00")
 
 ALLOWED = {
@@ -169,8 +176,29 @@ def manual_assign(coll, agent, *, by, reason=""):
 
 
 # ───────────────────────── agent workflow ─────────────────────────
+def _assert_still_offered(coll, action):
+    """The collection must still be sitting on this agent's offer.
+
+    Same race as the delivery alert: the push is a snapshot, and auto-assignment
+    can hand the collection to someone else before the agent taps. Without this
+    the tap produced a raw transition error that the app showed as a retryable
+    "try again", on a button that could never succeed.
+    """
+    if coll.status != S.ASSIGNED:
+        raise AppError(
+            "COLLECTION_TASK_REQUIRED",
+            message=(
+                f"This collection is no longer yours to {action} — it was "
+                f"reassigned or already actioned."
+            ),
+            entity_type="cash_collection",
+            entity_id=coll.id,
+        )
+
+
 def accept(coll, agent):
     _assert_owner(coll, agent)
+    _assert_still_offered(coll, "accept")
     _transition(coll, S.ACCEPTED, actor=agent, audit_code="COLLECTION_ACCEPTED")
     _record_assignment(coll, agent, "accepted")
     return coll
@@ -178,6 +206,7 @@ def accept(coll, agent):
 
 def reject(coll, agent, reason=""):
     _assert_owner(coll, agent)
+    _assert_still_offered(coll, "reject")
     _record_assignment(coll, agent, "rejected", reason=reason)
     coll.agent = None
     coll.save(update_fields=["agent", "updated_at"])
@@ -218,8 +247,42 @@ def request_collection_otp(coll, agent, amount):
     amt = Decimal(str(amount))
     if amt <= 0 or amt > coll.remaining or not _paise_ok(amt):
         raise AppError("COLLECTION_AMOUNT_INVALID")
+
+    # Admin-configurable floor. Zero was always refused, but there was no way to
+    # say "don't record a ₹20 collection" — a doorstep visit has a cost, and a
+    # trickle of tiny part-payments keeps a recovery open indefinitely. Default
+    # 0 means no floor, so nothing changes until someone sets one.
+    #
+    # The floor never blocks CLEARING the account: if the whole remaining
+    # balance is below it, that payment must still be collectable or the debt
+    # could never be closed.
+    floor = _min_collection_amount()
+    if floor > 0 and amt < floor and amt < coll.remaining:
+        raise AppError(
+            "COLLECTION_AMOUNT_INVALID",
+            message=(
+                f"The smallest amount you can collect is ₹{floor:,.0f}. "
+                f"Collect at least that, or the full ₹{coll.remaining:,.0f} due."
+            ),
+        )
     _generate_otp(coll, amt)
     return coll
+
+
+def _min_collection_amount():
+    """Platform floor for a single cash collection (0 = no floor)."""
+    from siteconfig.models import PlatformConfig
+
+    return Decimal(str(PlatformConfig.load().min_collection_amount or 0))
+
+
+def otp_is_expired(otp, ttl_minutes=OTP_TTL_MINUTES):
+    """Whether `otp` is past its time-to-live. A NULL ``generated_at`` counts as
+    not expired — rows written before the timestamp was enforced must not be
+    invalidated retroactively under an agent standing at a customer's door."""
+    if otp.generated_at is None:
+        return False
+    return timezone.now() - otp.generated_at > timedelta(minutes=ttl_minutes)
 
 
 def verify_otp(coll, agent, code):
@@ -229,12 +292,24 @@ def verify_otp(coll, agent, code):
         raise AppError("COLLECTION_OTP_REQUIRED", message="No collection OTP generated yet.")
     if otp.locked:
         raise AppError("COLLECTION_OTP_LOCKED")
+    # Before the comparison, so an expired code neither verifies nor burns one
+    # of the three attempts. `generated_at` was written on every OTP and never
+    # read — a confirmation code authorising a specific cash amount stayed valid
+    # indefinitely.
+    if otp_is_expired(otp):
+        raise AppError("COLLECTION_OTP_EXPIRED")
     if code and code == otp.code:
         otp.verified = True
         otp.verified_at = timezone.now()
         otp.save(update_fields=["verified", "verified_at", "updated_at"])
         coll.otp_verified = True
         coll.save(update_fields=["otp_verified", "updated_at"])
+        # Clear a lockout flag left over from an earlier round — re-requesting an
+        # OTP unlocks the row but left this set, so a collection that went on to
+        # verify cleanly stayed flagged for manual verification forever.
+        if coll.manual_verification_required:
+            coll.manual_verification_required = False
+            coll.save(update_fields=["manual_verification_required", "updated_at"])
         _audit("COLLECTION_OTP_VERIFIED", coll, agent)
         return coll
     otp.attempts += 1

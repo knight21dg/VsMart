@@ -8,6 +8,7 @@ from .admin_views import (
 from .views import (
     AccountDeletionRequestView,
     AvatarUploadView,
+    ChangePasswordView,
     DeviceTokenView,
     ForgotPasswordView,
     LoginView,
@@ -29,6 +30,7 @@ urlpatterns = [
     path("auth/login", LoginView.as_view()),
     path("auth/password/forgot", ForgotPasswordView.as_view()),
     path("auth/password/reset", ResetPasswordView.as_view()),
+    path("auth/password/change", ChangePasswordView.as_view()),
     path("auth/register", RegisterView.as_view()),
     path("auth/refresh", RefreshTokenView.as_view()),
     path("auth/logout", LogoutView.as_view()),

@@ -4,7 +4,7 @@ Everything here takes an explicit ``store`` and only ever reads/writes rows that
 belong to it (orders with ``store=``, stock in ``store.warehouse``, staff in
 ``store.staff``). There is no cross-store path.
 """
-from datetime import timedelta
+from datetime import datetime, time as dtime, timedelta
 from decimal import Decimal
 
 from django.db.models import Count, F, Q, Sum
@@ -159,9 +159,27 @@ def store_dashboard(store) -> dict:
     wh = store.warehouse_id
 
     orders = Order.objects.filter(store=store)
+    # `sellable` is the ORDER BOOK (written business), not revenue. It still drives
+    # order counts, active-customer counts and the basket trend.
     sellable = orders.exclude(status__in=["cancelled", "rejected"])
     today_qs = sellable.filter(placed_at__date=today)
     month_qs = sellable.filter(placed_at__date__gte=month_start)
+
+    # Revenue itself comes from the shared definition, scoped to this store: the
+    # store dashboard used to sum every non-cancelled order's total, so it booked
+    # money on PLACEMENT and never netted refunds — a different answer from the one
+    # admin and accounting give for the same store on the same day. Only the scope
+    # may differ between the two panels, never the formula.
+    from core.financials import net_revenue
+
+    _day_start = timezone.make_aware(
+        datetime.combine(today, dtime.min), timezone.get_current_timezone()
+    )
+    _month_start_dt = timezone.make_aware(
+        datetime.combine(month_start, dtime.min), timezone.get_current_timezone()
+    )
+    rev_today = net_revenue(_day_start, store=store.id, warehouse=wh)
+    rev_month = net_revenue(_month_start_dt, store=store.id, warehouse=wh)
 
     today_agg = today_qs.aggregate(revenue=Sum("total"), subtotal=Sum("subtotal"), n=Count("id"))
 
@@ -289,12 +307,13 @@ def store_dashboard(store) -> dict:
     return {
         "kpis": {
             "todaySales": _f((today_agg["subtotal"] or 0) + pos_today_subtotal),
-            "todayRevenue": _f((today_agg["revenue"] or 0) + pos_today_revenue),
+            # Shared definition: delivered orders + counter net - refunds.
+            "todayRevenue": rev_today["net"],
             "todayOrders": (today_agg["n"] or 0) + pos_today_count,
             # Split out so the operator can see how the day divides between the
             # till and online, rather than only a merged figure.
-            "todayCounterRevenue": _f(pos_today_revenue),
-            "todayOnlineRevenue": _f(today_agg["revenue"]),
+            "todayCounterRevenue": rev_today["pos"],
+            "todayOnlineRevenue": rev_today["delivered"],
             "todayCounterSales": pos_today_count,
             "pendingOrders": orders.filter(status__in=ACTIVE_ORDER_STATUSES).count(),
             "deliveredToday": today_qs.filter(status="delivered").count(),
@@ -306,9 +325,7 @@ def store_dashboard(store) -> dict:
             "lowStockItems": len(low),
             "expiringItems": len(expiring),
             "stockValue": stock_value(wh) if wh else 0.0,
-            "monthlyRevenue": _f(
-                (month_qs.aggregate(a=Sum("total"))["a"] or 0) + pos_month_revenue
-            ),
+            "monthlyRevenue": rev_month["net"],
         },
         "salesTrend": sales_trend,
         "ordersTrend": orders_trend,

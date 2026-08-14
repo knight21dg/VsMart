@@ -9,6 +9,7 @@ import { api } from "@/lib/api/client";
 import { useApiMutation } from "@/lib/api/hooks";
 import { PageHeader } from "@/components/page-header";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { ReturnDetailDialog } from "@/components/return-detail-dialog";
 import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/status-badge";
@@ -76,6 +77,7 @@ export default function ReturnsPage() {
   const router = useRouter();
   const [status, setStatus] = React.useState("all");
   const [pending, setPending] = React.useState<{ row: ReturnRow; target: string } | null>(null);
+  const [reviewing, setReviewing] = React.useState<string | null>(null);
 
   const [page, setPage] = React.useState(1);
   // A filter change can't leave the operator stranded on a now-empty page.
@@ -104,10 +106,17 @@ export default function ReturnsPage() {
       accessorKey: "code",
       header: "Return",
       cell: ({ row }) => (
-        <div>
-          <p className="font-mono text-xs font-medium">{row.original.code}</p>
+        // Opens the evidence behind the decision. Approve/Reject used to be
+        // clickable from this row with nothing but a reason word and an item
+        // count on screen — no customer note, no photos.
+        <button
+          className="text-left"
+          onClick={() => setReviewing(row.original.code)}
+          title="Review this return"
+        >
+          <p className="font-mono text-xs font-medium text-primary hover:underline">{row.original.code}</p>
           <p className="text-xs text-muted-foreground">{fmtDate(row.original.createdAt)}</p>
-        </div>
+        </button>
       ),
     },
     {
@@ -202,6 +211,8 @@ export default function ReturnsPage() {
           onConfirm={() => transition.mutate({ code: pending.row.code, status: pending.target })}
         />
       )}
+
+      <ReturnDetailDialog code={reviewing} onClose={() => setReviewing(null)} />
     </>
   );
 }

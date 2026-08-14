@@ -25,9 +25,6 @@ PAN_VERIFY_PATH = "/api/verify/pan"
 BANK_VERIFY_PATH = "/api/verify/bank"
 AADHAAR_OKYC_INIT_PATH = "/api/verify/aadhaar/okyc"          # → returns a request id
 AADHAAR_OKYC_SUBMIT_PATH = "/api/verify/aadhaar/okyc/verify"  # → submit the OTP
-DIGILOCKER_CREATE_PATH = "/api/digilocker"                    # on the DigiLocker host
-DIGILOCKER_STATUS_PATH = "/api/digilocker/{id}/status"
-DIGILOCKER_AADHAAR_PATH = "/api/digilocker/{id}/aadhaar"
 
 TIMEOUT = 20  # seconds
 
@@ -127,40 +124,11 @@ class SetuProvider(base.VerificationProvider):
                  raw=_trim(body))
 
     # ── Aadhaar via DigiLocker ───────────────────────────────────────────
-    def start_digilocker(self, *, redirect_url, docs=None):
-        body = _post(
-            _dg_base() + DIGILOCKER_CREATE_PATH,
-            _headers(runtime.cfg("setu_digilocker_product_id")),
-            {"redirectUrl": redirect_url, "docType": docs or ["AADHAAR"]},
-        )
-        rid = body.get("id") or body.get("requestId") or ""
-        url = body.get("url") or body.get("authorizationUrl") or ""
-        if not rid or not url:
-            raise ProviderError("DigiLocker did not return an id/url")
-        return R(kind=base.DIGILOCKER, status=base.PENDING, reference_id=rid,
-                 redirect_url=url, message="Consent pending.", raw=_trim(body))
+    # DigiLocker deliberately absent: Payon is the ONE DigiLocker
+    # provider (kyc/providers/payon.py). A second implementation here
+    # would be a way for a misconfiguration to silently answer instead
+    # of failing, which for a mock means fabricating a verified Aadhaar.
 
-    def fetch_digilocker(self, *, request_id, name=""):
-        headers = _headers(runtime.cfg("setu_digilocker_product_id"))
-        status = _get(_dg_base() + DIGILOCKER_STATUS_PATH.format(id=request_id), headers)
-        if not _is_success(status):
-            return R(kind=base.AADHAAR, status=base.PENDING, reference_id=request_id,
-                     message="Consent not completed yet.", raw=_trim(status))
-        body = _get(_dg_base() + DIGILOCKER_AADHAAR_PATH.format(id=request_id), headers)
-        aadhaar = body.get("aadhaar", body) or {}
-        src_name = aadhaar.get("name") or ""
-        masked = aadhaar.get("maskedNumber") or aadhaar.get("masked_number") or "XXXXXXXX1234"
-        matched = base.names_match(name, src_name) if (name and src_name) else None
-        if matched is False:
-            return R(kind=base.AADHAAR, status=base.FAILED, verified_name=src_name,
-                     id_masked=masked, name_match=False, error_code="PAN_NAME_MISMATCH",
-                     reference_id=request_id, message="Name on Aadhaar does not match.",
-                     raw={"source": "digilocker"})
-        return R(kind=base.AADHAAR, status=base.VERIFIED, verified_name=src_name,
-                 id_masked=masked, name_match=matched, reference_id=request_id,
-                 message="Aadhaar fetched from DigiLocker.", raw={"source": "digilocker"})
-
-    # ── Aadhaar OKYC (OTP) ───────────────────────────────────────────────
     def aadhaar_okyc_init(self, *, aadhaar):
         body = _post(
             _prod_base() + AADHAAR_OKYC_INIT_PATH,

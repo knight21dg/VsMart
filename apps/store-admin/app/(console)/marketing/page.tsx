@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, Megaphone, Send, Users } from "lucide-react";
+import { Loader2, Megaphone, Send, Ticket, Users } from "lucide-react";
 import { api, useApiMutation } from "@/lib/api/hooks";
 import { PageHeader } from "@/components/page-header";
 import { RequirePerm } from "@/components/permission-gate";
@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useStore } from "@/lib/store/store-context";
+import { inr } from "@/lib/utils";
 
 export default function MarketingPage() {
   return (
@@ -108,6 +109,82 @@ function Inner() {
           </CardContent>
         </Card>
       </div>
+
+      <ActiveCoupons />
     </div>
+  );
+}
+
+interface StoreCoupon {
+  id: string;
+  code: string;
+  discountType: string;
+  value: number;
+  minOrder: number | null;
+  maxDiscount: number | null;
+  validTo: string | null;
+}
+
+/**
+ * Live coupon codes, read-only.
+ *
+ * `/store/marketing/coupons` has always existed but nothing rendered it, so
+ * staff had no way to see which codes were running and answer "does VSNEW100
+ * still work?" at the counter. Coupons are platform-wide — a code isn't scoped
+ * to one store — so this is deliberately a list, not a form: the panel says
+ * plainly who owns them instead of offering a Create button that would 403.
+ */
+function ActiveCoupons() {
+  const q = useQuery({
+    queryKey: ["store", "marketing", "coupons"],
+    queryFn: () => api.get<StoreCoupon[]>("/store/marketing/coupons"),
+  });
+  const rows = q.data ?? [];
+
+  const describe = (c: StoreCoupon) =>
+    c.discountType === "percent" ? `${c.value}% off` : `${inr(c.value)} off`;
+
+  return (
+    <Card>
+      <CardHeader className="py-3">
+        <CardTitle className="flex items-center gap-2 text-sm">
+          <Ticket className="size-4" /> Active coupon codes
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {q.isLoading ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">Loading coupons…</p>
+        ) : q.isError ? (
+          <div className="py-6 text-center text-sm">
+            <p className="text-muted-foreground">Couldn&apos;t load coupons.</p>
+            <Button variant="outline" size="sm" className="mt-2" onClick={() => q.refetch()}>
+              Retry
+            </Button>
+          </div>
+        ) : rows.length === 0 ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">
+            No coupon codes are running right now.
+          </p>
+        ) : (
+          <ul className="divide-y text-sm">
+            {rows.map((c) => (
+              <li key={c.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                <span className="font-mono font-semibold">{c.code}</span>
+                <span className="text-muted-foreground">
+                  {describe(c)}
+                  {c.minOrder ? ` · min ${inr(c.minOrder)}` : ""}
+                  {c.maxDiscount ? ` · max ${inr(c.maxDiscount)}` : ""}
+                  {c.validTo ? ` · till ${new Date(c.validTo).toLocaleDateString()}` : ""}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+        <p className="mt-3 text-xs text-muted-foreground">
+          Coupon codes apply across every VS Mart store, so they&apos;re created and
+          withdrawn centrally by head office. Quote these to customers at the counter.
+        </p>
+      </CardContent>
+    </Card>
   );
 }

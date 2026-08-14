@@ -31,7 +31,22 @@ class DeliveryTask(TimeStampedModel):
         REASSIGNED = "reassigned"
         CANCELLED = "cancelled"
 
+    #: States the ORDER is finished in — nothing further will happen to this task.
     TERMINAL = {"delivered", "rejected", "returned_to_store", "reassigned", "cancelled"}
+
+    #: States that have left the AGENT's hands. Terminal work, plus `failed`:
+    #: a failed attempt is over as far as the agent is concerned (only the store
+    #: can reschedule, reassign or return it), so it belongs in their history, not
+    #: on their active list.
+    #:
+    #: These two sets are separate because three call sites each had their own
+    #: idea of "done" and disagreed: the agent's queue excluded only TERMINAL, the
+    #: assignment engine excluded `TERMINAL | {failed}`, and history included only
+    #: TERMINAL. A failed delivery therefore sat on the agent's screen forever
+    #: while appearing in no history at all — dead work they could not clear, and
+    #: no record that they had attempted it. Anything asking "is this still the
+    #: agent's problem?" must use CLOSED_FOR_AGENT.
+    CLOSED_FOR_AGENT = TERMINAL | {"failed"}
 
     order = models.ForeignKey(
         Order, on_delete=models.CASCADE, related_name="delivery_tasks"

@@ -18,7 +18,11 @@ from core.app_errors import AppError
 
 from . import providers
 from .models import KycApplication, KycVerification, VerificationStep, hash_gov_id
-from .providers.setu import ProviderError
+from .providers.payon import ProviderError as PayonProviderError
+from .providers.setu import ProviderError as SetuProviderError
+
+#: Any vendor transport/vendor-side failure, whichever provider raised it.
+ProviderError = (SetuProviderError, PayonProviderError)
 
 # Verification kind -> the review step it satisfies (bank/digilocker satisfy none).
 KIND_TO_STEP = {"pan": "pan", "aadhaar": "aadhaar"}
@@ -106,16 +110,39 @@ def verify_pan(application: KycApplication, *, pan, name="", consent=False, reas
                    consent=consent, consent_purpose=reason)
 
 
-def start_aadhaar_digilocker(application: KycApplication, *, redirect_url, docs=None):
-    p = _provider()
-    res = _call(p.start_digilocker, redirect_url=redirect_url, docs=docs)
+def start_aadhaar_digilocker(application: KycApplication, *, redirect_url, docs=None,
+                             mobile="", purpose=""):
+    # DigiLocker has ONE provider (Payon) and no mock — a government identity
+    # document must never be "verified" by a stand-in.
+    p = providers.get_digilocker_provider()
+    res = _call(p.start_digilocker, redirect_url=redirect_url, docs=docs,
+                mobile=mobile, purpose=purpose or _AADHAAR_PURPOSE)
     return _record(application, res, provider_name=p.name, kind="aadhaar",
                    consent=True, consent_purpose=_AADHAAR_PURPOSE)
 
 
-def refresh_aadhaar_digilocker(application: KycApplication, *, reference_id, name=""):
-    p = _provider()
-    res = _call(p.fetch_digilocker, request_id=reference_id, name=name)
+def _digilocker_state(application: KycApplication, reference_id: str) -> str:
+    """The `state` issued by the start call for this DigiLocker session.
+
+    Stored on the start record's `raw`. Looked up rather than passed in: the
+    status endpoint is a plain GET the app makes after returning from DigiLocker,
+    so it has nowhere to carry the value, and asking the client to hold it would
+    let a caller present a state that was never issued to them.
+    """
+    rec = (KycVerification.objects
+           .filter(application=application, reference_id=reference_id)
+           .exclude(raw={})
+           .order_by("-created_at")
+           .first())
+    raw = rec.raw if rec and isinstance(rec.raw, dict) else {}
+    return str(raw.get("state") or "")
+
+
+def refresh_aadhaar_digilocker(application: KycApplication, *, reference_id, name="",
+                               state=""):
+    p = providers.get_digilocker_provider()
+    state = state or _digilocker_state(application, reference_id)
+    res = _call(p.fetch_digilocker, request_id=reference_id, name=name, state=state)
     return _record(application, res, provider_name=p.name, kind="aadhaar",
                    consent=True, consent_purpose=_AADHAAR_PURPOSE)
 

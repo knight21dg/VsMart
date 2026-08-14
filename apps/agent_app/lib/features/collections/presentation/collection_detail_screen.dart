@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/api_exception.dart';
 import '../../../core/destination_map.dart';
 import '../../../core/reason_screen.dart';
 import '../../../core/ui.dart';
@@ -140,6 +141,12 @@ class _CollectionDetailScreenState
     }
   }
 
+  /// True when the LAST verify failed because the code had EXPIRED rather than
+  /// being wrong. An expired code costs no attempt and is fixed by resending;
+  /// a wrong one burns one of three and ends in a supervisor lockout. Showing
+  /// both as the same red toast is how an agent ends up stuck holding cash.
+  bool _otpExpired = false;
+
   Future<void> _verifyOtp() async {
     final otp = _otpController.text.trim();
     if (otp.isEmpty) {
@@ -147,10 +154,17 @@ class _CollectionDetailScreenState
       return;
     }
     final err = await _run(() => _repo.verifyOtp(widget.id, otp));
-    if (err == null && mounted) {
+    if (!mounted) return;
+    if (err == null) {
+      setState(() => _otpExpired = false);
       _otpController.clear();
       showToast(context, 'OTP verified');
+      return;
     }
+    final expired =
+        err is ApiException && err.code == 'COLLECTION_OTP_EXPIRED';
+    setState(() => _otpExpired = expired);
+    if (expired) _otpController.clear();
     // INVALID_COLLECTION_OTP (attempts-left) / COLLECTION_OTP_LOCKED messages
     // come straight from the envelope through _run.
   }
@@ -333,6 +347,7 @@ class _CollectionDetailScreenState
             collection: collection,
             busy: _busy,
             otpController: _otpController,
+            otpExpired: _otpExpired,
             amountController: _amountController,
             onAccept: _accept,
             onReject: _reportRejected,
@@ -367,6 +382,7 @@ class _DetailBody extends StatelessWidget {
     required this.collection,
     required this.busy,
     required this.otpController,
+    required this.otpExpired,
     required this.amountController,
     required this.onAccept,
     required this.onReject,
@@ -382,6 +398,9 @@ class _DetailBody extends StatelessWidget {
   final AgentCollection collection;
   final bool busy;
   final TextEditingController otpController;
+
+  /// Last verify failed because the code EXPIRED, not because it was wrong.
+  final bool otpExpired;
   final TextEditingController amountController;
   final VoidCallback onAccept;
   final VoidCallback onReject;
@@ -426,6 +445,7 @@ class _DetailBody extends StatelessWidget {
           collection: collection,
           busy: busy,
           otpController: otpController,
+          otpExpired: otpExpired,
           amountController: amountController,
           onAccept: onAccept,
           onReject: onReject,
@@ -799,6 +819,7 @@ class _ActionArea extends StatelessWidget {
     required this.collection,
     required this.busy,
     required this.otpController,
+    required this.otpExpired,
     required this.amountController,
     required this.onAccept,
     required this.onReject,
@@ -812,6 +833,9 @@ class _ActionArea extends StatelessWidget {
   final AgentCollection collection;
   final bool busy;
   final TextEditingController otpController;
+
+  /// Last verify failed because the code EXPIRED, not because it was wrong.
+  final bool otpExpired;
   final TextEditingController amountController;
   final VoidCallback onAccept;
   final VoidCallback onReject;
@@ -994,6 +1018,40 @@ class _ActionArea extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 12),
+        // An expired code is recoverable in one tap and costs no attempt, so it
+        // must not look like a wrong code (which burns one of three and ends in
+        // a supervisor lockout).
+        if (otpExpired) ...[
+          AppCard(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.timer_off_outlined,
+                    color: AgentColors.amber, size: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('That code has expired',
+                          style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              color: AgentColors.amber)),
+                      const SizedBox(height: 2),
+                      const Text(
+                        'No attempts were used. Resend the code below and ask '
+                        'the customer to read out the new one.',
+                        style: TextStyle(
+                            fontSize: 13, color: AgentColors.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
         const Text('Enter confirmation OTP',
             style: TextStyle(fontWeight: FontWeight.w700)),
         const SizedBox(height: 8),

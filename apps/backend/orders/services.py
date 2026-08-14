@@ -7,6 +7,8 @@ from django.db.models import Sum
 from django.utils import timezone
 
 from cart.services import cart_bill, get_cart, upsert_item
+from core.app_errors import AppError
+from core.pricing import gst_fraction_to_pct, q
 from credit.services import ensure_account
 from inventory.models import InventoryLedger
 from inventory.services import InventoryError, InventoryService, consume_fefo
@@ -41,13 +43,22 @@ def pending_credit_exposure(user) -> Decimal:
     return total or Decimal("0")
 
 
-class CheckoutError(Exception):
-    """A checkout gate failure. Carries a catalog `code` so the view can re-raise
-    it as an actionable AppError (the message stays human-readable for back-compat)."""
+class CheckoutError(AppError):
+    """A checkout / order-lifecycle gate failure, carrying a catalog `code`.
+
+    It **is** an :class:`AppError`, so the exception handler renders it with the
+    right status and the operator-readable message wherever it is raised. It used
+    to be a plain ``Exception`` that each view had to catch and re-raise by hand
+    — and the views that forgot (the store panel's order-status endpoint, for
+    one) turned "An order that is delivered cannot become rejected." into a bare
+    500 "We hit a temporary problem on our end."
+
+    The ``(message, code)`` signature is kept because every call site uses it,
+    and the existing ``except CheckoutError`` blocks keep working unchanged.
+    """
 
     def __init__(self, message, code="VALIDATION_ERROR"):
-        super().__init__(message)
-        self.code = code
+        super().__init__(code, message=message)
 
 
 def compute_payout_date(plan, today=None):
@@ -219,6 +230,22 @@ def place_order(user, *, address, payment_method, delivery_slot="", coupon_disco
 
     bill = cart_bill(cart, coupon_discount=coupon_discount, zone=zone)
 
+    # Minimum order value. The figure has always been configured (per zone, with
+    # a PlatformConfig fallback) and surfaced on the bill, but **nothing ever
+    # checked it** — a zone set to ₹1,000 happily accepted a ₹300 order. It is
+    # enforced here, on the server, against the item subtotal: fees and GST are
+    # not goods, so counting them would let a ₹850 cart clear a ₹1,000 minimum on
+    # delivery charges alone, and the coupon discount is applied after the
+    # threshold for the same reason.
+    min_order = Decimal(bill.get("min_order") or 0)
+    if min_order > 0 and bill["subtotal"] < min_order:
+        shortfall = q(min_order - bill["subtotal"])
+        raise CheckoutError(
+            f"Minimum order value is ₹{min_order:,.0f}. "
+            f"Add ₹{shortfall:,.0f} more to continue.",
+            code="MIN_ORDER_NOT_MET",
+        )
+
     order = Order.objects.create(
         user=user,
         payment_method=payment_method,
@@ -261,7 +288,11 @@ def place_order(user, *, address, payment_method, delivery_slot="", coupon_disco
 
     from siteconfig.models import PlatformConfig
 
-    default_gst = PlatformConfig.load().gst_rate
+    # OrderItem.gst_rate is a PERCENTAGE (see its field docstring), and so is
+    # Product.gst_rate. PlatformConfig.gst_rate is the fraction the pricing maths
+    # multiplies by, so the fallback has to be converted — copying it raw
+    # snapshotted every line without an explicit product rate at "0.18%".
+    default_gst = gst_fraction_to_pct(PlatformConfig.load().gst_rate)
     reserved_any = False
     for it in items:
         # Carry the cart line's pack onto the order line. The cart has always known
@@ -361,11 +392,14 @@ def place_order(user, *, address, payment_method, delivery_slot="", coupon_disco
     notify(user, type="order", title="Order Confirmed",
            body=f"Your order {order.code} has been placed.",
            data={"route": f"/orders/{order.code}", "orderCode": order.code,
-                 "actionLabel": "Track Order"})
-    # Tell the serving store's staff a new order has arrived to fulfil.
+                 "actionLabel": "Track Order"},
+           dedupe_key=f"order_placed:{order.code}")
+    # Tell the serving store's staff a new order has arrived to fulfil. Keyed so
+    # a replayed checkout can never ring the counter twice for one order.
     notify_store_staff(store, type="order", title="New Order",
                        body=f"{order.code} · ₹{order.total}",
-                       data={"route": f"/orders/{order.code}", "orderCode": order.code})
+                       data={"route": f"/orders/{order.code}", "orderCode": order.code},
+                       dedupe_key=f"new_order:{order.code}")
     # Live push to the Store panel while it's open (sound/banner is the
     # frontend's job) — deferred to commit so a WS client can't be told about
     # an order that then rolls back.
@@ -605,6 +639,22 @@ def advance_status(order: Order, status: str, by=None, note=""):
     # stock at that store, one failed delivery at a time.
     if status in (OrderStatus.FAILED_DELIVERY, OrderStatus.REJECTED):
         release_reservation(order)
+    if status == OrderStatus.REJECTED:
+        # A rejection is the store refusing to fulfil, so the customer must be
+        # made whole exactly as a cancellation makes them whole. Only the stock
+        # was being released: a prepaid order that the store rejected kept the
+        # customer's money (payment_status still "paid") and burned their
+        # single-use coupon. `cancel_order` has always done both; nothing on the
+        # rejection path did either.
+        try:
+            from offers.services import release_coupon
+
+            release_coupon(order.code)
+        except Exception:  # noqa: BLE001 — never block the unwind on coupon bookkeeping
+            pass
+        # Last, like the cancel path: it calls the gateway, so nothing that
+        # could roll back may follow a refund the gateway has already executed.
+        _refund_cancelled_order(order)
     if status == OrderStatus.DELIVERED:
         fulfil_order(order)
         # A credit order's debt is only posted to the ledger NOW — the customer
@@ -655,7 +705,12 @@ def advance_status(order: Order, status: str, by=None, note=""):
     notify(order.user, type="delivery" if is_delivery else "order",
            title=f"Order {label}",
            body=f"Your order {order.code} is now {status.replace('_', ' ')}.",
-           data={"route": f"/orders/{order.code}", "orderCode": order.code})
+           data={"route": f"/orders/{order.code}", "orderCode": order.code},
+           # One notification per (order, status). `advance_status` already
+           # returns early on a no-op, but an order that legitimately revisits a
+           # status — failed_delivery → out_for_delivery on a re-attempt — must
+           # not re-announce a state the customer was already told about.
+           dedupe_key=f"order_status:{order.code}:{status}")
     return order
 
 

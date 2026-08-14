@@ -13,13 +13,15 @@ from .models import CashCollection, Payment, PaymentEvent
 logger = logging.getLogger(__name__)
 
 
-def log_payment_event(payment, status, *, note="", gateway_ref="", by=None):
+def log_payment_event(payment, status, *, note="", gateway_ref="", by=None,
+                      previous_status="", amount=None):
     """Append a status transition to the payment's audit trail. Best-effort — a
     logging failure must never break the money operation itself."""
     try:
         PaymentEvent.objects.create(
             payment=payment, status=status, note=note,
             gateway_ref=gateway_ref, created_by=by,
+            previous_status=previous_status or "", amount=amount,
         )
     except Exception:
         pass
@@ -72,7 +74,8 @@ def start_payment(user, *, purpose, amount, method, order=None, statement=None,
 
 @transaction.atomic
 def finalize_payment(payment: Payment, *, success=True, gateway_payment_id="",
-                     settled_amount=None) -> Payment:
+                     settled_amount=None, by=None, previous_status=None,
+                     reason="") -> Payment:
     """Settle a payment exactly once. Order payments mark the order paid; repayments
     post a repayment to the credit ledger.
 
@@ -84,10 +87,17 @@ def finalize_payment(payment: Payment, *, success=True, gateway_payment_id="",
     payment = Payment.objects.select_for_update().get(pk=payment.pk)
     if payment.status == Payment.Status.SUCCESS:
         return payment  # already settled (idempotent)
+    # `by` / `previous_status` / `reason` let a caller enrich the ONE settlement
+    # event this writes, rather than appending a second one beside it. A manual
+    # reconciliation needs the actor and the pre-transition status on the record;
+    # two SUCCESS events for one settlement would be its own kind of lie.
+    was = previous_status or payment.status
     if not success:
         payment.status = Payment.Status.FAILED
         payment.save(update_fields=["status"])
-        log_payment_event(payment, Payment.Status.FAILED, note="Gateway reported failure")
+        log_payment_event(
+            payment, Payment.Status.FAILED, by=by, previous_status=was,
+            note=reason or "Gateway reported failure")
         return payment
 
     if settled_amount is not None and Decimal(settled_amount) != payment.amount:
@@ -105,7 +115,10 @@ def finalize_payment(payment: Payment, *, success=True, gateway_payment_id="",
     payment.status = Payment.Status.SUCCESS
     payment.gateway_payment_id = gateway_payment_id
     payment.save(update_fields=["status", "gateway_payment_id"])
-    log_payment_event(payment, Payment.Status.SUCCESS, gateway_ref=gateway_payment_id)
+    log_payment_event(
+        payment, Payment.Status.SUCCESS, by=by, previous_status=was,
+        amount=Decimal(settled_amount) if settled_amount is not None else None,
+        gateway_ref=gateway_payment_id, note=reason)
 
     if payment.purpose == Payment.Purpose.ORDER and payment.order:
         order = payment.order
@@ -208,6 +221,53 @@ def collect_cash(collection: CashCollection, agent, method="cash", reference="",
     return collection
 
 
+#: How long a gateway payment may stay unresolved before it stops being "in flight"
+#: and becomes an explicit operational task. Not a cancellation deadline — nothing is
+#: cancelled and no stock is released; it only makes the row visible to a human.
+RECONCILE_WINDOW_MINUTES = 180
+
+
+def _reconcile_window():
+    from django.conf import settings
+
+    return int(getattr(settings, "PAYMENT_RECONCILE_WINDOW_MINUTES",
+                       RECONCILE_WINDOW_MINUTES))
+
+
+def _note_attempt(payment, note):
+    """Record that we asked the gateway, and what it said."""
+    from django.utils import timezone
+
+    payment.reconcile_attempts = (payment.reconcile_attempts or 0) + 1
+    payment.last_reconciled_at = timezone.now()
+    payment.reconcile_note = note[:200]
+    payment.save(update_fields=[
+        "reconcile_attempts", "last_reconciled_at", "reconcile_note", "updated_at",
+    ])
+
+
+def _flag_for_review(payment, note):
+    """Promote an unresolvable PENDING payment to RECONCILIATION_REQUIRED.
+
+    Deliberately NOT a failure: the money may be captured. This only stops the row
+    hiding in an ever-growing PENDING pile and puts it on an operator's screen.
+    """
+    from django.utils import timezone
+
+    if payment.status != Payment.Status.PENDING:
+        return False
+    age = timezone.now() - payment.created_at
+    if age < timezone.timedelta(minutes=_reconcile_window()):
+        return False
+    payment.status = Payment.Status.RECONCILIATION_REQUIRED
+    payment.save(update_fields=["status", "updated_at"])
+    log_payment_event(
+        payment, Payment.Status.RECONCILIATION_REQUIRED,
+        note=f"Unresolved after {int(age.total_seconds() // 60)}m: {note}"[:200],
+    )
+    return True
+
+
 def reconcile_pending_payments(*, older_than_minutes=10, limit=200):
     """Ask the gateway what happened to payments we never heard back about.
 
@@ -225,25 +285,38 @@ def reconcile_pending_payments(*, older_than_minutes=10, limit=200):
     cutoff = timezone.now() - timezone.timedelta(minutes=older_than_minutes)
     stale = (
         Payment.objects.filter(
-            status=Payment.Status.PENDING, created_at__lt=cutoff,
+            status__in=(
+                Payment.Status.PENDING,
+                # Keep asking: an outage resolves, and a row that answers itself
+                # should clear without anyone touching it.
+                Payment.Status.RECONCILIATION_REQUIRED,
+            ),
+            created_at__lt=cutoff,
         )
         .exclude(gateway_order_id="")
         .exclude(method=Payment.Method.CASH)
         .order_by("created_at")[:limit]
     )
 
-    summary = {"checked": 0, "settled": 0, "failed": 0, "unresolved": 0, "errors": 0}
+    summary = {"checked": 0, "settled": 0, "failed": 0, "unresolved": 0,
+               "errors": 0, "flagged": 0}
     gateway = get_gateway()
     for payment in stale:
         summary["checked"] += 1
         try:
             info = gateway.fetch_order_payment(payment.gateway_order_id)
-        except Exception:  # noqa: BLE001 — one bad row must not stop the sweep
+        except Exception as exc:  # noqa: BLE001 — one bad row must not stop the sweep
             logger.exception("Reconcile failed for payment %s", payment.pk)
             summary["errors"] += 1
+            # A gateway outage must not look like a resolved payment. Record the
+            # attempt; flag only once the row is genuinely old.
+            _note_attempt(payment, f"gateway error: {exc}")
+            summary["flagged"] += int(_flag_for_review(payment, "gateway unreachable"))
             continue
         if not info:
             summary["unresolved"] += 1
+            _note_attempt(payment, "gateway returned no payment for this order")
+            summary["flagged"] += int(_flag_for_review(payment, "no gateway record"))
             continue
         if info["status"] == "captured":
             try:
@@ -254,16 +327,30 @@ def reconcile_pending_payments(*, older_than_minutes=10, limit=200):
                 )
                 summary["settled"] += 1
             except AppError:
-                # Amount mismatch — left PENDING for a human; never auto-settle
-                # an order for less than it costs.
+                # Amount mismatch — never auto-settle an order for less than it
+                # costs. Flagged immediately rather than after the window: the
+                # gateway HAS answered, and the answer needs a human now.
                 logger.exception("Reconcile amount mismatch on payment %s", payment.pk)
                 summary["errors"] += 1
+                _note_attempt(
+                    payment,
+                    f"amount mismatch: gateway {info.get('amount')} vs {payment.amount}")
+                if payment.status == Payment.Status.PENDING:
+                    payment.status = Payment.Status.RECONCILIATION_REQUIRED
+                    payment.save(update_fields=["status", "updated_at"])
+                    log_payment_event(
+                        payment, Payment.Status.RECONCILIATION_REQUIRED,
+                        note="Amount mismatch — manual reconciliation required")
+                    summary["flagged"] += 1
         elif info["status"] in ("failed", "cancelled"):
             finalize_payment(payment, success=False)
             summary["failed"] += 1
         else:
             # created / authorized / pending at the gateway — still in flight.
             summary["unresolved"] += 1
+            _note_attempt(payment, f"gateway status: {info['status']}")
+            summary["flagged"] += int(
+                _flag_for_review(payment, f"gateway still {info['status']}"))
     return summary
 
 
@@ -276,7 +363,12 @@ def has_inflight_gateway_payment(order) -> bool:
     return (
         Payment.objects.filter(
             order=order, purpose=Payment.Purpose.ORDER,
-            status=Payment.Status.PENDING,
+            # RECONCILIATION_REQUIRED is still unresolved money — flagging a row for
+            # review must never make it eligible for auto-cancellation.
+            status__in=(
+                Payment.Status.PENDING,
+                Payment.Status.RECONCILIATION_REQUIRED,
+            ),
         )
         .exclude(gateway_order_id="")
         .exclude(method=Payment.Method.CASH)

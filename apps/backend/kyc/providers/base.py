@@ -86,12 +86,13 @@ class VerificationProvider:
         raise NotImplementedError
 
     # ── Aadhaar via DigiLocker (no AUA/KUA licence needed) ───────────────
-    def start_digilocker(self, *, redirect_url: str, docs: list[str] | None = None
-                         ) -> VerificationResult:
+    def start_digilocker(self, *, redirect_url: str, docs: list[str] | None = None,
+                         mobile: str = "", purpose: str = "") -> VerificationResult:
         """Create a consent request; returns PENDING + a redirect_url + reference_id."""
         raise NotImplementedError
 
-    def fetch_digilocker(self, *, request_id: str, name: str = "") -> VerificationResult:
+    def fetch_digilocker(self, *, request_id: str, name: str = "",
+                         state: str = "") -> VerificationResult:
         """After consent, pull the Aadhaar (and any docs) for the request."""
         raise NotImplementedError
 

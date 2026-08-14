@@ -217,9 +217,15 @@ class VSCartSummaryCard extends StatelessWidget {
                 color: vs.success),
           ],
           AppSpacing.vGapSm,
+          // The struck-through "was" price is the server's real waived fee for this
+          // zone. It used to be a hardcoded '45', so a zone charging ₹30 or ₹60 still
+          // advertised a ₹45 saving. Omitted entirely when the server doesn't send one.
           summary.deliveryCharges == 0
               ? _row(context, context.l10n.cartDeliveryFee, context.l10n.cartFree,
-                  color: vs.success, strike: '₹$_deliveryFeeLabel')
+                  color: vs.success,
+                  strike: summary.deliveryFeeWaived > 0
+                      ? summary.deliveryFeeWaived.asCurrency
+                      : null)
               : _row(context, context.l10n.cartDeliveryFee, summary.deliveryCharges.asCurrency),
           if (summary.gstAmount > 0) ...[
             AppSpacing.vGapSm,
@@ -246,8 +252,6 @@ class VSCartSummaryCard extends StatelessWidget {
       ),
     );
   }
-
-  static const _deliveryFeeLabel = '45';
 
   Widget _row(BuildContext context, String label, String value,
       {Color? color, String? strike}) {

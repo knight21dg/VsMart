@@ -1,0 +1,2066 @@
+{
+  "calls": [
+    {
+      "path": "/admin/deletion-requests",
+      "method": "get",
+      "type": "RequestsResp",
+      "fields": [
+        "requests"
+      ],
+      "file": "app/(console)/account-deletions/page.tsx"
+    },
+    {
+      "path": "/admin/accounting/summary",
+      "method": "get",
+      "type": "Summary",
+      "fields": [
+        "periodDays",
+        "income",
+        "revenue",
+        "platformFees",
+        "cashCollected",
+        "repayments",
+        "expenses",
+        "procurement",
+        "pnl",
+        "grossRevenue",
+        "cogsProxy",
+        "grossProfit",
+        "grossMarginPct",
+        "note"
+      ],
+      "file": "app/(console)/accounting/page.tsx"
+    },
+    {
+      "path": "/admin/accounting/cashflow",
+      "method": "get",
+      "type": "Cashflow",
+      "fields": [
+        "series",
+        "date",
+        "inflow",
+        "outflow",
+        "net"
+      ],
+      "file": "app/(console)/accounting/page.tsx"
+    },
+    {
+      "path": "/admin/accounting/by-store",
+      "method": "get",
+      "type": "{ stores: StorePnl[] }",
+      "fields": [
+        "stores"
+      ],
+      "file": "app/(console)/accounting/page.tsx"
+    },
+    {
+      "path": "/admin/accounting/settlements",
+      "method": "get",
+      "type": "{ settlements: Settlement[]; totalPayable: number }",
+      "fields": [
+        "settlements",
+        "totalPayable"
+      ],
+      "file": "app/(console)/accounting/page.tsx"
+    },
+    {
+      "path": "/admin/agents",
+      "method": "get",
+      "type": "AgentRow[]",
+      "fields": [
+        "agentId",
+        "code",
+        "name",
+        "phone",
+        "storeId",
+        "storeName",
+        "vehicle",
+        "available",
+        "isActive",
+        "rating",
+        "bagCapacity",
+        "weightCapacityKg",
+        "cashCapacity",
+        "maxStops",
+        "employmentType",
+        "onDuty",
+        "checkInAt",
+        "checkOutAt"
+      ],
+      "file": "app/(console)/agents/page.tsx"
+    },
+    {
+      "path": "/admin/agents/leaderboard",
+      "method": "get",
+      "type": "LeaderRow[]",
+      "fields": [
+        "agentId",
+        "code",
+        "name",
+        "storeName",
+        "rating",
+        "deliveries",
+        "failed",
+        "successRate",
+        "avgMinutes",
+        "acceptanceRate",
+        "collectionsAssigned",
+        "collected",
+        "recoveredAmount",
+        "recoveryRate"
+      ],
+      "file": "app/(console)/agents/page.tsx"
+    },
+    {
+      "path": "/admin/zones",
+      "method": "get",
+      "type": "Zone[]",
+      "fields": [
+        "id",
+        "name",
+        "code"
+      ],
+      "file": "app/(console)/agents/page.tsx"
+    },
+    {
+      "path": "/admin/zones/${activeZone}/agents",
+      "method": "get",
+      "type": "ZoneAgent[]",
+      "fields": [
+        "id",
+        "name",
+        "phone"
+      ],
+      "file": "app/(console)/agents/page.tsx"
+    },
+    {
+      "path": "/admin/agents",
+      "method": "get",
+      "type": "AgentRow[]",
+      "fields": [
+        "agentId",
+        "code",
+        "name",
+        "phone",
+        "storeId",
+        "storeName",
+        "vehicle",
+        "available",
+        "isActive",
+        "rating",
+        "bagCapacity",
+        "weightCapacityKg",
+        "cashCapacity",
+        "maxStops",
+        "employmentType",
+        "onDuty",
+        "checkInAt",
+        "checkOutAt"
+      ],
+      "file": "app/(console)/agents/page.tsx"
+    },
+    {
+      "path": "/audit/logs",
+      "method": "getPaged",
+      "type": "AuditLog",
+      "fields": [
+        "id",
+        "actor",
+        "action",
+        "targetType",
+        "targetId",
+        "before",
+        "after",
+        "createdAt"
+      ],
+      "file": "app/(console)/audit/page.tsx"
+    },
+    {
+      "path": "/admin/cash/reconciliation",
+      "method": "get",
+      "type": "Reconciliation",
+      "fields": [
+        "collected",
+        "declared",
+        "verified",
+        "shortfall",
+        "inHand",
+        "pendingDeposits",
+        "byAgent"
+      ],
+      "file": "app/(console)/cash/page.tsx"
+    },
+    {
+      "path": "/admin/cash/deposits",
+      "method": "getPaged",
+      "type": "Deposit",
+      "fields": [
+        "id",
+        "agentName",
+        "agentPhone",
+        "amount",
+        "method",
+        "depositedOn",
+        "reference",
+        "status",
+        "verifiedAmount",
+        "verifiedByName",
+        "verifiedAt",
+        "shortfall",
+        "notes",
+        "collectionCount",
+        "createdAt"
+      ],
+      "file": "app/(console)/cash/page.tsx"
+    },
+    {
+      "path": "/admin/cash/deposits/${depositId}",
+      "method": "get",
+      "type": "DepositDetail",
+      "fields": [],
+      "file": "app/(console)/cash/page.tsx"
+    },
+    {
+      "path": "/admin/catalog/categories",
+      "method": "getPaged",
+      "type": "Category",
+      "fields": [
+        "id",
+        "name",
+        "slug",
+        "parentId",
+        "iconName",
+        "imageUrl",
+        "productCount",
+        "sortOrder",
+        "isActive",
+        "nameTe",
+        "nameHi"
+      ],
+      "file": "app/(console)/catalog/categories/page.tsx"
+    },
+    {
+      "path": "/admin/catalog/products",
+      "method": "getPaged",
+      "type": "MasterProduct",
+      "fields": [
+        "id",
+        "name",
+        "brand",
+        "unit",
+        "sku",
+        "hsn",
+        "gstRate",
+        "price",
+        "mrp",
+        "creditPrice",
+        "categoryId",
+        "categoryName",
+        "imageUrl",
+        "description",
+        "storeCount",
+        "isActive",
+        "nameTe",
+        "nameHi",
+        "descriptionTe",
+        "descriptionHi"
+      ],
+      "file": "app/(console)/catalog/page.tsx"
+    },
+    {
+      "path": "/admin/catalog/categories",
+      "method": "getPaged",
+      "type": "Category",
+      "fields": [
+        "id",
+        "name"
+      ],
+      "file": "app/(console)/catalog/page.tsx"
+    },
+    {
+      "path": "/admin/collections/metrics",
+      "method": "get",
+      "type": "Metrics",
+      "fields": [
+        "collectedToday",
+        "pendingAmount",
+        "pendingCount",
+        "priorityCount",
+        "overdueAmount",
+        "agentPerformance",
+        "agentId",
+        "name",
+        "collected",
+        "byZone",
+        "zone",
+        "pending"
+      ],
+      "file": "app/(console)/collections/page.tsx"
+    },
+    {
+      "path": "/admin/collections/agents",
+      "method": "get",
+      "type": "Agent[]",
+      "fields": [
+        "id",
+        "name"
+      ],
+      "file": "app/(console)/collections/page.tsx"
+    },
+    {
+      "path": "/admin/collections",
+      "method": "getPaged",
+      "type": "Collection",
+      "fields": [
+        "id",
+        "userName",
+        "userPhone",
+        "storeName",
+        "zoneName",
+        "amount",
+        "status",
+        "isPriority",
+        "agentId",
+        "agentName",
+        "createdAt",
+        "manualVerificationRequired"
+      ],
+      "file": "app/(console)/collections/page.tsx"
+    },
+    {
+      "path": "/admin/collections/command-center",
+      "method": "get",
+      "type": "CommandCenter",
+      "fields": [
+        "kpis",
+        "collectedToday",
+        "pendingAmount",
+        "openCount",
+        "disputed",
+        "escalated",
+        "aging"
+      ],
+      "file": "app/(console)/collections/page.tsx"
+    },
+    {
+      "path": "/admin/crm/customers/analytics",
+      "method": "get",
+      "type": "CustomerAnalytics",
+      "fields": [
+        "totalCustomers",
+        "activeCustomers",
+        "creditCustomers",
+        "totalOutstanding",
+        "riskDistribution",
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "file": "app/(console)/customers/page.tsx"
+    },
+    {
+      "path": "/admin/crm/customers/${id}",
+      "method": "get",
+      "type": "Customer360",
+      "fields": [],
+      "file": "app/(console)/customers/[id]/page.tsx"
+    },
+    {
+      "path": "/admin/credit/cibil/${customerId}",
+      "method": "get",
+      "type": "{ report: CibilReport | null }",
+      "fields": [
+        "report"
+      ],
+      "file": "app/(console)/customers/[id]/sections.tsx"
+    },
+    {
+      "path": "/admin/delivery/command-center",
+      "method": "get",
+      "type": "CommandCenter",
+      "fields": [
+        "kpis",
+        "successRate",
+        "avgMinutes",
+        "activeDeliveries",
+        "deliveredToday",
+        "failedToday",
+        "reattemptRate",
+        "active",
+        "zones",
+        "zone"
+      ],
+      "file": "app/(console)/delivery/command-center/page.tsx"
+    },
+    {
+      "path": "/admin/delivery/dashboard",
+      "method": "get",
+      "type": "DeliveryDash",
+      "fields": [
+        "activeDeliveries",
+        "pendingAcceptance",
+        "outForDelivery",
+        "deliveredToday",
+        "failedToday",
+        "agentsOnDuty",
+        "avgDeliveryMinutes",
+        "onTimeRate"
+      ],
+      "file": "app/(console)/delivery/page.tsx"
+    },
+    {
+      "path": "/admin/delivery/agents",
+      "method": "get",
+      "type": "AgentLoad[]",
+      "fields": [
+        "id",
+        "name",
+        "onDuty",
+        "active",
+        "deliveredToday"
+      ],
+      "file": "app/(console)/delivery/page.tsx"
+    },
+    {
+      "path": "/admin/delivery",
+      "method": "get",
+      "type": "DeliveryRow[]",
+      "fields": [
+        "id",
+        "orderCode",
+        "customer",
+        "phone",
+        "store",
+        "zone",
+        "agent",
+        "status",
+        "assignedAt",
+        "startedAt",
+        "deliveredAt",
+        "distanceKm"
+      ],
+      "file": "app/(console)/delivery/page.tsx"
+    },
+    {
+      "path": "/admin/delivery/reattempt-queue",
+      "method": "get",
+      "type": "ReattemptRow[]",
+      "fields": [
+        "id",
+        "orderCode",
+        "agent",
+        "attemptNo",
+        "reason",
+        "note",
+        "failedAt"
+      ],
+      "file": "app/(console)/delivery/page.tsx"
+    },
+    {
+      "path": "/admin/employees",
+      "method": "get",
+      "type": "Resp",
+      "fields": [
+        "employees",
+        "summary",
+        "superadmin",
+        "admin",
+        "agent",
+        "storeStaff",
+        "total"
+      ],
+      "file": "app/(console)/employees/page.tsx"
+    },
+    {
+      "path": "/inventory/audit",
+      "method": "get",
+      "type": "AuditRow[]",
+      "fields": [],
+      "file": "app/(console)/inventory/audit/page.tsx"
+    },
+    {
+      "path": "/admin/inventory",
+      "method": "getPaged",
+      "type": "InvProduct",
+      "fields": [
+        "id",
+        "name"
+      ],
+      "file": "app/(console)/inventory/audit/page.tsx"
+    },
+    {
+      "path": "/inventory/warehouses",
+      "method": "getPaged",
+      "type": "Warehouse",
+      "fields": [
+        "id",
+        "name",
+        "code"
+      ],
+      "file": "app/(console)/inventory/audit/page.tsx"
+    },
+    {
+      "path": "/inventory/aging",
+      "method": "get",
+      "type": "{ aging: AgingBucket[]; nearExpiry: NearExpiry[] }",
+      "fields": [
+        "aging",
+        "nearExpiry"
+      ],
+      "file": "app/(console)/inventory/expiry/page.tsx"
+    },
+    {
+      "path": "/inventory/finance",
+      "method": "get",
+      "type": "Finance",
+      "fields": [],
+      "file": "app/(console)/inventory/finance/page.tsx"
+    },
+    {
+      "path": "/admin/inventory",
+      "method": "getPaged",
+      "type": "InvProduct",
+      "fields": [
+        "id",
+        "name",
+        "brand",
+        "category",
+        "price",
+        "stockCount",
+        "inStock",
+        "low"
+      ],
+      "file": "app/(console)/inventory/operations/page.tsx"
+    },
+    {
+      "path": "/inventory/stock",
+      "method": "getPaged",
+      "type": "StockItem",
+      "fields": [
+        "id",
+        "productId",
+        "productName",
+        "warehouseId",
+        "warehouseName",
+        "quantity",
+        "reserved",
+        "lowStockThreshold",
+        "available"
+      ],
+      "file": "app/(console)/inventory/operations/page.tsx"
+    },
+    {
+      "path": "/inventory/ledger",
+      "method": "getPaged",
+      "type": "LedgerEntry",
+      "fields": [
+        "id",
+        "productId",
+        "productName",
+        "warehouseId",
+        "warehouseName",
+        "type",
+        "quantity",
+        "balanceAfter",
+        "note",
+        "createdAt"
+      ],
+      "file": "app/(console)/inventory/operations/page.tsx"
+    },
+    {
+      "path": "/inventory/valuation",
+      "method": "get",
+      "type": "Valuation",
+      "fields": [
+        "rows",
+        "productId",
+        "name",
+        "warehouseId",
+        "warehouseName",
+        "quantity",
+        "unitCost",
+        "value",
+        "total",
+        "skuCount"
+      ],
+      "file": "app/(console)/inventory/operations/page.tsx"
+    },
+    {
+      "path": "/inventory/overview",
+      "method": "get",
+      "type": "InvOverview",
+      "fields": [],
+      "file": "app/(console)/inventory/page.tsx"
+    },
+    {
+      "path": "/inventory/stores",
+      "method": "get",
+      "type": "StoreRollup[]",
+      "fields": [],
+      "file": "app/(console)/inventory/page.tsx"
+    },
+    {
+      "path": "/inventory/movers",
+      "method": "get",
+      "type": "{ fast: Mover[]; slow: Mover[] }",
+      "fields": [
+        "fast",
+        "slow"
+      ],
+      "file": "app/(console)/inventory/page.tsx"
+    },
+    {
+      "path": "/inventory/dead-stock",
+      "method": "get",
+      "type": "{ items: DeadStockItem[] }",
+      "fields": [
+        "items"
+      ],
+      "file": "app/(console)/inventory/page.tsx"
+    },
+    {
+      "path": "/inventory/products/${id}/overview",
+      "method": "get",
+      "type": "ProductOverview",
+      "fields": [],
+      "file": "app/(console)/inventory/product/[id]/page.tsx"
+    },
+    {
+      "path": "/inventory/reorder",
+      "method": "get",
+      "type": "{ leadTimeDays: number; items: ReorderItem[] }",
+      "fields": [
+        "leadTimeDays",
+        "items"
+      ],
+      "file": "app/(console)/inventory/reorder/page.tsx"
+    },
+    {
+      "path": "/inventory/stores",
+      "method": "get",
+      "type": "StoreRollup[]",
+      "fields": [],
+      "file": "app/(console)/inventory/store/[wid]/page.tsx"
+    },
+    {
+      "path": "/inventory/stores/${wid}/products",
+      "method": "get",
+      "type": "StoreProductRow[]",
+      "fields": [
+        "productId",
+        "name",
+        "brand",
+        "onHand",
+        "reserved",
+        "available",
+        "lowStockThreshold",
+        "isAvailable",
+        "globalPrice",
+        "storePrice",
+        "effectivePrice",
+        "mrp"
+      ],
+      "file": "app/(console)/inventory/store/[wid]/page.tsx"
+    },
+    {
+      "path": "/inventory/suppliers",
+      "method": "getPaged",
+      "type": "Supplier",
+      "fields": [
+        "id",
+        "name",
+        "gstin",
+        "phone",
+        "email",
+        "isActive"
+      ],
+      "file": "app/(console)/inventory/store/[wid]/page.tsx"
+    },
+    {
+      "path": "/inventory/purchase-orders",
+      "method": "getPaged",
+      "type": "PurchaseOrder",
+      "fields": [
+        "id",
+        "supplierName",
+        "warehouseId",
+        "status",
+        "total",
+        "receivedAt"
+      ],
+      "file": "app/(console)/inventory/store/[wid]/page.tsx"
+    },
+    {
+      "path": "/inventory/ledger",
+      "method": "getPaged",
+      "type": "LedgerEntry",
+      "fields": [
+        "id",
+        "productId",
+        "productName",
+        "type",
+        "quantity",
+        "balanceAfter",
+        "note",
+        "createdAt"
+      ],
+      "file": "app/(console)/inventory/store/[wid]/page.tsx"
+    },
+    {
+      "path": "/inventory/warehouses",
+      "method": "get",
+      "type": "Warehouse[]",
+      "fields": [
+        "id",
+        "name",
+        "code"
+      ],
+      "file": "app/(console)/inventory/transfers/page.tsx"
+    },
+    {
+      "path": "/inventory/transfer-suggestions",
+      "method": "get",
+      "type": "{ suggestions: Suggestion[] }",
+      "fields": [
+        "suggestions"
+      ],
+      "file": "app/(console)/inventory/transfers/page.tsx"
+    },
+    {
+      "path": "/inventory/transfers",
+      "method": "get",
+      "type": "Transfer[]",
+      "fields": [
+        "variant_label",
+        "id",
+        "product_id",
+        "from_warehouse_id",
+        "to_warehouse_id",
+        "quantity",
+        "status",
+        "note"
+      ],
+      "file": "app/(console)/inventory/transfers/page.tsx"
+    },
+    {
+      "path": "/admin/catalog/products",
+      "method": "getPaged",
+      "type": "ProductHit",
+      "fields": [
+        "id",
+        "name"
+      ],
+      "file": "app/(console)/inventory/transfers/page.tsx"
+    },
+    {
+      "path": "/admin/catalog/products/${productId}/variants",
+      "method": "get",
+      "type": "VariantsResp",
+      "fields": [
+        "productId",
+        "productName",
+        "hasVariants",
+        "variants",
+        "unallocated"
+      ],
+      "file": "app/(console)/inventory/transfers/page.tsx"
+    },
+    {
+      "path": "/admin/pages",
+      "method": "get",
+      "type": "PagesResp",
+      "fields": [
+        "pages"
+      ],
+      "file": "app/(console)/legal/page.tsx"
+    },
+    {
+      "path": "/admin/loyalty/summary",
+      "method": "get",
+      "type": "Summary",
+      "fields": [
+        "pointsEarned",
+        "pointsRedeemed",
+        "pointsExpired",
+        "pointsAdjusted",
+        "pointsOutstanding",
+        "members"
+      ],
+      "file": "app/(console)/loyalty/page.tsx"
+    },
+    {
+      "path": "/admin/loyalty/ledger",
+      "method": "getPaged",
+      "type": "Entry",
+      "fields": [
+        "id",
+        "userId",
+        "userName",
+        "userPhone",
+        "type",
+        "points",
+        "balanceAfter",
+        "note",
+        "refType",
+        "refId",
+        "createdAt"
+      ],
+      "file": "app/(console)/loyalty/page.tsx"
+    },
+    {
+      "path": "/admin/loyalty/members",
+      "method": "get",
+      "type": "Member[]",
+      "fields": [
+        "userId",
+        "name",
+        "phone",
+        "lifetimePoints",
+        "earningEvents",
+        "tier"
+      ],
+      "file": "app/(console)/loyalty/page.tsx"
+    },
+    {
+      "path": "/admin/marketing/offers",
+      "method": "getPaged",
+      "type": "Offer",
+      "fields": [
+        "id",
+        "type",
+        "placement",
+        "title",
+        "subtitle",
+        "code",
+        "imageUrl",
+        "badge",
+        "discountPercent",
+        "dealPrice",
+        "categoryId",
+        "subcategoryId",
+        "isFallback",
+        "isActive",
+        "sortOrder",
+        "state",
+        "isPinned",
+        "zoneId",
+        "storeId",
+        "titleTe",
+        "titleHi",
+        "subtitleTe",
+        "subtitleHi",
+        "action",
+        "payload",
+        "validFrom",
+        "validTo",
+        "timezone",
+        "focusX",
+        "focusY",
+        "image",
+        "imageVersion",
+        "impressions",
+        "clicks",
+        "ctr",
+        "rejectionReason",
+        "ctaText",
+        "ctaTextTe",
+        "ctaTextHi",
+        "textTheme",
+        "textPosition",
+        "accentColor",
+        "cropRect"
+      ],
+      "file": "app/(console)/marketing/page.tsx"
+    },
+    {
+      "path": "/offers/specs",
+      "method": "get",
+      "type": "{ placements: BannerSpec[] }",
+      "fields": [
+        "placements"
+      ],
+      "file": "app/(console)/marketing/page.tsx"
+    },
+    {
+      "path": "/admin/catalog/categories",
+      "method": "getPaged",
+      "type": "CategoryRef",
+      "fields": [
+        "id",
+        "name",
+        "parentId"
+      ],
+      "file": "app/(console)/marketing/page.tsx"
+    },
+    {
+      "path": "/admin/zones",
+      "method": "get",
+      "type": "Zone[]",
+      "fields": [
+        "id",
+        "name"
+      ],
+      "file": "app/(console)/marketing/page.tsx"
+    },
+    {
+      "path": "/admin/stores",
+      "method": "getPaged",
+      "type": "StoreRef",
+      "fields": [
+        "id",
+        "name"
+      ],
+      "file": "app/(console)/marketing/page.tsx"
+    },
+    {
+      "path": "/admin/marketing/coupons",
+      "method": "getPaged",
+      "type": "Coupon",
+      "fields": [
+        "id",
+        "code",
+        "discountType",
+        "value",
+        "minOrder",
+        "maxDiscount",
+        "usageLimit",
+        "perUserLimit",
+        "validTo",
+        "isActive",
+        "redemptions"
+      ],
+      "file": "app/(console)/marketing/page.tsx"
+    },
+    {
+      "path": "/admin/zones",
+      "method": "get",
+      "type": "Zone[]",
+      "fields": [
+        "id",
+        "name"
+      ],
+      "file": "app/(console)/marketing/page.tsx"
+    },
+    {
+      "path": "/admin/catalog/products",
+      "method": "getPaged",
+      "type": "{ id: number | string; name: string }",
+      "fields": [
+        "id",
+        "name"
+      ],
+      "file": "app/(console)/marketing/page.tsx"
+    },
+    {
+      "path": "/admin/orders/queues",
+      "method": "get",
+      "type": "Queues",
+      "fields": [
+        "toPack",
+        "packed",
+        "readyForDispatch",
+        "outForDelivery",
+        "counts"
+      ],
+      "file": "app/(console)/orders/dispatch/page.tsx"
+    },
+    {
+      "path": "/admin/ops/live",
+      "method": "get",
+      "type": "{ agents: LiveAgent[] }",
+      "fields": [
+        "agents"
+      ],
+      "file": "app/(console)/orders/dispatch/page.tsx"
+    },
+    {
+      "path": "/admin/orders/dashboard",
+      "method": "get",
+      "type": "OrderDash",
+      "fields": [
+        "ordersToday",
+        "revenueToday",
+        "pending",
+        "packed",
+        "outForDelivery",
+        "deliveredToday",
+        "cancelledToday",
+        "averageOrderValue",
+        "creditOrders",
+        "codOrders",
+        "onlineOrders"
+      ],
+      "file": "app/(console)/orders/page.tsx"
+    },
+    {
+      "path": "/admin/orders",
+      "method": "getPaged",
+      "type": "OrderRow",
+      "fields": [
+        "code",
+        "placedAt",
+        "customer",
+        "phone",
+        "store",
+        "zone",
+        "items",
+        "value",
+        "paymentMethod",
+        "paymentStatus",
+        "status",
+        "deliveryStatus",
+        "agent"
+      ],
+      "file": "app/(console)/orders/page.tsx"
+    },
+    {
+      "path": "/admin/returns",
+      "method": "getPaged",
+      "type": "ReturnRow",
+      "fields": [
+        "code",
+        "orderCode",
+        "customer",
+        "phone",
+        "reason",
+        "status",
+        "refundAmount",
+        "items",
+        "createdAt"
+      ],
+      "file": "app/(console)/orders/returns/page.tsx"
+    },
+    {
+      "path": "/admin/orders/${code}",
+      "method": "get",
+      "type": "OrderDetail",
+      "fields": [
+        "header",
+        "code",
+        "placedAt",
+        "store",
+        "zone",
+        "status",
+        "paymentStatus",
+        "deliveryStatus",
+        "estimatedDelivery",
+        "source",
+        "createdBy",
+        "customerType",
+        "customer",
+        "id",
+        "name",
+        "phone",
+        "address",
+        "pincode",
+        "vsScore",
+        "outstanding",
+        "since",
+        "items",
+        "brand",
+        "quantity",
+        "mrp",
+        "price",
+        "discount",
+        "total",
+        "totals",
+        "subtotal",
+        "gst",
+        "deliveryFee",
+        "platformFee",
+        "payment",
+        "method",
+        "creditUsed",
+        "creditPlan",
+        "creditDueDate",
+        "credit",
+        "isCredit",
+        "availableLimit",
+        "outstandingBefore",
+        "outstandingAfter",
+        "dueDate",
+        "collectionStatus",
+        "delivery",
+        "agent",
+        "agentId",
+        "assignedAt",
+        "pickedUpAt",
+        "outForDeliveryAt",
+        "deliveredAt",
+        "distanceKm",
+        "eta",
+        "otp",
+        "inventoryImpact",
+        "ordered",
+        "before",
+        "remaining",
+        "exceptions",
+        "timeline",
+        "note",
+        "at",
+        "by"
+      ],
+      "file": "app/(console)/orders/[code]/page.tsx"
+    },
+    {
+      "path": "/admin/dashboard",
+      "method": "get",
+      "type": "Dashboard",
+      "fields": [
+        "ordersToday",
+        "gmvToday",
+        "activeCreditOutstanding",
+        "overdueStatements",
+        "customers",
+        "agents"
+      ],
+      "file": "app/(console)/page.tsx"
+    },
+    {
+      "path": "/admin/analytics/overview",
+      "method": "get",
+      "type": "Overview",
+      "fields": [
+        "periodDays",
+        "orders",
+        "gmv",
+        "revenue",
+        "platformFeeCollected",
+        "averageOrderValue",
+        "newCustomers",
+        "creditOutstanding",
+        "overdueStatements",
+        "repaymentsCollected"
+      ],
+      "file": "app/(console)/page.tsx"
+    },
+    {
+      "path": "/admin/analytics/sales",
+      "method": "get",
+      "type": "SalesPoint[]",
+      "fields": [
+        "date",
+        "orders",
+        "gmv"
+      ],
+      "file": "app/(console)/page.tsx"
+    },
+    {
+      "path": "/admin/analytics/top-products",
+      "method": "get",
+      "type": "TopProduct[]",
+      "fields": [
+        "productId",
+        "name",
+        "units",
+        "revenue"
+      ],
+      "file": "app/(console)/page.tsx"
+    },
+    {
+      "path": "/admin/analytics/zones",
+      "method": "get",
+      "type": "ZoneStat[]",
+      "fields": [
+        "zone",
+        "orders",
+        "gmv"
+      ],
+      "file": "app/(console)/page.tsx"
+    },
+    {
+      "path": "/admin/ops/live",
+      "method": "get",
+      "type": "LiveOps",
+      "fields": [
+        "summary",
+        "agentsOnDuty",
+        "totalAgents",
+        "agentsOnline",
+        "activeDeliveries",
+        "activeCollections",
+        "ordersOutForDelivery",
+        "agents",
+        "id",
+        "name",
+        "onDuty",
+        "online",
+        "lastSeenAt"
+      ],
+      "file": "app/(console)/page.tsx"
+    },
+    {
+      "path": "/admin/payments",
+      "method": "getPaged",
+      "type": "Payment",
+      "fields": [
+        "id",
+        "userId",
+        "customerName",
+        "customerPhone",
+        "purpose",
+        "amount",
+        "method",
+        "gateway",
+        "status",
+        "gatewayOrderId",
+        "gatewayPaymentId",
+        "gatewayRefundId",
+        "orderCode",
+        "statementId",
+        "refundOfId",
+        "createdAt"
+      ],
+      "file": "app/(console)/payments/page.tsx"
+    },
+    {
+      "path": "/admin/payments/summary",
+      "method": "get",
+      "type": "Summary",
+      "fields": [
+        "collected",
+        "refunded",
+        "failedCount",
+        "total",
+        "byStatus",
+        "status",
+        "count",
+        "amount",
+        "byMethod",
+        "method"
+      ],
+      "file": "app/(console)/payments/page.tsx"
+    },
+    {
+      "path": "/admin/payments/${paymentId}",
+      "method": "get",
+      "type": "PaymentDetail",
+      "fields": [],
+      "file": "app/(console)/payments/page.tsx"
+    },
+    {
+      "path": "/admin/pos/transactions",
+      "method": "get",
+      "type": "Resp",
+      "fields": [
+        "transactions",
+        "summary",
+        "count",
+        "salesCount",
+        "salesTotal"
+      ],
+      "file": "app/(console)/pos/page.tsx"
+    },
+    {
+      "path": "/inventory/suppliers",
+      "method": "getPaged",
+      "type": "Supplier",
+      "fields": [
+        "id",
+        "name",
+        "gstin",
+        "phone",
+        "email",
+        "address",
+        "isActive"
+      ],
+      "file": "app/(console)/procurement/page.tsx"
+    },
+    {
+      "path": "/inventory/purchase-orders",
+      "method": "getPaged",
+      "type": "PurchaseOrder",
+      "fields": [
+        "id",
+        "supplierName",
+        "supplierId",
+        "warehouseId",
+        "status",
+        "expectedAt",
+        "subtotal",
+        "tax",
+        "total",
+        "receivedAt",
+        "items"
+      ],
+      "file": "app/(console)/procurement/page.tsx"
+    },
+    {
+      "path": "/inventory/grn",
+      "method": "getPaged",
+      "type": "GRN",
+      "fields": [
+        "id",
+        "purchaseOrderId",
+        "supplierId",
+        "warehouseId",
+        "reference",
+        "status",
+        "totalCost",
+        "postedAt",
+        "items"
+      ],
+      "file": "app/(console)/procurement/page.tsx"
+    },
+    {
+      "path": "/admin/redemptions/outstanding",
+      "method": "get",
+      "type": "Outstanding",
+      "fields": [
+        "issued",
+        "spent",
+        "outstanding",
+        "outstandingValue"
+      ],
+      "file": "app/(console)/redemptions/page.tsx"
+    },
+    {
+      "path": "/admin/redemptions",
+      "method": "getPaged",
+      "type": "Redemption",
+      "fields": [
+        "id",
+        "userId",
+        "userName",
+        "userPhone",
+        "couponCode",
+        "discountType",
+        "isPersonal",
+        "orderCode",
+        "amount",
+        "createdAt"
+      ],
+      "file": "app/(console)/redemptions/page.tsx"
+    },
+    {
+      "path": "/admin/referrers/${userId}",
+      "method": "get",
+      "type": "ReferrerDetail",
+      "fields": [
+        "userId",
+        "name",
+        "phone",
+        "invited",
+        "completed",
+        "invitees"
+      ],
+      "file": "app/(console)/referrals/page.tsx"
+    },
+    {
+      "path": "/admin/referrals/summary",
+      "method": "get",
+      "type": "Summary",
+      "fields": [
+        "total",
+        "completed",
+        "pending",
+        "expired",
+        "rewardsPaid",
+        "conversionRate",
+        "referrers"
+      ],
+      "file": "app/(console)/referrals/page.tsx"
+    },
+    {
+      "path": "/admin/referrers",
+      "method": "getPaged",
+      "type": "Referrer",
+      "fields": [
+        "userId",
+        "name",
+        "phone",
+        "invited",
+        "completed",
+        "pending",
+        "rewardsPaid"
+      ],
+      "file": "app/(console)/referrals/page.tsx"
+    },
+    {
+      "path": "/admin/referrals",
+      "method": "getPaged",
+      "type": "Referral",
+      "fields": [
+        "id",
+        "code",
+        "status",
+        "reward",
+        "referrerId",
+        "referrerName",
+        "referrerPhone",
+        "refereeId",
+        "refereeName",
+        "refereePhone",
+        "createdAt"
+      ],
+      "file": "app/(console)/referrals/page.tsx"
+    },
+    {
+      "path": "/reports/${active}",
+      "method": "get",
+      "type": "ReportData",
+      "fields": [
+        "title",
+        "columns",
+        "rows"
+      ],
+      "file": "app/(console)/reports/page.tsx"
+    },
+    {
+      "path": "/admin/reviews",
+      "method": "getPaged",
+      "type": "Review",
+      "fields": [
+        "id",
+        "productId",
+        "productName",
+        "authorName",
+        "authorPhone",
+        "rating",
+        "title",
+        "body",
+        "status",
+        "isVerifiedPurchase",
+        "orderCode",
+        "moderationReason",
+        "moderatedByName",
+        "moderatedAt",
+        "createdAt"
+      ],
+      "file": "app/(console)/reviews/page.tsx"
+    },
+    {
+      "path": "/admin/staff",
+      "method": "get",
+      "type": "Staff[]",
+      "fields": [
+        "id",
+        "phone",
+        "name",
+        "role",
+        "isActive"
+      ],
+      "file": "app/(console)/security/page.tsx"
+    },
+    {
+      "path": "/admin/settings/integrations",
+      "method": "get",
+      "type": "Integrations",
+      "fields": [
+        "smsProvider",
+        "msg91TemplateId",
+        "msg91AuthKeySet",
+        "smsloginUsername",
+        "smsloginSenderId",
+        "smsloginTemplateId",
+        "smsloginOtpMessage",
+        "smsloginApiKeySet",
+        "otpBypassCodeSet",
+        "emailHost",
+        "emailPort",
+        "emailUser",
+        "emailUseTls",
+        "emailFrom",
+        "emailPasswordSet",
+        "razorpayKeyId",
+        "razorpayKeySecretSet",
+        "razorpayWebhookSecretSet",
+        "fcmServerKeySet",
+        "googleMapsKeySet",
+        "updatedAt"
+      ],
+      "file": "app/(console)/settings/integrations/page.tsx"
+    },
+    {
+      "path": "/admin/config",
+      "method": "get",
+      "type": "Config",
+      "fields": [
+        "gstRate",
+        "deliveryFee",
+        "freeDeliveryThreshold",
+        "minOrder",
+        "platformFeeType",
+        "platformFeeValue",
+        "platformFeeCap",
+        "creditDefaultLimit",
+        "lateFeeFlat",
+        "lateFeePercent",
+        "minCollectionAmount",
+        "currency",
+        "supportPhone",
+        "supportEmail",
+        "updatedAt"
+      ],
+      "file": "app/(console)/settings/page.tsx"
+    },
+    {
+      "path": "/admin/stores",
+      "method": "getPaged",
+      "type": "Store",
+      "fields": [
+        "id",
+        "code",
+        "name",
+        "address",
+        "phone",
+        "status"
+      ],
+      "file": "app/(console)/stores/page.tsx"
+    },
+    {
+      "path": "/admin/stores/${id}",
+      "method": "get",
+      "type": "Store",
+      "fields": [
+        "id",
+        "name",
+        "code"
+      ],
+      "file": "app/(console)/stores/[id]/admin/page.tsx"
+    },
+    {
+      "path": "/admin/stores/${id}/admin",
+      "method": "get",
+      "type": "StoreAdmin[]",
+      "fields": [
+        "id",
+        "name",
+        "email",
+        "phone",
+        "title",
+        "isActive"
+      ],
+      "file": "app/(console)/stores/[id]/admin/page.tsx"
+    },
+    {
+      "path": "/admin/support/tickets",
+      "method": "get",
+      "type": "TicketsResp",
+      "fields": [
+        "tickets",
+        "summary"
+      ],
+      "file": "app/(console)/support/page.tsx"
+    },
+    {
+      "path": "/admin/support/tickets/${code}",
+      "method": "get",
+      "type": "TicketDetail",
+      "fields": [],
+      "file": "app/(console)/support/page.tsx"
+    },
+    {
+      "path": "/admin/kyc/queue",
+      "method": "getWithMeta",
+      "type": "QueueResp",
+      "fields": [
+        "applications",
+        "summary"
+      ],
+      "file": "app/(console)/verification/page.tsx"
+    },
+    {
+      "path": "/admin/zones",
+      "method": "getPaged",
+      "type": "Zone",
+      "fields": [
+        "id",
+        "name",
+        "code",
+        "storeName",
+        "isActive",
+        "creditEnabled",
+        "deliveryFee"
+      ],
+      "file": "app/(console)/zones/page.tsx"
+    },
+    {
+      "path": "/admin/expansion-requests",
+      "method": "getPaged",
+      "type": "Expansion",
+      "fields": [
+        "id",
+        "name",
+        "mobile",
+        "village",
+        "area",
+        "pincode",
+        "createdAt"
+      ],
+      "file": "app/(console)/zones/page.tsx"
+    },
+    {
+      "path": "/admin/credit/applications",
+      "method": "getPaged",
+      "type": "CreditApplication",
+      "fields": [
+        "id",
+        "userId",
+        "customerName",
+        "customerPhone",
+        "kycStatus",
+        "creditEnabled",
+        "status",
+        "occupation",
+        "monthlyIncome",
+        "familyMembers",
+        "houseType",
+        "ownership",
+        "requestedLimit",
+        "bureauScoreAtSubmit",
+        "kycStatusAtSubmit",
+        "approvedLimit",
+        "rejectionReason",
+        "decisionNote",
+        "decidedById",
+        "decidedAt",
+        "submittedAt"
+      ],
+      "file": "components/credit-applications.tsx"
+    },
+    {
+      "path": "/admin/credit/applications/${applicationId}",
+      "method": "get",
+      "type": "ApplicationDetail",
+      "fields": [],
+      "file": "components/credit-applications.tsx"
+    },
+    {
+      "path": "/admin/credit/applications",
+      "method": "getPaged",
+      "type": "CreditApplication",
+      "fields": [
+        "id",
+        "userId",
+        "customerName",
+        "customerPhone",
+        "kycStatus",
+        "creditEnabled",
+        "status",
+        "occupation",
+        "monthlyIncome",
+        "familyMembers",
+        "houseType",
+        "ownership",
+        "requestedLimit",
+        "bureauScoreAtSubmit",
+        "kycStatusAtSubmit",
+        "approvedLimit",
+        "rejectionReason",
+        "decisionNote",
+        "decidedById",
+        "decidedAt",
+        "submittedAt"
+      ],
+      "file": "components/credit-applications.tsx"
+    },
+    {
+      "path": "/admin/crm/customers",
+      "method": "getPaged",
+      "type": "AdminCustomer",
+      "fields": [
+        "id",
+        "vsId",
+        "phone",
+        "name",
+        "kycStatus",
+        "vsScore",
+        "outstanding",
+        "risk",
+        "active",
+        "creditStatus"
+      ],
+      "file": "components/customers-table.tsx"
+    },
+    {
+      "path": "/admin/zones",
+      "method": "get",
+      "type": "NamedRef[]",
+      "fields": [
+        "id",
+        "name"
+      ],
+      "file": "components/customers-table.tsx"
+    },
+    {
+      "path": "/admin/stores",
+      "method": "get",
+      "type": "NamedRef[]",
+      "fields": [
+        "id",
+        "name"
+      ],
+      "file": "components/customers-table.tsx"
+    },
+    {
+      "path": "/admin/accounting/trial-balance",
+      "method": "get",
+      "type": "TrialBalance",
+      "fields": [
+        "asOf",
+        "rows",
+        "totalDebit",
+        "totalCredit",
+        "balanced"
+      ],
+      "file": "components/general-ledger.tsx"
+    },
+    {
+      "path": "/admin/accounting/pnl",
+      "method": "get",
+      "type": "Pnl",
+      "fields": [
+        "income",
+        "totalIncome",
+        "expenses",
+        "totalExpenses",
+        "netProfit"
+      ],
+      "file": "components/general-ledger.tsx"
+    },
+    {
+      "path": "/admin/accounting/balance-sheet",
+      "method": "get",
+      "type": "BalanceSheet",
+      "fields": [
+        "asOf",
+        "assets",
+        "totalAssets",
+        "liabilities",
+        "totalLiabilities",
+        "equity",
+        "retainedEarnings",
+        "totalEquity",
+        "balanced"
+      ],
+      "file": "components/general-ledger.tsx"
+    },
+    {
+      "path": "/admin/accounting/journal",
+      "method": "getPaged",
+      "type": "JournalEntry",
+      "fields": [
+        "id",
+        "entryDate",
+        "narration",
+        "reference",
+        "status",
+        "sourceModule",
+        "total",
+        "createdByName",
+        "lines"
+      ],
+      "file": "components/general-ledger.tsx"
+    },
+    {
+      "path": "/admin/accounting/accounts",
+      "method": "get",
+      "type": "Account[]",
+      "fields": [
+        "id",
+        "code",
+        "name",
+        "type",
+        "isControl",
+        "isActive"
+      ],
+      "file": "components/general-ledger.tsx"
+    },
+    {
+      "path": "/search/global",
+      "method": "get",
+      "type": "{ results: SearchResult[] }",
+      "fields": [
+        "results"
+      ],
+      "file": "components/layout/global-search.tsx"
+    },
+    {
+      "path": "/geo/places/autocomplete",
+      "method": "get",
+      "type": "{ predictions: Prediction[] }",
+      "fields": [
+        "predictions"
+      ],
+      "file": "components/maps/map-places-search.tsx"
+    },
+    {
+      "path": "/geo/places/detail",
+      "method": "get",
+      "type": "{ lat: number | null; lng: number | null }",
+      "fields": [
+        "lat",
+        "lng"
+      ],
+      "file": "components/maps/map-places-search.tsx"
+    },
+    {
+      "path": "/geo/reverse",
+      "method": "get",
+      "type": "{ formatted: string }",
+      "fields": [
+        "formatted"
+      ],
+      "file": "components/maps/store-location-map.tsx"
+    },
+    {
+      "path": "/home/sections",
+      "method": "get",
+      "type": "HomeSectionMeta[]",
+      "fields": [
+        "key",
+        "label",
+        "fallbackSort",
+        "limit"
+      ],
+      "file": "components/marketing/home-screen-tab.tsx"
+    },
+    {
+      "path": "/admin/catalog/home-sections",
+      "method": "get",
+      "type": "HomeSectionPins[]",
+      "fields": [
+        "section",
+        "label",
+        "items"
+      ],
+      "file": "components/marketing/home-screen-tab.tsx"
+    },
+    {
+      "path": "/admin/catalog/products",
+      "method": "getPaged",
+      "type": "ProductHit",
+      "fields": [
+        "id",
+        "name",
+        "price",
+        "isActive",
+        "originStoreName"
+      ],
+      "file": "components/marketing/home-screen-tab.tsx"
+    },
+    {
+      "path": "/admin/procurement/invoices",
+      "method": "getPaged",
+      "type": "Invoice",
+      "fields": [
+        "id",
+        "supplierId",
+        "supplierName",
+        "invoiceNumber",
+        "invoiceDate",
+        "dueDate",
+        "subtotal",
+        "tax",
+        "total",
+        "amountPaid",
+        "balanceDue",
+        "status",
+        "notes"
+      ],
+      "file": "components/payables-tab.tsx"
+    },
+    {
+      "path": "/admin/procurement/payables",
+      "method": "get",
+      "type": "Aging",
+      "fields": [
+        "totalOutstanding",
+        "buckets",
+        "bucket",
+        "count",
+        "amount",
+        "bySupplier",
+        "supplierId",
+        "supplier",
+        "invoices"
+      ],
+      "file": "components/payables-tab.tsx"
+    },
+    {
+      "path": "/admin/procurement/invoices/${invoiceId}",
+      "method": "get",
+      "type": "InvoiceDetail",
+      "fields": [],
+      "file": "components/payables-tab.tsx"
+    },
+    {
+      "path": "/inventory/suppliers",
+      "method": "getPaged",
+      "type": "SupplierRef",
+      "fields": [
+        "id",
+        "name"
+      ],
+      "file": "components/payables-tab.tsx"
+    },
+    {
+      "path": "/inventory/suppliers",
+      "method": "getPaged",
+      "type": "Supplier",
+      "fields": [
+        "id",
+        "name"
+      ],
+      "file": "components/po-dialog.tsx"
+    },
+    {
+      "path": "/inventory/warehouses",
+      "method": "get",
+      "type": "Warehouse[]",
+      "fields": [
+        "id",
+        "name"
+      ],
+      "file": "components/po-dialog.tsx"
+    },
+    {
+      "path": "/admin/catalog/products",
+      "method": "getPaged",
+      "type": "ProductHit",
+      "fields": [
+        "id",
+        "name",
+        "brand",
+        "price"
+      ],
+      "file": "components/po-dialog.tsx"
+    },
+    {
+      "path": "/admin/returns/${code}",
+      "method": "get",
+      "type": "ReturnDetail",
+      "fields": [
+        "code",
+        "status",
+        "reason",
+        "description",
+        "refundAmount",
+        "createdAt",
+        "resolvedAt",
+        "decisionNote",
+        "decidedBy",
+        "order",
+        "total",
+        "paymentMethod",
+        "paymentStatus",
+        "customer",
+        "id",
+        "name",
+        "phone",
+        "items",
+        "quantity",
+        "amount",
+        "acceptedQuantity",
+        "acceptedAmount",
+        "settledQuantity",
+        "settledAmount",
+        "evidence"
+      ],
+      "file": "components/return-detail-dialog.tsx"
+    },
+    {
+      "path": "/admin/stores",
+      "method": "get",
+      "type": "NamedRef[]",
+      "fields": [
+        "id",
+        "name"
+      ],
+      "file": "components/store-zone.tsx"
+    },
+    {
+      "path": "/admin/zones",
+      "method": "get",
+      "type": "NamedRef[]",
+      "fields": [
+        "id",
+        "name"
+      ],
+      "file": "components/store-zone.tsx"
+    },
+    {
+      "path": "/admin/stores/${storeId}",
+      "method": "get",
+      "type": "Store",
+      "fields": [
+        "id",
+        "code",
+        "name",
+        "address",
+        "latitude",
+        "longitude",
+        "phone",
+        "gstin",
+        "status",
+        "acceptingOrders",
+        "opensAt",
+        "closesAt",
+        "dailyOrderCapacity"
+      ],
+      "file": "components/stores/store-form.tsx"
+    },
+    {
+      "path": "/admin/zones",
+      "method": "getPaged",
+      "type": "ZoneLite",
+      "fields": [
+        "id",
+        "name",
+        "store",
+        "polygonGeojson"
+      ],
+      "file": "components/stores/store-form.tsx"
+    },
+    {
+      "path": "/admin/zones/${zoneId}",
+      "method": "get",
+      "type": "Zone",
+      "fields": [
+        "id",
+        "name",
+        "code",
+        "polygonGeojson",
+        "radiusKm",
+        "store",
+        "storeName",
+        "isActive",
+        "creditEnabled",
+        "estimatedDeliveryMinutes",
+        "priority",
+        "deliveryFee",
+        "freeDeliveryThreshold",
+        "minOrder"
+      ],
+      "file": "components/zones/zone-form.tsx"
+    },
+    {
+      "path": "/admin/stores",
+      "method": "getPaged",
+      "type": "StoreLite",
+      "fields": [
+        "id",
+        "name",
+        "latitude",
+        "longitude"
+      ],
+      "file": "components/zones/zone-form.tsx"
+    },
+    {
+      "path": "/users/me",
+      "method": "get",
+      "type": "ApiUser",
+      "fields": [],
+      "file": "lib/auth/auth-context.tsx"
+    },
+    {
+      "path": "/users/me",
+      "method": "get",
+      "type": "ApiUser",
+      "fields": [],
+      "file": "lib/auth/auth-context.tsx"
+    }
+  ]
+}

@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/api_exception.dart';
 import '../../../core/services/push_routing.dart';
 import '../../../core/ui.dart';
 import '../../collections/collections_providers.dart';
@@ -33,24 +34,40 @@ class IncomingTaskScreen extends ConsumerStatefulWidget {
 
 class _IncomingTaskScreenState extends ConsumerState<IncomingTaskScreen> {
   Timer? _pulse;
+  Timer? _pulseStop;
   bool _busy = false;
   final _local = FlutterLocalNotificationsPlugin();
+
+  /// How long the in-app haptic keeps pulsing. The screen is already open and
+  /// impossible to miss; buzzing indefinitely while the agent reads the address
+  /// is just noise, and it kept going for as long as they took to decide.
+  static const _pulseLimit = Duration(seconds: 20);
 
   @override
   void initState() {
     super.initState();
     HapticFeedback.heavyImpact();
-    // The notification behind this screen is the thing actually "ringing"
-    // (its sound repeats on its own via FLAG_INSISTENT) — this is just the
-    // in-app echo of that so it's felt even with the phone silenced/on
-    // vibrate, where the notification's own sound wouldn't be heard anyway.
+    // Silence the RINGING NOTIFICATION the moment this screen is up. It exists
+    // to summon the agent; once they're looking at it, its job is done. It was
+    // only cancelled in `dispose()`, so FLAG_INSISTENT kept re-sounding the
+    // alert underneath the very screen the agent was reading — the "alert
+    // won't turn off" complaint. The haptic below remains as the in-app cue.
+    cancelRingingAlert(_local, widget.data);
+
+    // In-app echo of the ring, so urgency is felt even on a silenced phone —
+    // but bounded, unlike before.
     _pulse = Timer.periodic(
         const Duration(milliseconds: 1200), (_) => HapticFeedback.heavyImpact());
+    _pulseStop = Timer(_pulseLimit, () {
+      _pulse?.cancel();
+      _pulse = null;
+    });
   }
 
   @override
   void dispose() {
     _pulse?.cancel();
+    _pulseStop?.cancel();
     // Leaving this screen by any path (answered, or backed out of) silences
     // the ring — an agent who backs out can still act on the task normally
     // from their task list; it just stops interrupting them.
@@ -93,13 +110,35 @@ class _IncomingTaskScreenState extends ConsumerState<IncomingTaskScreen> {
         }
       }
     } catch (e) {
-      if (mounted) {
-        setState(() => _busy = false);
-        showApiError(context, e,
-            fallback:
-                "Couldn't ${accept ? 'accept' : 'reject'} — try again.");
+      if (!mounted) return;
+      // The offer is gone — reassigned by the dispatch engine, or already
+      // actioned. That is not something the rider can retry: the old code
+      // showed "Couldn't reject — try again" and left them tapping a button
+      // that could never succeed, which is what made Reject look broken.
+      // (A 404 means the same thing: the task endpoint is scoped to the
+      // signed-in agent, so it stops matching the moment it moves away.)
+      if (_isDeadOffer(e)) {
+        showToast(context, accept
+            ? 'That job went to another partner.'
+            : 'That job already moved on — nothing to reject.');
+        Navigator.of(context).pop();
+        return;
       }
+      setState(() => _busy = false);
+      showApiError(context, e,
+          fallback: "Couldn't ${accept ? 'accept' : 'reject'} — try again.");
     }
+  }
+
+  /// Whether the failure means "this task is no longer yours", in which case
+  /// dismissing the alert is the correct outcome rather than an error.
+  bool _isDeadOffer(Object e) {
+    if (e is! ApiException) return false;
+    return e.code == 'DELIVERY_TASK_REQUIRED' ||
+        e.code == 'COLLECTION_TASK_REQUIRED' ||
+        e.code == 'INVALID_DELIVERY_TRANSITION' ||
+        e.code == 'INVALID_COLLECTION_TRANSITION' ||
+        e.statusCode == 404;
   }
 
   @override

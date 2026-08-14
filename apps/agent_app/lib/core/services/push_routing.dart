@@ -28,6 +28,11 @@ const urgentChannelId = 'vsmart_urgent';
 // is killed right after — there's no Dart timer to lose.
 const _flagInsistent = 4;
 
+/// How long the ringing alert keeps sounding before Android clears it by
+/// itself. Long enough that a rider who feels it in a pocket can get to the
+/// phone; short enough that an unanswered alert doesn't ring forever.
+const Duration _ringTimeout = Duration(minutes: 2);
+
 /// The one id an assignment's ringing alert is always shown/cancelled under —
 /// stable per task so [IncomingTaskScreen] can silence the exact alert it's
 /// answering, from either isolate, without needing to share any other state.
@@ -84,6 +89,16 @@ Future<void> showRingingAlert(
         ongoing: true,
         autoCancel: false,
         additionalFlags: Int32List.fromList(<int>[_flagInsistent]),
+        // Stop ringing on its own if nobody ever answers.
+        //
+        // FLAG_INSISTENT repeats the sound until the notification is
+        // cancelled, and `ongoing: true` means it cannot be swiped away. The
+        // only thing that cancelled it was `IncomingTaskScreen.dispose()` — so
+        // an alert the agent never opened (phone in a pocket, screen dismissed,
+        // app killed) rang indefinitely with no way to stop it short of a
+        // reboot. A ring nobody answered in two minutes has failed at being a
+        // ring; the task still sits in their list either way.
+        timeoutAfter: _ringTimeout.inMilliseconds,
       ),
     ),
     payload: encodePushPayload(data),

@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { type ColumnDef } from "@tanstack/react-table";
-import { Loader2, Star, UserCheck, Zap } from "lucide-react";
+import { Loader2, ShieldCheck, Star, UserCheck, Zap } from "lucide-react";
 import { api } from "@/lib/api/client";
 import { useApiMutation } from "@/lib/api/hooks";
 import { PageHeader } from "@/components/page-header";
@@ -19,6 +19,8 @@ import { type PageMeta } from "@/lib/types";
 interface Collection {
   id: string; userName: string; userPhone: string; storeName: string | null; zoneName: string | null;
   amount: number; status: string; isPriority: boolean; agentId: string | null; agentName: string | null; createdAt: string;
+  /** OTP locked out after 3 wrong codes — needs a supervisor to release it. */
+  manualVerificationRequired: boolean;
 }
 interface Metrics {
   collectedToday: number; pendingAmount: number; pendingCount: number; priorityCount: number; overdueAmount: number;
@@ -72,6 +74,16 @@ export default function CollectionsPage() {
   // actions the backend has always exposed but no page ever called.
   const cc = useQuery({ queryKey: ["collections", "command-center"], queryFn: () => api.get<CommandCenter>("/admin/collections/command-center") });
   const INVALIDATE = [["collections", "list"], ["collections", "metrics"], ["collections", "command-center"]];
+
+  // Release an OTP lockout. Three wrong codes lock the collection, and
+  // `collect()` refuses without `otpVerified` — so until this runs the agent is
+  // standing in front of the customer holding their cash with no way to finish.
+  // Collections had no override at all; delivery has had one since it was built.
+  const manualVerify = useApiMutation(
+    (id: string) => api.post(`/admin/collections/${id}/manual-verify`, {}),
+    { invalidate: INVALIDATE, successMessage: "Verified — the agent can record the cash now." },
+  );
+
   const runDunning = useApiMutation(
     () => api.post("/admin/collections/dunning"),
     { invalidate: INVALIDATE, successMessage: "Dunning sweep complete — aged dues escalated." },
@@ -110,6 +122,22 @@ export default function CollectionsPage() {
         ),
     },
     { accessorKey: "createdAt", header: "Requested", cell: ({ row }) => <span className="text-xs text-muted-foreground">{fmtDate(row.original.createdAt)}</span> },
+    {
+      id: "locked",
+      header: "",
+      cell: ({ row }) =>
+        row.original.manualVerificationRequired ? (
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={manualVerify.isPending}
+            title="Three wrong OTP attempts locked this collection. Verify the customer another way, then release it."
+            onClick={() => manualVerify.mutate(row.original.id)}
+          >
+            <ShieldCheck className="size-4" /> Release lock
+          </Button>
+        ) : null,
+    },
   ];
 
   const maxZone = Math.max(...(m?.byZone ?? []).map((z) => z.collected + z.pending), 1);

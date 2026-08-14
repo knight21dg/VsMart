@@ -10,7 +10,7 @@ from rest_framework.test import APIClient
 from accounts.models import User
 from catalog.models import Category, Product
 from inventory.models import StockItem, Warehouse
-from offers.models import BannerEvent, Offer
+from offers.models import BannerEvent, Coupon, Offer
 from stores.models import Store
 from system.models import FeatureFlag
 from zones.models import Zone
@@ -530,16 +530,24 @@ class BannerDeleteTests(TestCase):
         kw.setdefault("state", Offer.State.ACTIVE)
         return Offer.objects.create(title="Del", **kw)
 
+    # These assert 200 + a coded body rather than a bare 204. The console has to
+    # tell the operator WHICH of the two happened — an archived banner is still
+    # in the list, and "Banner deleted." over it reads as a failed delete. A 204
+    # carries no outcome, so the console was left re-deriving the archive rule
+    # from `impressions > 0`, which disagreed with the server on a banner
+    # archived for its clicks or events.
     def test_unserved_banner_is_really_deleted(self):
         offer = self._banner(state=Offer.State.DRAFT)
         r = self.client.delete(f"/api/v1/admin/marketing/offers/{offer.id}")
-        self.assertEqual(r.status_code, 204)
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertEqual(r.json()["code"], "RECORD_DELETED")
         self.assertFalse(Offer.objects.filter(id=offer.id).exists())
 
     def test_served_banner_is_archived_not_erased(self):
         offer = self._banner(impressions=120, clicks=9)
         r = self.client.delete(f"/api/v1/admin/marketing/offers/{offer.id}")
-        self.assertEqual(r.status_code, 204)
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertEqual(r.json()["code"], "RECORD_ARCHIVED")
         offer.refresh_from_db()
         self.assertEqual(offer.state, Offer.State.ARCHIVED)
         self.assertFalse(offer.is_active)
@@ -576,3 +584,75 @@ class BannerDeleteTests(TestCase):
         self.client.delete(f"/api/v1/admin/marketing/offers/{offer.id}")
         public = _data(APIClient().get("/api/v1/offers?type=banner"))
         self.assertNotIn(str(offer.id), {str(o["id"]) for o in public})
+
+
+class AdminCouponDeleteContractTests(TestCase):
+    """Deleting a coupon reports what actually happened.
+
+    A redeemed coupon is deactivated (CouponRedemption cascades off it, and
+    accounting reconciles discounts against those rows), an unredeemed one is
+    really deleted. A bare 204 could not tell the two apart — and the console's
+    fetch client could not read a 204 at all, so a successful delete surfaced as
+    "Empty response from server." with the row still on screen.
+    """
+
+    def setUp(self):
+        from rest_framework.test import APIClient
+
+        from accounts.models import User
+
+        self.admin = User.objects.create(
+            phone="+919000000701", name="Admin", role="admin"
+        )
+        self.client = APIClient()
+        self.client.force_authenticate(self.admin)
+
+    def _coupon(self, code="SAVE50"):
+        return Coupon.objects.create(
+            code=code, discount_type="flat", value=Decimal("50"), is_active=True
+        )
+
+    def test_unredeemed_coupon_is_really_deleted(self):
+        coupon = self._coupon()
+        r = self.client.delete(f"/api/v1/admin/marketing/coupons/{coupon.id}")
+        self.assertEqual(r.status_code, 200, r.content)
+        body = r.json()
+        self.assertEqual(body["code"], "RECORD_DELETED")
+        self.assertIn("SAVE50", body["message"])
+        self.assertFalse(Coupon.objects.filter(pk=coupon.pk).exists())
+
+    def test_redeemed_coupon_is_deactivated_and_history_survives(self):
+        from accounts.models import User
+
+        from .models import CouponRedemption
+
+        coupon = self._coupon("USED10")
+        customer = User.objects.create(
+            phone="+919000000702", name="Cust", role="customer"
+        )
+        CouponRedemption.objects.create(coupon=coupon, user=customer,
+                                        amount=Decimal("50"))
+
+        r = self.client.delete(f"/api/v1/admin/marketing/coupons/{coupon.id}")
+        self.assertEqual(r.status_code, 200, r.content)
+        body = r.json()
+        self.assertEqual(body["code"], "RECORD_DEACTIVATED")
+        self.assertIn("deactivated", body["message"].lower())
+        coupon.refresh_from_db()
+        self.assertFalse(coupon.is_active)
+        self.assertEqual(coupon.redemptions.count(), 1)
+
+    def test_store_panel_sees_coupons_read_only(self):
+        """The store list endpoint existed but nothing rendered it; the panel
+        now shows it, so the contract needs a test."""
+        from storeops.tests import client_for, mk_staff, mk_store
+
+        self._coupon("SHOWN5")
+        Coupon.objects.create(code="HIDDEN", discount_type="flat",
+                              value=Decimal("5"), is_active=False)
+        staff = client_for(mk_staff(mk_store(), "manager"))
+        r = staff.get("/api/v1/store/marketing/coupons")
+        self.assertEqual(r.status_code, 200, r.content)
+        codes = {c["code"] for c in r.json()["data"]}
+        self.assertIn("SHOWN5", codes)
+        self.assertNotIn("HIDDEN", codes)  # inactive codes are not quotable

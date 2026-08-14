@@ -34,6 +34,72 @@ function buildUrl(path: string, params?: Params): string {
   return url.toString();
 }
 
+/** Human text for a transport/status failure the backend didn't describe itself.
+ * Only used as a fallback — a coded envelope message always wins. */
+const STATUS_MESSAGE: Record<number, string> = {
+  400: "The request was invalid. Please check the details and try again.",
+  401: "Your session has expired. Please sign in again.",
+  403: "You don't have permission to perform this action.",
+  404: "That record no longer exists — it may have already been removed.",
+  405: "That action isn't allowed on this record.",
+  409: "This conflicts with the record's current state. Refresh and try again.",
+  413: "That file is too large to upload.",
+  415: "That file type isn't supported.",
+  422: "Some of the values entered aren't valid. Please correct them and try again.",
+  429: "Too many requests. Please wait a moment and try again.",
+  500: "The server ran into a problem. Please try again.",
+  502: "The server is unreachable right now. Please try again in a moment.",
+  503: "The service is temporarily unavailable. Please try again shortly.",
+  504: "The server took too long to respond. Please try again.",
+};
+
+function statusMessage(status: number): string {
+  return (
+    STATUS_MESSAGE[status] ||
+    (status >= 500
+      ? "The server ran into a problem. Please try again."
+      : "That request couldn't be completed. Please try again.")
+  );
+}
+
+/**
+ * Read a response body without ever throwing.
+ *
+ * A successful DELETE returns `204 No Content`, and per the fetch spec a 204 is
+ * a *null-body status* — `res.json()` rejects on it no matter what the server
+ * sent. The old code let that rejection collapse the envelope to `null` and then
+ * threw "Empty response from server." on a request that had in fact SUCCEEDED,
+ * which meant React Query's `onSuccess` never ran: no toast, no
+ * `invalidateQueries`, the confirm dialog stayed open and the deleted row only
+ * disappeared after a manual page reload.
+ *
+ * Returns `null` for "no body" (a legitimate success shape) and keeps the raw
+ * text so a non-JSON error page (a Caddy 502, an HTML login redirect) can still
+ * be reported as its status rather than as a JSON parse error.
+ */
+async function readBody<T>(res: Response): Promise<{ env: Envelope<T> | null; raw: string }> {
+  // 204/205/304 carry no body by definition — don't even read them.
+  if (res.status === 204 || res.status === 205 || res.status === 304) return { env: null, raw: "" };
+  let raw = "";
+  try {
+    raw = await res.text();
+  } catch {
+    return { env: null, raw: "" };
+  }
+  if (!raw.trim()) return { env: null, raw: "" };
+  try {
+    const parsed = JSON.parse(raw);
+    // Anything that isn't the standard envelope (a bare array/scalar from a
+    // legacy endpoint) is treated as the payload itself rather than discarded.
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed) && "success" in parsed) {
+      return { env: parsed as Envelope<T>, raw };
+    }
+    return { env: { success: true, data: parsed as T }, raw };
+  } catch {
+    return { env: null, raw };
+  }
+}
+
 // Single in-flight refresh shared across concurrent 401s (and, via
 // `ensureFreshToken`, concurrent WebSocket reconnects).
 let refreshInFlight: Promise<boolean> | null = null;
@@ -48,10 +114,14 @@ async function doRefresh(): Promise<boolean> {
       body: JSON.stringify({ refresh }),
     });
     if (!res.ok) return false;
-    const env = (await res.json()) as Envelope<{ access_token: string; refresh_token?: string }>;
-    const access = env.data?.access_token;
+    // Through readBody like every other response: the last place that called
+    // res.json() directly. A refresh that came back with an empty or non-JSON
+    // body (a proxy 200, an HTML error page) threw inside this try and was
+    // reported as "refresh failed" — signing the operator out mid-task.
+    const { env } = await readBody<{ access_token: string; refresh_token?: string }>(res);
+    const access = env?.data?.access_token;
     if (!access) return false;
-    setTokens(access, env.data?.refresh_token);
+    setTokens(access, env?.data?.refresh_token);
     return true;
   } catch {
     return false;
@@ -93,12 +163,24 @@ async function rawRequest<T>(path: string, opts: RequestOpts): Promise<Envelope<
     if (token) headers["Authorization"] = `Bearer ${token}`;
   }
 
-  const res = await fetch(buildUrl(path, params), {
-    method,
-    headers,
-    body: form !== undefined ? form : body !== undefined ? JSON.stringify(body) : undefined,
-    cache: "no-store",
-  });
+  let res: Response;
+  try {
+    res = await fetch(buildUrl(path, params), {
+      method,
+      headers,
+      body: form !== undefined ? form : body !== undefined ? JSON.stringify(body) : undefined,
+      cache: "no-store",
+    });
+  } catch {
+    // fetch only rejects on a transport failure (offline, DNS, CORS, abort) —
+    // surface that as a typed, human-readable error instead of letting a raw
+    // TypeError("Failed to fetch") reach a toast. The POS outbox also keys its
+    // retry decision off this code.
+    throw new ApiError(
+      "Can't reach the server. Check your connection and try again.",
+      { code: "network_error", status: 0 },
+    );
+  }
 
   // 401 -> attempt a single coordinated refresh, then retry once.
   if (res.status === 401 && auth && !opts._retried) {
@@ -119,12 +201,7 @@ async function rawRequest<T>(path: string, opts: RequestOpts): Promise<Envelope<
     throw new ApiError("Your session has expired. Please sign in again.", { code: "unauthenticated", status: 401 });
   }
 
-  let env: Envelope<T> | null = null;
-  try {
-    env = (await res.json()) as Envelope<T>;
-  } catch {
-    env = null;
-  }
+  const { env } = await readBody<T>(res);
 
   if (!res.ok || (env && env.success === false)) {
     const fields = env?.error?.fields;
@@ -134,16 +211,19 @@ async function rawRequest<T>(path: string, opts: RequestOpts): Promise<Envelope<
       ? Object.values(fields).flat().filter(Boolean).join(" ")
       : "";
     const base = env?.error?.message || env?.message || env?.detail;
-    const message = fieldMsg || base || `Request failed (${res.status})`;
+    // Fall back to a plain-English line for the status rather than leaking
+    // "Request failed (502)" or an HTML error page into the UI.
+    const message = fieldMsg || base || statusMessage(res.status);
     throw new ApiError(message, {
-      code: env?.error?.code ?? "error",
+      code: env?.error?.code ?? (res.status === 0 ? "network_error" : "error"),
       status: res.status,
       fields,
     });
   }
 
-  if (!env) throw new ApiError("Empty response from server.", { status: res.status });
-  return env;
+  // 2xx with no body (204 No Content, or an empty 200) IS a success. Synthesise
+  // the envelope so callers and React Query see a resolved mutation.
+  return env ?? ({ success: true, message: "", data: undefined } as Envelope<T>);
 }
 
 function asPaged<T>(env: Envelope<T[]>): Paged<T> {

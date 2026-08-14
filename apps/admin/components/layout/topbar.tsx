@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Camera, LogOut, Menu } from "lucide-react";
+import { Camera, KeyRound, LogOut, Menu } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth/auth-context";
 import { api } from "@/lib/api/client";
@@ -16,6 +16,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { ChangePasswordDialog } from "@/components/change-password-dialog";
 import { GlobalSearch } from "./global-search";
 import { titleize } from "@/lib/utils";
 
@@ -52,6 +53,7 @@ function Avatar({ url, name, size = 32 }: { url?: string | null; name?: string |
 
 export function Topbar({ onMenu }: { onMenu: () => void }) {
   const { user, logout, refreshUser } = useAuth();
+  const [changingPassword, setChangingPassword] = React.useState(false);
   const inputRef = React.useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = React.useState(false);
 
@@ -111,6 +113,9 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
             <DropdownMenuItem disabled={uploading} onSelect={() => inputRef.current?.click()}>
               <Camera /> {uploading ? "Uploading…" : user?.avatar_url ? "Change photo" : "Add photo"}
             </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => setChangingPassword(true)}>
+              <KeyRound /> Change password
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem destructive onSelect={() => logout()}>
               <LogOut /> Sign out
@@ -118,6 +123,11 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      <ChangePasswordDialog
+        open={changingPassword}
+        onOpenChange={setChangingPassword}
+      />
     </header>
   );
 }

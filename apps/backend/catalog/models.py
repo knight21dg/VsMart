@@ -54,12 +54,16 @@ class Product(TimeStampedModel):
     )
     brand = models.CharField(max_length=80, blank=True)
     unit = models.CharField(max_length=40, default="Each")
-    # Product Master identifiers (admin-managed). SKU/HSN are free text; gst_rate
-    # falls back to PlatformConfig.gst_rate when null.
+    # Product Master identifiers (admin-managed). SKU/HSN are free text.
     sku = models.CharField(max_length=60, blank=True, db_index=True)
     hsn = models.CharField(max_length=20, blank=True)
+    # GST rate as a PERCENTAGE (18 means 18%), matching the statutory slabs and
+    # the number the operator actually types. Null falls back to the platform
+    # default. Stored as a percentage rather than a fraction because that is what
+    # `OrderItem.gst_rate` snapshots and what a GST return reports; the pricing
+    # maths converts via `core.pricing.gst_pct_to_fraction`.
     gst_rate = models.DecimalField(
-        max_digits=4, decimal_places=2, null=True, blank=True
+        max_digits=5, decimal_places=2, null=True, blank=True
     )
     price = models.DecimalField(max_digits=12, decimal_places=2)
     mrp = models.DecimalField(max_digits=12, decimal_places=2)
@@ -157,3 +161,50 @@ class ProductVariant(models.Model):
     sku = models.CharField(max_length=60, blank=True)
     mrp = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     cost = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+
+
+class HomeFeature(TimeStampedModel):
+    """An admin-curated slot in a customer home-screen rail.
+
+    The home rails were purely algorithmic — "Popular" was
+    ``/products?sort=popular`` (most reviewed) and "Recommended" was
+    ``sort=rating``. Neither could be influenced from the console, so a
+    merchandiser had no way to push a new line, clear a slow-moving one, or run a
+    seasonal front page. The PDF's "Today Deals and Popular Products cannot be
+    managed from Admin/Store" is exactly this.
+
+    Curation is **additive and optional**: a section with no active rows keeps
+    serving its algorithmic ordering, so nothing changes until someone curates.
+    The moment one product is pinned, the rail becomes the pinned list — a
+    half-curated rail would let the algorithm silently outrank the merchandiser's
+    choice, which is the surprising behaviour, not the useful one.
+    """
+
+    class Section(models.TextChoices):
+        TODAY_DEALS = "today_deals", "Today's Deals"
+        POPULAR = "popular", "Popular Products"
+        RECOMMENDED = "recommended", "Recommended For You"
+        TOP_SELLING = "top_selling", "Top Selling"
+
+    #: Which rail this pin belongs to. The algorithmic fallback per section is
+    #: declared once in `catalog.home.SECTION_FALLBACK_SORT`.
+    section = models.CharField(max_length=20, choices=Section.choices, db_index=True)
+    product = models.ForeignKey(
+        Product, on_delete=models.CASCADE, related_name="home_features"
+    )
+    sort_order = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["section", "sort_order", "id"]
+        # One product cannot occupy the same rail twice — without this, a
+        # double-submitted "Add to rail" put the product on screen twice.
+        constraints = [
+            models.UniqueConstraint(
+                fields=["section", "product"], name="uniq_home_feature_section_product"
+            )
+        ]
+        indexes = [models.Index(fields=["section", "is_active", "sort_order"])]
+
+    def __str__(self):
+        return f"{self.get_section_display()} · {self.product_id}"

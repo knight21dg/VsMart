@@ -271,3 +271,230 @@ class AdminCollectionListPaginationTests(TestCase):
         body = self.client.get("/api/v1/admin/collections", {"limit": 5}).json()
         self.assertEqual(len(body["data"]), 5)
         self.assertNotIn("meta", body)
+
+
+class CollectionOtpExpiryTests(TestCase):
+    """`CollectionOTP.generated_at` was written and never read, so a code that
+    authorises a specific cash amount stayed valid indefinitely. And a locked
+    collection was a permanent dead end: `collect()` refuses without
+    `otp_verified`, and unlike delivery there was NO supervisor override — an
+    agent holding the customer's cash had no way to finish."""
+
+    def setUp(self):
+        self.agent = User.objects.create(
+            phone="+919777700400", name="Agent E", role="agent")
+        self.customer, self.acct = _customer("+919000000400", outstanding="1000")
+        self.coll = CashCollection.objects.create(
+            user=self.customer, amount=Decimal("1000"))
+        self._reach()
+        services.request_collection_otp(self.coll, self.agent, Decimal("1000"))
+        self.coll.refresh_from_db()
+        self.otp = self.coll.collection_otp
+
+    def _reach(self):
+        services.auto_assign(self.coll)
+        services.accept(self.coll, self.agent)
+        services.en_route(self.coll, self.agent)
+        services.reach(self.coll, self.agent)
+        self.coll.refresh_from_db()
+
+    def _age(self, minutes):
+        from datetime import timedelta
+
+        self.otp.generated_at = timezone.now() - timedelta(minutes=minutes)
+        self.otp.save(update_fields=["generated_at"])
+
+    def test_a_fresh_code_verifies(self):
+        services.verify_otp(self.coll, self.agent, self.otp.code)
+        self.coll.refresh_from_db()
+        self.assertTrue(self.coll.otp_verified)
+
+    def test_an_expired_code_is_refused(self):
+        self._age(services.OTP_TTL_MINUTES + 1)
+        with self.assertRaises(AppError) as ctx:
+            services.verify_otp(self.coll, self.agent, self.otp.code)
+        self.assertEqual(ctx.exception.code, "COLLECTION_OTP_EXPIRED")
+        self.coll.refresh_from_db()
+        self.assertFalse(self.coll.otp_verified)
+
+    def test_an_expired_code_does_not_burn_an_attempt(self):
+        self._age(services.OTP_TTL_MINUTES + 1)
+        for _ in range(3):
+            with self.assertRaises(AppError):
+                services.verify_otp(self.coll, self.agent, self.otp.code)
+        self.otp.refresh_from_db()
+        self.assertEqual(self.otp.attempts, 0)
+        self.assertFalse(self.otp.locked)
+
+    def test_cash_cannot_be_recorded_on_an_expired_code(self):
+        self._age(services.OTP_TTL_MINUTES + 1)
+        with self.assertRaises(AppError):
+            services.verify_otp(self.coll, self.agent, self.otp.code)
+        with self.assertRaises(AppError) as ctx:
+            services.collect(self.coll, self.agent)
+        self.assertEqual(ctx.exception.code, "COLLECTION_OTP_REQUIRED")
+
+    def test_a_later_clean_verify_clears_the_stale_manual_flag(self):
+        for _ in range(3):
+            with self.assertRaises(AppError):
+                services.verify_otp(self.coll, self.agent, "000000")
+        self.coll.refresh_from_db()
+        self.assertTrue(self.coll.manual_verification_required)
+
+        services.request_collection_otp(self.coll, self.agent, Decimal("1000"))
+        self.coll.refresh_from_db()
+        services.verify_otp(self.coll, self.agent, self.coll.collection_otp.code)
+
+        self.coll.refresh_from_db()
+        self.assertTrue(self.coll.otp_verified)
+        self.assertFalse(self.coll.manual_verification_required)
+
+
+class CollectionManualVerifyTests(TestCase):
+    """The supervisor override collections never had."""
+
+    def setUp(self):
+        self.agent = User.objects.create(
+            phone="+919777700500", name="Agent F", role="agent")
+        self.admin = User.objects.create(
+            phone="+919777700501", name="Admin", role="admin")
+        self.customer, self.acct = _customer("+919000000500", outstanding="1000")
+        self.coll = CashCollection.objects.create(
+            user=self.customer, amount=Decimal("1000"))
+        services.auto_assign(self.coll)
+        services.accept(self.coll, self.agent)
+        services.en_route(self.coll, self.agent)
+        services.reach(self.coll, self.agent)
+        self.coll.refresh_from_db()
+        services.request_collection_otp(self.coll, self.agent, Decimal("1000"))
+        self.coll.refresh_from_db()
+        for _ in range(3):
+            try:
+                services.verify_otp(self.coll, self.agent, "000000")
+            except AppError:
+                pass
+        self.coll.refresh_from_db()
+
+        self.client = APIClient()
+        self.client.force_authenticate(self.admin)
+
+    def _url(self):
+        return f"/api/v1/admin/collections/{self.coll.id}/manual-verify"
+
+    def test_a_locked_collection_cannot_be_collected_before_the_override(self):
+        with self.assertRaises(AppError) as ctx:
+            services.collect(self.coll, self.agent)
+        self.assertEqual(ctx.exception.code, "COLLECTION_OTP_REQUIRED")
+
+    def test_the_override_unblocks_the_collection(self):
+        r = self.client.post(self._url(), {"reason": "verified by phone"},
+                             format="json")
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertEqual(r.json()["code"], "COLLECTION_MANUALLY_VERIFIED")
+        self.coll.refresh_from_db()
+        self.assertTrue(self.coll.otp_verified)
+        self.assertFalse(self.coll.manual_verification_required)
+        # And the cash can now actually be recorded.
+        services.collect(self.coll, self.agent)
+        self.coll.refresh_from_db()
+        self.assertEqual(self.coll.status, "collected")
+
+    def test_the_override_also_unlocks_the_otp_row(self):
+        """Otherwise a later request-otp starts locked and the collection
+        re-locks on the first mistyped code."""
+        self.client.post(self._url(), {}, format="json")
+        self.coll.refresh_from_db()
+        otp = self.coll.collection_otp
+        self.assertFalse(otp.locked)
+        self.assertEqual(otp.attempts, 0)
+
+    def test_the_override_is_admin_only(self):
+        agent_client = APIClient()
+        agent_client.force_authenticate(self.agent)
+        self.assertEqual(agent_client.post(self._url(), {}, format="json").status_code, 403)
+
+    def test_the_override_is_audited(self):
+        from accounts.models import AuditLog
+
+        self.client.post(self._url(), {"reason": "verified by phone"}, format="json")
+        self.assertTrue(
+            AuditLog.objects.filter(
+                actor=self.admin, action="collection.manual_verify"
+            ).exists()
+        )
+
+
+class CollectionMinimumAmountTests(TestCase):
+    """An admin-configurable floor on a single cash collection.
+
+    Zero and negative amounts were always refused, but there was no way to say
+    "don't send an agent across town for Rs 20" — the only floor was "greater
+    than nothing". Default 0 keeps the old behaviour until a floor is set.
+    """
+
+    def setUp(self):
+        from siteconfig.models import PlatformConfig
+
+        self.agent = User.objects.create(
+            phone="+919777700600", name="Agent G", role="agent")
+        self.customer, self.acct = _customer("+919000000600", outstanding="1000")
+        self.coll = CashCollection.objects.create(
+            user=self.customer, amount=Decimal("1000"))
+        services.auto_assign(self.coll)
+        services.accept(self.coll, self.agent)
+        services.en_route(self.coll, self.agent)
+        services.reach(self.coll, self.agent)
+        self.coll.refresh_from_db()
+        self.cfg = PlatformConfig.load()
+
+    def _floor(self, value):
+        self.cfg.min_collection_amount = Decimal(value)
+        self.cfg.save(update_fields=["min_collection_amount"])
+
+    def test_zero_is_refused_with_no_floor_set(self):
+        with self.assertRaises(AppError) as ctx:
+            services.request_collection_otp(self.coll, self.agent, Decimal("0"))
+        self.assertEqual(ctx.exception.code, "COLLECTION_AMOUNT_INVALID")
+
+    def test_negative_is_refused(self):
+        with self.assertRaises(AppError):
+            services.request_collection_otp(self.coll, self.agent, Decimal("-50"))
+
+    def test_any_positive_amount_is_allowed_when_no_floor_is_set(self):
+        self._floor("0")
+        services.request_collection_otp(self.coll, self.agent, Decimal("20"))
+        self.coll.refresh_from_db()
+        self.assertEqual(self.coll.collection_otp.amount, Decimal("20"))
+
+    def test_below_the_floor_is_refused_and_says_the_figure(self):
+        self._floor("100")
+        with self.assertRaises(AppError) as ctx:
+            services.request_collection_otp(self.coll, self.agent, Decimal("20"))
+        self.assertEqual(ctx.exception.code, "COLLECTION_AMOUNT_INVALID")
+        self.assertIn("100", ctx.exception.message)
+
+    def test_at_the_floor_is_allowed(self):
+        self._floor("100")
+        services.request_collection_otp(self.coll, self.agent, Decimal("100"))
+        self.coll.refresh_from_db()
+        self.assertEqual(self.coll.collection_otp.amount, Decimal("100"))
+
+    def test_the_floor_never_blocks_clearing_the_account(self):
+        """If the whole remaining balance is under the floor, that payment must
+        still be collectable — otherwise the debt could never be closed."""
+        small = CashCollection.objects.create(
+            user=self.customer, amount=Decimal("30"))
+        services.auto_assign(small)
+        services.accept(small, self.agent)
+        services.en_route(small, self.agent)
+        services.reach(small, self.agent)
+        small.refresh_from_db()
+        self._floor("100")
+        services.request_collection_otp(small, self.agent, small.remaining)
+        small.refresh_from_db()
+        self.assertEqual(small.collection_otp.amount, small.remaining)
+
+    def test_more_than_the_outstanding_is_still_refused(self):
+        self._floor("100")
+        with self.assertRaises(AppError):
+            services.request_collection_otp(self.coll, self.agent, Decimal("99999"))

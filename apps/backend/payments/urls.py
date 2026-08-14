@@ -18,6 +18,9 @@ from .admin_views import (
     AdminPaymentDetailView,
     AdminPaymentListView,
     AdminPaymentSummaryView,
+    AdminConfirmCapturedView,
+    AdminConfirmNotCapturedView,
+    AdminReconciliationListView,
 )
 from .views import (
     CashCollectionRequestView,
@@ -52,6 +55,9 @@ urlpatterns = [
     path("admin/cash/deposits/<int:pk>/<str:action>", AdminCashDepositActionView.as_view()),
     path("admin/cash/deposits/<int:pk>", AdminCashDepositDetailView.as_view()),
     path("admin/payments/summary", AdminPaymentSummaryView.as_view()),
+    path("admin/payments/reconciliation", AdminReconciliationListView.as_view()),
+    path("admin/payments/<int:pk>/confirm-captured", AdminConfirmCapturedView.as_view()),
+    path("admin/payments/<int:pk>/confirm-not-captured", AdminConfirmNotCapturedView.as_view()),
     path("admin/payments", AdminPaymentListView.as_view()),
     path("admin/payments/<int:pk>/receipt", AdminPaymentReceiptView.as_view()),
     path("admin/payments/<int:pk>", AdminPaymentDetailView.as_view()),

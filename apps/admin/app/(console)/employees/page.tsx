@@ -13,7 +13,7 @@ import { NotWiredYet } from "@/components/states";
 import { cn, fmtDate, titleize } from "@/lib/utils";
 
 interface Employee { id: string; name: string; phone: string; email: string; role: string; isActive: boolean; onDuty: boolean | null; zones: string[]; createdAt: string }
-interface Resp { employees: Employee[]; summary: { superadmin: number; admin: number; agent: number; store_staff: number; total: number } }
+interface Resp { employees: Employee[]; summary: { superadmin: number; admin: number; agent: number; storeStaff: number; total: number } }
 
 const ROLE_VARIANT: Record<string, "default" | "secondary" | "success"> = { superadmin: "default", admin: "success", agent: "secondary", store_staff: "secondary" };
 
@@ -59,7 +59,7 @@ export default function EmployeesPage() {
         <StatCard label="Admins" value={s?.admin ?? 0} accent="green" loading={query.isLoading} />
         <StatCard label="Agents" value={s?.agent ?? 0} accent="teal" loading={query.isLoading} />
         <StatCard label="Super Admins" value={s?.superadmin ?? 0} accent="slate" loading={query.isLoading} />
-        <StatCard label="Store Staff" value={s?.store_staff ?? 0} accent="gold" loading={query.isLoading} />
+        <StatCard label="Store Staff" value={s?.storeStaff ?? 0} accent="gold" loading={query.isLoading} />
       </div>
 
       <div className="flex flex-wrap gap-2">

@@ -24,6 +24,7 @@ interface Config {
   creditDefaultLimit: number;
   lateFeeFlat: number;
   lateFeePercent: number;
+  minCollectionAmount: number;
   currency: string;
   supportPhone: string;
   supportEmail: string;
@@ -40,6 +41,7 @@ const NUMERIC: (keyof Config)[] = [
   "creditDefaultLimit",
   "lateFeeFlat",
   "lateFeePercent",
+  "minCollectionAmount",
 ];
 
 const SECTIONS: { title: string; fields: { key: keyof Config; label: string }[] }[] = [
@@ -47,7 +49,9 @@ const SECTIONS: { title: string; fields: { key: keyof Config; label: string }[] 
     title: "Business",
     fields: [
       { key: "currency", label: "Currency" },
-      { key: "gstRate", label: "GST rate (0–1)" },
+      // The API speaks percentages (18), not fractions. The old "0–1" label is
+      // how 0.18-style values got typed in here and into product records.
+      { key: "gstRate", label: "GST rate (%) — 0, 0.25, 3, 5, 12, 18 or 28" },
       { key: "supportPhone", label: "Support phone" },
       { key: "supportEmail", label: "Support email" },
     ],
@@ -69,6 +73,9 @@ const SECTIONS: { title: string; fields: { key: keyof Config; label: string }[] 
       { key: "creditDefaultLimit", label: "Default credit limit (₹)" },
       { key: "lateFeeFlat", label: "Late fee (flat ₹)" },
       { key: "lateFeePercent", label: "Late fee (%)" },
+      // 0 = no floor. Stops an agent being sent across town to collect ₹20,
+      // and never blocks a payment that clears the account outright.
+      { key: "minCollectionAmount", label: "Minimum cash collection (₹) — 0 for no limit" },
     ],
   },
 ];

@@ -43,12 +43,13 @@ class AssignedDeliveriesView(ListAPIView):
             return DeliveryTask.objects.none()
         from django.db.models import Q
 
-        # The agent's PENDING work. Terminal tasks drop off — with one exception:
+        # The agent's PENDING work. Closed tasks drop off (including `failed`,
+        # which only the store can move on) — with one exception:
         # a delivered COD order whose cash hasn't been confirmed is still an open
         # action (the money is in nobody's book yet), so it stays on the list
         # until Collect Cash is done.
         return DeliveryTask.objects.filter(agent=self.request.user).filter(
-            ~Q(status__in=DeliveryTask.TERMINAL)
+            ~Q(status__in=DeliveryTask.CLOSED_FOR_AGENT)
             | (Q(status="delivered")
                & Q(order__payment_method="cod")
                & ~Q(order__payment_status="paid"))

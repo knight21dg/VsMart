@@ -3,8 +3,14 @@
 The master catalog holds NO stock (stock lives per-store in inventory). These admin
 endpoints let Super-Admin create/edit/archive products and manage categories.
 """
+from decimal import Decimal
+
 from rest_framework import serializers
-from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
+from rest_framework.generics import (
+    ListCreateAPIView,
+    RetrieveUpdateDestroyAPIView,
+    get_object_or_404,
+)
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -21,6 +27,12 @@ class AdminProductSerializer(serializers.ModelSerializer):
         source="category", queryset=Category.objects.all()
     )
     category_name = serializers.CharField(source="category.name", read_only=True)
+    # Which store added this product, if any. Null = company-wide. Read-only:
+    # ownership is set at creation and moving a product between owners is not a
+    # field edit. Surfaced so a picker can label whose product it is.
+    origin_store_name = serializers.CharField(
+        source="origin_store.name", read_only=True, default=None
+    )
     # A relative self-hosted media path (/api/v1/media/public/…) — CharField (not
     # URLField) so the picker's uploaded path validates, and blank clears the image.
     image_url = serializers.CharField(required=False, allow_blank=True, allow_null=True)
@@ -33,11 +45,13 @@ class AdminProductSerializer(serializers.ModelSerializer):
             "id", "name", "brand", "unit", "sku", "hsn", "gst_rate",
             "price", "mrp", "credit_price", "category_id", "category_name",
             "image_url", "description", "in_stock", "stock_count", "store_count", "is_active",
+            "origin_store_name",
             # Content translations. The admin console writes the raw columns —
             # unlike the customer API, which resolves them by request language.
             "name_te", "name_hi", "description_te", "description_hi",
         ]
-        read_only_fields = ["id", "in_stock", "stock_count", "store_count"]
+        read_only_fields = ["id", "in_stock", "stock_count", "store_count",
+                            "origin_store_name"]
 
     def get_store_count(self, obj):
         from inventory.models import StockItem
@@ -48,6 +62,23 @@ class AdminProductSerializer(serializers.ModelSerializer):
             .distinct()
             .count()
         )
+
+    def validate_gst_rate(self, value):
+        """A GST rate is a PERCENTAGE on one of the statutory slabs.
+
+        The form used to be labelled "GST rate (0–1)" and accepted any decimal,
+        so operators entered 0.18 for 18% — and a stray 1.8 or 180 was accepted
+        just as happily. Both are silent tax errors on every invoice the product
+        appears on, so the API refuses anything that isn't a real slab.
+        """
+        if value is None:
+            return None  # falls back to the platform default
+        from core.pricing import GST_SLABS, gst_slab_error
+
+        rate = Decimal(str(value))
+        if rate not in GST_SLABS:
+            raise serializers.ValidationError(gst_slab_error(rate))
+        return rate
 
 
 class AdminCategorySerializer(serializers.ModelSerializer):
@@ -74,12 +105,27 @@ class AdminProductListCreateView(ListCreateAPIView):
     def get_queryset(self):
         # The company master holds company-wide products only; store-private products
         # (origin_store set) belong to a single store and are managed from its panel.
-        qs = Product.objects.select_related("category").filter(
-            origin_store__isnull=True
-        ).order_by("-id")
+        #
+        # `?scope=all` opts out of that narrowing for surfaces that need to see
+        # what a *customer* sees rather than what this page edits. The home-rail
+        # picker is the case in point: `scope_catalog_queryset` puts store-added
+        # products in the customer catalog too (deliberately — a store's product
+        # is sellable before any zone is drawn), so the rails already display
+        # them. Hiding them from the picker meant the console could not curate
+        # the very products the rails were showing.
+        qs = Product.objects.select_related("category", "origin_store").order_by("-id")
+        if self.request.query_params.get("scope") != "all":
+            qs = qs.filter(origin_store__isnull=True)
         q = self.request.query_params.get("q")
         if q:
-            qs = qs.filter(name__icontains=q)
+            # Name alone was too narrow: an operator reaching for a product by the
+            # code on the shelf label or by its brand got "no results" and had no
+            # way to tell that from "it doesn't exist".
+            from django.db.models import Q
+
+            qs = qs.filter(
+                Q(name__icontains=q) | Q(sku__icontains=q) | Q(brand__icontains=q)
+            )
         category = self.request.query_params.get("category")
         if category:
             qs = qs.filter(category_id=category)
@@ -162,6 +208,63 @@ class AdminCategoryDetailView(RetrieveUpdateDestroyAPIView):
         record_audit(self.request.user, "category.delete", target=instance,
                      after={"name": instance.name})
         instance.delete()
+
+
+class AdminProductVariantsView(APIView):
+    """The packs a product is stocked as, with live counts.
+
+    A variant is a separately-stocked SKU that happens to be grouped under a
+    parent product — 1 kg and 5 kg Rice have their own stock, price and barcode.
+    Nothing exposed that list to the console, so any screen that had to name a
+    pack (stock transfer, most obviously) had no way to offer one, and operators
+    were left moving "Rice" with no idea which pack they were touching.
+
+    ``?warehouse=<id>`` adds each pack's availability at that warehouse, so a
+    transfer form can show "1 kg — 20 available" rather than a bare label.
+    """
+
+    permission_classes = [IsAdmin]
+
+    def get(self, request, pk):
+        from inventory.models import Warehouse
+        from inventory.services import StockCalculationService
+
+        product = get_object_or_404(Product, pk=pk)
+        warehouse = None
+        warehouse_id = request.query_params.get("warehouse")
+        if warehouse_id:
+            warehouse = Warehouse.objects.filter(pk=warehouse_id).first()
+
+        rows = []
+        for v in product.variants.all():
+            row = {
+                "id": str(v.id),
+                "label": v.label,
+                "sku": v.sku,
+                "inStock": v.in_stock,
+            }
+            if warehouse is not None:
+                row["available"] = StockCalculationService.available(
+                    product, warehouse, v
+                )
+            rows.append(row)
+
+        payload = {
+            "productId": str(product.id),
+            "productName": product.name,
+            # False means "this product is a single SKU" — the caller can skip
+            # the pack picker entirely rather than showing an empty dropdown.
+            "hasVariants": bool(rows),
+            "variants": rows,
+        }
+        if warehouse is not None:
+            # Stock banked before the product had packs. It can't be sold or
+            # moved until it's allocated to one, so the console has to be able
+            # to see it.
+            payload["unallocated"] = StockCalculationService.available(
+                product, warehouse, None
+            )
+        return Response(payload)
 
 
 class AdminImageUploadView(APIView):

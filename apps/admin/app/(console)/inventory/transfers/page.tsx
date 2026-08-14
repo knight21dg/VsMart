@@ -34,6 +34,7 @@ import { titleize } from "@/lib/utils";
 
 interface Warehouse { id: string; name: string; code: string }
 interface Transfer {
+  variant_label?: string;
   id: string; product_id: string; from_warehouse_id: string;
   to_warehouse_id: string; quantity: number; status: string; note: string;
 }
@@ -44,6 +45,11 @@ interface Suggestion {
   quantity: number; reason: string;
 }
 interface ProductHit { id: string; name: string }
+interface VariantRow { id: string; label: string; sku: string; available?: number }
+interface VariantsResp {
+  productId: string; productName: string;
+  hasVariants: boolean; variants: VariantRow[]; unallocated?: number;
+}
 
 export default function TransfersPage() {
   const [tab, setTab] = React.useState("suggested");
@@ -164,6 +170,13 @@ function History({ warehouses }: { warehouses: Warehouse[] }) {
       ),
     },
     { header: "Qty", cell: ({ row }) => <span className="font-semibold tabular-nums">{row.original.quantity}</span> },
+    {
+      header: "Pack",
+      // A bare product name hid the fact that packs are stocked separately.
+      cell: ({ row }) => row.original.variant_label
+        ? <span className="text-sm">{row.original.variant_label}</span>
+        : <span className="text-xs text-muted-foreground">—</span>,
+    },
     { header: "Status", cell: ({ row }) => <StatusBadge status={row.original.status} /> },
     { header: "Note", cell: ({ row }) => <span className="text-xs text-muted-foreground">{row.original.note || "—"}</span> },
     {
@@ -221,6 +234,10 @@ function TransferDialog({
   const [from, setFrom] = React.useState(prefill?.from_warehouse_id ?? "");
   const [to, setTo] = React.useState(prefill?.to_warehouse_id ?? "");
   const [qty, setQty] = React.useState(String(prefill?.quantity ?? ""));
+  // Which pack is moving. Stock is held per product x pack x warehouse, so a
+  // transfer that doesn't name the pack can only ever move the unallocated
+  // pool — which is what every transfer silently did before.
+  const [variantId, setVariantId] = React.useState("");
   const [note, setNote] = React.useState(prefill ? "Rebalance" : "");
   const [search, setSearch] = React.useState("");
   const [confirming, setConfirming] = React.useState(false);
@@ -231,9 +248,26 @@ function TransferDialog({
     enabled: !prefill && search.trim().length >= 2,
   });
 
+  // Packs for the chosen product, with availability at the SOURCE warehouse so
+  // the operator picks against real numbers instead of guessing.
+  const packs = useQuery({
+    queryKey: ["inventory", "variants", productId, from],
+    queryFn: () => api.get<VariantsResp>(
+      `/admin/catalog/products/${productId}/variants`,
+      from ? { warehouse: from } : undefined,
+    ),
+    enabled: Boolean(productId),
+  });
+  const hasVariants = packs.data?.hasVariants ?? false;
+  const variants = packs.data?.variants ?? [];
+
+  // Changing the product or the source invalidates a previously picked pack.
+  React.useEffect(() => { setVariantId(""); }, [productId, from]);
+
   const save = useApiMutation(
     () => api.post("/inventory/transfer", {
       product_id: productId,
+      variant_id: variantId || undefined,
       from_warehouse: from,
       to_warehouse: to,
       quantity: Number(qty),
@@ -249,7 +283,15 @@ function TransferDialog({
   const n = Number(qty);
   // The backend rejects same-source-and-destination; block it here too rather
   // than round-trip for it.
-  const valid = productId && from && to && from !== to && Number.isFinite(n) && n > 0;
+  // A packed product cannot be transferred without naming the pack — the API
+  // refuses it, so the button must not promise it.
+  const packChosen = !hasVariants || Boolean(variantId);
+  const chosenPack = variants.find((v) => v.id === variantId);
+  const overStock =
+    chosenPack?.available !== undefined && n > chosenPack.available;
+  const valid =
+    productId && from && to && from !== to &&
+    Number.isFinite(n) && n > 0 && packChosen && !overStock;
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
@@ -313,9 +355,46 @@ function TransferDialog({
             </div>
           </div>
 
+          {/* Which pack. Shown only for products that HAVE packs, and only
+              once a source is chosen, so each option can carry its real
+              availability at that warehouse. */}
+          {productId && packs.isFetching && (
+            <p className="text-xs text-muted-foreground">Checking packs…</p>
+          )}
+          {hasVariants && (
+            <div className="space-y-1.5">
+              <Label>Pack</Label>
+              <Select value={variantId} onValueChange={setVariantId}>
+                <SelectTrigger>
+                  <SelectValue placeholder={from ? "Choose the pack to move" : "Choose a source first"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {variants.map((v) => (
+                    <SelectItem key={v.id} value={v.id} disabled={v.available === 0}>
+                      {v.label}
+                      {v.available !== undefined ? ` — ${v.available} available` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                This product is stocked per pack — each one has its own count.
+                {(packs.data?.unallocated ?? 0) > 0 && (
+                  <> {packs.data?.unallocated} unallocated unit(s) sit here too;
+                  allocate them to a pack before they can be moved or sold.</>
+                )}
+              </p>
+            </div>
+          )}
+
           <div className="space-y-1.5">
             <Label>Quantity</Label>
             <Input inputMode="numeric" value={qty} onChange={(e) => setQty(e.target.value)} placeholder="0" />
+            {overStock && (
+              <p className="text-xs text-destructive">
+                Only {chosenPack?.available} of {chosenPack?.label} available at the source.
+              </p>
+            )}
           </div>
           <div className="space-y-1.5">
             <Label>Note</Label>

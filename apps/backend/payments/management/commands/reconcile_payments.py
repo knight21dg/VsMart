@@ -32,13 +32,20 @@ class Command(BaseCommand):
         )
         self.stdout.write(
             "checked={checked} settled={settled} failed={failed} "
-            "unresolved={unresolved} errors={errors}".format(**summary)
+            "unresolved={unresolved} errors={errors} flagged={flagged}".format(**summary)
         )
         if summary["settled"]:
             self.stdout.write(self.style.SUCCESS(
                 f"Recovered {summary['settled']} captured payment(s)."
             ))
+        if summary["flagged"]:
+            # An operator has to decide these; nothing is cancelled and no stock is
+            # released on their behalf.
+            self.stdout.write(self.style.WARNING(
+                f"{summary['flagged']} payment(s) moved to RECONCILIATION_REQUIRED "
+                f"- see /admin/payments/reconciliation."
+            ))
         if summary["errors"]:
             self.stdout.write(self.style.WARNING(
-                f"{summary['errors']} payment(s) need manual review."
+                f"{summary['errors']} payment(s) errored while checking."
             ))

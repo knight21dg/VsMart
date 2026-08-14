@@ -64,7 +64,34 @@ export const STATUS_FILTERS = [
 // the assigned agent owns the state machine (out for delivery → reached →
 // OTP + photo → delivered) — the backend rejects anything past this list
 // (storeops.views.StoreOrderStatusView.ALLOWED_STATUSES).
-export const NEXT_STATUS = ["confirmed", "packed", "ready_for_dispatch", "cancelled"];
+//
+// "rejected" was missing here and in that backend set, so a store could accept
+// an order but had no way to refuse one it couldn't fulfil.
+export const NEXT_STATUS = [
+  "confirmed", "packed", "ready_for_dispatch", "cancelled", "rejected",
+];
+
+// Terminal, irreversible outcomes. The picker asks before applying one of these
+// — a mis-tap on a dropdown must not silently end a live order (and, for a
+// prepaid order, trigger a gateway refund).
+export const TERMINAL_STATUSES = ["cancelled", "rejected"];
+
+/** What a terminal status actually does, spelled out in the confirm dialog. */
+export const TERMINAL_STATUS_COPY: Record<string, { title: string; body: string }> = {
+  cancelled: {
+    title: "Cancel this order?",
+    body:
+      "Reserved stock goes back on the shelf, any coupon is returned to the " +
+      "customer, and money already collected is refunded. This can't be undone.",
+  },
+  rejected: {
+    title: "Reject this order?",
+    body:
+      "Use this when the store can't fulfil the order. Reserved stock is " +
+      "released, any coupon is returned, and money already collected is " +
+      "refunded. This can't be undone.",
+  },
+};
 
 // Once here, only the agent can move it further — no status picker for the store.
 export const AGENT_OWNED_STATUSES = ["out_for_delivery", "reached", "delivered", "failed_delivery"];

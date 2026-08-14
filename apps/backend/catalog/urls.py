@@ -5,7 +5,15 @@ from .admin_views import (
     AdminCategoryListCreateView,
     AdminImageUploadView,
     AdminProductDetailView,
+    AdminProductVariantsView,
     AdminProductListCreateView,
+)
+from .home_views import (
+    AdminHomeSectionDetailView,
+    AdminHomeSectionReorderView,
+    AdminHomeSectionView,
+    HomeSectionCatalogView,
+    HomeSectionView,
 )
 from .views import (
     CategoryListView,
@@ -30,9 +38,18 @@ urlpatterns = [
     # token. (The specific /products/search and /products/suggest routes above win
     # by declaration order, so this catch-all never shadows them.)
     path("products/<str:pk>", ProductDetailView.as_view()),
+    # ── Home rails (customer) ────────────────────────────────
+    # `sections` is declared before `sections/<str:section>` so the catalogue
+    # listing is never swallowed by the per-section route.
+    path("home/sections", HomeSectionCatalogView.as_view()),
+    path("home/sections/<str:section>", HomeSectionView.as_view()),
     # ── Product Master (admin) ───────────────────────────────
+    path("admin/catalog/home-sections", AdminHomeSectionView.as_view()),
+    path("admin/catalog/home-sections/reorder", AdminHomeSectionReorderView.as_view()),
+    path("admin/catalog/home-sections/<int:pk>", AdminHomeSectionDetailView.as_view()),
     path("admin/catalog/products", AdminProductListCreateView.as_view()),
     path("admin/catalog/products/<int:pk>", AdminProductDetailView.as_view()),
+    path("admin/catalog/products/<int:pk>/variants", AdminProductVariantsView.as_view()),
     path("admin/catalog/categories", AdminCategoryListCreateView.as_view()),
     path("admin/catalog/categories/<int:pk>", AdminCategoryDetailView.as_view()),
     path("admin/catalog/image", AdminImageUploadView.as_view()),

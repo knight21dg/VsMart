@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/api_exception.dart';
 import '../../../core/destination_map.dart';
 import '../../../core/gps.dart';
 import '../../../core/reason_screen.dart';
@@ -198,6 +199,11 @@ class _DeliveryDetailScreenState extends ConsumerState<DeliveryDetailScreen> {
     // _run via the envelope message.
   }
 
+  /// True when the LAST verify failed because the code had expired (rather than
+  /// being wrong). Drives a distinct, recoverable panel instead of a toast that
+  /// scrolls away — see [_DeliveryActions._reachedActions].
+  bool _otpExpired = false;
+
   Future<void> _verifyOtp() async {
     final otp = _otpController.text.trim();
     if (otp.isEmpty) {
@@ -205,12 +211,31 @@ class _DeliveryDetailScreenState extends ConsumerState<DeliveryDetailScreen> {
       return;
     }
     final err = await _run(() => _repo.verifyOtp(widget.id, otp));
-    if (err == null && mounted) {
+    if (!mounted) return;
+    if (err == null) {
+      setState(() => _otpExpired = false);
       _otpController.clear();
       showToast(context, 'OTP verified');
+      return;
     }
-    // INVALID_DELIVERY_OTP (attempts-left) / MANUAL_VERIFICATION_REQUIRED
-    // messages come straight from the envelope through _run.
+    // An EXPIRED code and a WRONG code must not look the same to the rider:
+    // a wrong code costs one of three attempts and means "ask again"; an
+    // expired one costs nothing and means "the code is stale, send a new one".
+    // Showing both as an identical red toast is what sent riders down the
+    // manual-verification path for a problem they could fix in one tap.
+    final expired = err is ApiException && err.code == 'DELIVERY_OTP_EXPIRED';
+    setState(() => _otpExpired = expired);
+    if (expired) _otpController.clear();
+    // The message itself (attempts-left for INVALID_DELIVERY_OTP,
+    // MANUAL_VERIFICATION_REQUIRED when locked) comes from the envelope via _run.
+  }
+
+  /// Re-confirm arrival, which mints a fresh OTP and re-sends it. This is the
+  /// documented recovery for an expired code; the rider is already at the door,
+  /// so the geofence check passes exactly as it did the first time.
+  Future<void> _resendOtp(AgentDelivery d) async {
+    await _arrive(d);
+    if (mounted) setState(() => _otpExpired = false);
   }
 
   /// A photo that was taken but hasn't reached the server yet. Kept in memory
@@ -402,6 +427,8 @@ class _DeliveryDetailScreenState extends ConsumerState<DeliveryDetailScreen> {
             onOpenMap: _openLiveMap,
             onArrive: () => _arrive(delivery),
             onVerifyOtp: _verifyOtp,
+            otpExpired: _otpExpired,
+            onResendOtp: () => _resendOtp(delivery),
             onCapturePhoto: () => _capturePhoto(delivery),
             pendingPhotoUpload: hasPendingPhoto,
             onRetryPhotoUpload: _uploadPendingPhoto,
@@ -478,6 +505,8 @@ class _DetailBody extends StatelessWidget {
     required this.onOpenMap,
     required this.onArrive,
     required this.onVerifyOtp,
+    required this.otpExpired,
+    required this.onResendOtp,
     required this.onCapturePhoto,
     required this.pendingPhotoUpload,
     required this.onRetryPhotoUpload,
@@ -498,6 +527,11 @@ class _DetailBody extends StatelessWidget {
   final VoidCallback onOpenMap;
   final VoidCallback onArrive;
   final VoidCallback onVerifyOtp;
+
+  /// The last verify failed because the code had EXPIRED, not because it was
+  /// wrong. Recoverable in one tap; a wrong code is not.
+  final bool otpExpired;
+  final VoidCallback onResendOtp;
   final VoidCallback onCapturePhoto;
 
   /// A proof photo is held on the device because its upload hasn't succeeded.
@@ -540,6 +574,8 @@ class _DetailBody extends StatelessWidget {
           delivery: delivery,
           busy: busy,
           otpController: otpController,
+          otpExpired: otpExpired,
+          onResendOtp: onResendOtp,
           hasDeviceGps: hasDeviceGps,
           onAccept: onAccept,
           onReject: onReject,
@@ -881,6 +917,8 @@ class _ActionArea extends StatelessWidget {
     required this.onOpenMap,
     required this.onArrive,
     required this.onVerifyOtp,
+    required this.otpExpired,
+    required this.onResendOtp,
     required this.onCapturePhoto,
     required this.pendingPhotoUpload,
     required this.onRetryPhotoUpload,
@@ -900,6 +938,11 @@ class _ActionArea extends StatelessWidget {
   final VoidCallback onOpenMap;
   final VoidCallback onArrive;
   final VoidCallback onVerifyOtp;
+
+  /// The last verify failed because the code had EXPIRED, not because it was
+  /// wrong. Recoverable in one tap; a wrong code is not.
+  final bool otpExpired;
+  final VoidCallback onResendOtp;
   final VoidCallback onCapturePhoto;
   final bool pendingPhotoUpload;
   final VoidCallback onRetryPhotoUpload;
@@ -1048,6 +1091,50 @@ class _ActionArea extends StatelessWidget {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // An EXPIRED code is not a wrong code. It costs no attempt and is
+          // fixed in one tap, so it gets a persistent panel with the recovery
+          // action on it — not the same red toast as a wrong code, which
+          // scrolls away and reads like "you're being locked out".
+          if (otpExpired) ...[
+            AppCard(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.timer_off_outlined,
+                      color: AgentColors.amber, size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'That code has expired',
+                          style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              color: AgentColors.amber),
+                        ),
+                        const SizedBox(height: 2),
+                        const Text(
+                          'No attempts were used. Send the customer a fresh '
+                          'code and ask them to read it out again.',
+                          style: TextStyle(
+                              fontSize: 13,
+                              color: AgentColors.textSecondary),
+                        ),
+                        const SizedBox(height: 10),
+                        OutlinedButton.icon(
+                          onPressed: busy ? null : onResendOtp,
+                          icon: const Icon(Icons.refresh_rounded, size: 18),
+                          label: const Text('Send a new code'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
           const Text('Enter delivery OTP',
               style: TextStyle(fontWeight: FontWeight.w700)),
           const SizedBox(height: 8),

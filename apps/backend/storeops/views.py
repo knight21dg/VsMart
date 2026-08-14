@@ -6,6 +6,7 @@ just narrowed to one store.
 """
 from django.db import transaction
 from django.db.models import Q
+from django.utils import timezone
 from rest_framework import status as http
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import get_object_or_404
@@ -14,6 +15,7 @@ from rest_framework.views import APIView
 
 from accounts.services import record_audit
 from core.app_errors import AppError
+from core.pricing import gst_fraction_to_pct
 
 from .permissions import StoreScopedMixin
 from .services import membership_payload, staff_activity, store_dashboard
@@ -188,6 +190,38 @@ class StoreAttendanceView(StoreScopedMixin, APIView):
         return Response(attendance_roster(self.store))
 
 
+def _attendance_state(att):
+    """The shape both the read and the write return, so the client can drive its
+    clock-in button straight off either without inventing its own state."""
+    return {
+        "date": att.date if att else timezone.localdate(),
+        "checkInAt": att.check_in_at if att else None,
+        "checkOutAt": att.check_out_at if att else None,
+        # `clockedIn` is derived here rather than in the UI: "checked in and not
+        # yet out" is a business rule, and two clients guessing at it drift.
+        "clockedIn": bool(att and att.check_in_at and not att.check_out_at),
+    }
+
+
+class StoreMyAttendanceView(StoreScopedMixin, APIView):
+    """The signed-in staff member's own attendance for today.
+
+    The topbar's clock-in button had no way to ask this, so it kept a local
+    boolean that started at `false` on every mount and flipped on each click —
+    meaning it showed "Check in" to someone who had been on shift since 8am, and
+    a page navigation silently reset it. Unlike the roster this needs no
+    `employees.view` permission: everyone may read their own attendance.
+    """
+
+    def get(self, request):
+        from .models import StaffAttendance
+
+        att = StaffAttendance.objects.filter(
+            staff=self.membership, date=timezone.localdate()
+        ).first()
+        return Response(_attendance_state(att))
+
+
 class StoreAttendanceActionView(StoreScopedMixin, APIView):
     """A staff member clocks themselves in/out (their own membership)."""
 
@@ -200,9 +234,7 @@ class StoreAttendanceActionView(StoreScopedMixin, APIView):
             att = check_out(self.membership)
         else:
             raise ValidationError({"action": ["Unknown action."]})
-        return Response({
-            "date": att.date, "checkInAt": att.check_in_at, "checkOutAt": att.check_out_at,
-        })
+        return Response(_attendance_state(att))
 
 
 # ── Orders ───────────────────────────────────────────────
@@ -289,7 +321,14 @@ class StoreOrderStatusView(StoreScopedMixin, APIView):
 
     store_permission = "orders.manage"
 
-    ALLOWED_STATUSES = {"confirmed", "packed", "ready_for_dispatch", "cancelled"}
+    # "rejected" is the store refusing an order it cannot fulfil (no stock, a
+    # suspicious order, a customer it can't reach). It was missing here AND from
+    # the panel's status list, so a store could accept an order but had no way at
+    # all to refuse one — the QA report's "accepting works, rejecting does not".
+    # `can_transition` has always permitted it from placed/pending/confirmed.
+    ALLOWED_STATUSES = {
+        "confirmed", "packed", "ready_for_dispatch", "cancelled", "rejected",
+    }
 
     def post(self, request, code):
         from orders.admin_service import order_detail, set_order_status
@@ -1086,7 +1125,10 @@ class StoreSettingsView(StoreScopedMixin, APIView):
                 "ordersToday": s.orders_today(),
             },
             "platform": {
-                "gstRate": float(getattr(cfg, "gst_rate", 0) or 0),
+                # A PERCENTAGE (18), matching every other API surface. The POS
+                # page divides by 100 for its own tax maths; see core.pricing
+                # for the one rule about which form goes where.
+                "gstRate": float(gst_fraction_to_pct(getattr(cfg, "gst_rate", 0) or 0)),
                 # The till MUST know which way tax runs. It computes the totals the
                 # cashier collects against, while `pos.services.checkout` computes
                 # what is actually charged — and checkout branches on this flag. The

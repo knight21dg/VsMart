@@ -42,6 +42,7 @@ FAILED = "failed"
 
 _DELIVERY_OUTCOME = {
     "delivered": SUCCESS,
+    "failed": FAILED,
     "rejected": FAILED,
     "returned_to_store": FAILED,
     "reassigned": FAILED,
@@ -108,7 +109,7 @@ def _money(value):
 def _delivery_qs(agent, start, end):
     return _window(
         DeliveryTask.objects.filter(
-            agent=agent, status__in=DeliveryTask.TERMINAL
+            agent=agent, status__in=DeliveryTask.CLOSED_FOR_AGENT
         ).select_related("order"),
         start, end,
     )

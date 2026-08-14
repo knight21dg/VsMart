@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/routes/route_paths.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/extensions/context_extensions.dart';
+import '../../../../core/extensions/num_extensions.dart';
 import '../../../../core/widgets/widgets.dart';
 import '../../../../shared/providers/core_providers.dart';
 import '../../../address/presentation/providers/address_providers.dart';
@@ -240,6 +241,14 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     final needsAddress =
         signedIn && ref.watch(defaultAddressProvider) == null;
 
+    // Below the zone's minimum order value the server will refuse checkout, so
+    // the CTA must not promise it. Only trust an authoritative bill: the
+    // on-device estimate carries no minimum, and blocking on it would strand a
+    // shopper whose zone has none. The "add an address" CTA is never blocked —
+    // that step is how they find out which zone (and minimum) applies.
+    final belowMinimum =
+        !summary.isEstimate && !summary.meetsMinimumOrder && !needsAddress;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(context.l10n.cartTitle),
@@ -299,6 +308,16 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                     AppSpacing.vGapSm,
                   ],
                   VSCartSummaryCard(summary: summary),
+                  // The zone's minimum order value. The server refuses a cart
+                  // below it, so say so here rather than letting the shopper
+                  // reach the payment step and be turned away.
+                  if (belowMinimum) ...[
+                    AppSpacing.vGapSm,
+                    _MinimumOrderBanner(
+                      minOrder: summary.minOrder,
+                      shortfall: summary.minOrderShortfall,
+                    ),
+                  ],
                   // Payment method is chosen on checkout, where it is actually
                   // acted on. The cart used to show its own picker whose value
                   // was never passed anywhere — a shopper could select "Buy on
@@ -317,7 +336,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
             // shopper resolves the address here, then returns to fix any lines.
             enabled: needsAddress
                 ? !_verifyingStock
-                : (!hasBlocking && !_verifyingStock),
+                : (!hasBlocking && !_verifyingStock && !belowMinimum),
             onCheckout: needsAddress ? _addAddress : _checkout,
           ),
         ],
@@ -344,6 +363,53 @@ class _BlockingBanner extends StatelessWidget {
           Expanded(
             child: Text(context.l10n.cartItemsNeedAttention,
                 style: AppTypography.labelMedium.copyWith(color: vs.danger)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The cart hasn't reached the serving zone's minimum order value.
+///
+/// The checkout CTA is disabled alongside this, so the banner has to carry the
+/// whole explanation — the threshold *and* the exact amount still needed. A
+/// greyed-out button with no reason is the failure mode this replaces.
+class _MinimumOrderBanner extends StatelessWidget {
+  const _MinimumOrderBanner({required this.minOrder, required this.shortfall});
+
+  final num minOrder;
+  final num shortfall;
+
+  @override
+  Widget build(BuildContext context) {
+    final vs = context.vsColors;
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: vs.offerTint,
+        borderRadius: AppRadius.brMd,
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.shopping_basket_outlined, size: 18, color: vs.warning),
+          AppSpacing.hGapSm,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Minimum order is ${minOrder.asCurrency}',
+                  style: AppTypography.labelMedium.copyWith(color: vs.warning),
+                ),
+                Text(
+                  'Add ${shortfall.asCurrency} more to place this order.',
+                  style: AppTypography.bodySmall
+                      .copyWith(color: context.vsColors.textSecondary),
+                ),
+              ],
+            ),
           ),
         ],
       ),

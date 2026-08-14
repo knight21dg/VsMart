@@ -17,7 +17,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { downloadPdf } from "@/lib/pdf";
 import { inr, fmtDate, titleize } from "@/lib/utils";
-import { AGENT_OWNED_STATUSES, NEXT_STATUS, type OrderDetail } from "@/lib/orders";
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import {
+  AGENT_OWNED_STATUSES,
+  NEXT_STATUS,
+  TERMINAL_STATUSES,
+  TERMINAL_STATUS_COPY,
+  type OrderDetail,
+} from "@/lib/orders";
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -61,13 +68,24 @@ function OrderDetailInner() {
     queryFn: () => api.get<OrderDetail>(`/store/orders/${code}`),
   });
 
+  // Cancelling and rejecting are irreversible and move real money (a prepaid
+  // order is refunded through the gateway), so they are confirmed rather than
+  // fired straight off a dropdown selection.
+  const [confirming, setConfirming] = React.useState<string | null>(null);
+
   const setStatusM = useApiMutation(
     ({ status }: { status: string }) => api.post(`/store/orders/${code}/status`, { status }),
     {
       invalidate: [["store", "orders"], ["store", "orders", "detail", code]],
       successMessage: "Order updated",
+      onDone: () => setConfirming(null),
     },
   );
+
+  function chooseStatus(status: string) {
+    if (TERMINAL_STATUSES.includes(status)) setConfirming(status);
+    else setStatusM.mutate({ status });
+  }
 
   const d = detailQ.data;
 
@@ -106,7 +124,7 @@ function OrderDetailInner() {
         actions={
           <div className="flex items-center gap-2">
             {canManage && closable && (
-              <Select onValueChange={(s) => setStatusM.mutate({ status: s })}>
+              <Select value="" onValueChange={chooseStatus} disabled={setStatusM.isPending}>
                 <SelectTrigger className="h-9 w-[170px] text-xs">
                   <SelectValue placeholder="Advance status…" />
                 </SelectTrigger>
@@ -367,6 +385,17 @@ function OrderDetailInner() {
           </CardContent>
         </Card>
       )}
+
+      <ConfirmDialog
+        open={confirming !== null}
+        onOpenChange={(o) => !o && setConfirming(null)}
+        title={confirming ? TERMINAL_STATUS_COPY[confirming]?.title ?? "Are you sure?" : ""}
+        description={confirming ? TERMINAL_STATUS_COPY[confirming]?.body : undefined}
+        confirmLabel={confirming ? titleize(confirming) : "Confirm"}
+        destructive
+        loading={setStatusM.isPending}
+        onConfirm={() => confirming && setStatusM.mutate({ status: confirming })}
+      />
     </div>
   );
 }

@@ -52,6 +52,11 @@ def _row(c, umap):
         "agentName": c.agent.name if c.agent_id else None,
         "collectedAt": c.collected_at,
         "createdAt": c.created_at,
+        # Surfaces the OTP lockout so a supervisor can see the stuck collections
+        # and clear them. Without it on the list, the manual-verify override has
+        # no way to be reached — an agent holding the customer's cash stays
+        # blocked with nothing on any screen saying why.
+        "manualVerificationRequired": c.manual_verification_required,
     }
 
 
@@ -228,6 +233,43 @@ class AdminCollectionAssignView(APIView):
         services.manual_assign(c, agent, by=request.user,
                                reason=request.data.get("reason", ""))
         return Response(ok("COLLECTION_ASSIGNED", data={"id": str(c.id), "agent": agent.name}))
+
+
+class AdminCollectionManualVerifyView(APIView):
+    """Override a collection OTP lockout after verifying the customer another way.
+
+    Delivery has had this since it was built; collections never did. Three wrong
+    codes set ``manual_verification_required`` and locked the OTP, and
+    ``collect()`` refuses without ``otp_verified`` — so an agent standing in
+    front of a customer holding their cash had **no path at all** to finish the
+    collection, and nothing anywhere could clear the flag. The money either went
+    unrecorded or the visit was abandoned.
+
+    Deliberately admin-only and audited as a security event: this bypasses the
+    customer's own confirmation of the amount, so it must be attributable.
+    """
+
+    permission_classes = [IsAdmin]
+
+    def post(self, request, pk):
+        from core.app_errors import ok
+
+        c = get_object_or_404(CashCollection, pk=pk)
+        c.otp_verified = True
+        c.manual_verification_required = False
+        c.save(update_fields=["otp_verified", "manual_verification_required",
+                              "updated_at"])
+        # Unlock the OTP row too, or a later `request-otp` starts from a locked
+        # state and the collection re-locks on the first mistyped code.
+        otp = getattr(c, "collection_otp", None)
+        if otp is not None and otp.locked:
+            otp.locked = False
+            otp.attempts = 0
+            otp.save(update_fields=["locked", "attempts", "updated_at"])
+        record_audit(request.user, "collection.manual_verify", target=c,
+                     after={"reason": request.data.get("reason", "")})
+        return Response(ok("COLLECTION_MANUALLY_VERIFIED",
+                           data={"id": str(c.id), "otpVerified": True}))
 
 
 class AdminCollectionDunningView(APIView):

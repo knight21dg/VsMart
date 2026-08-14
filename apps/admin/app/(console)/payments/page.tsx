@@ -19,6 +19,8 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ReconciliationQueue } from "@/components/payments/reconciliation-queue";
 import { inr, titleize } from "@/lib/utils";
 
 interface Payment {
@@ -85,6 +87,14 @@ export default function PaymentsPage() {
   const [to, setTo] = React.useState("");
   const [page, setPage] = React.useState(1);
   const [openId, setOpenId] = React.useState<string | null>(null);
+
+  // Count only, so the tab can carry a badge without loading the whole queue twice.
+  const pendingReview = useQuery({
+    queryKey: ["admin", "payments", "reconciliation"],
+    queryFn: () => api.get<{ total: number }>("/admin/payments/reconciliation"),
+    refetchInterval: 60_000,
+  });
+  const reviewCount = pendingReview.data?.total ?? 0;
 
   React.useEffect(() => {
     const t = setTimeout(() => { setQ(search.trim()); setPage(1); }, 300);
@@ -167,6 +177,28 @@ export default function PaymentsPage() {
         description="Every payment, refund and repayment — searchable, and reconcilable for any date range."
       />
 
+      <Tabs defaultValue={reviewCount > 0 ? "review" : "ledger"}>
+        <TabsList>
+          <TabsTrigger value="ledger">Ledger</TabsTrigger>
+          <TabsTrigger value="review">
+            Needs reconciliation
+            {reviewCount > 0 && (
+              <span className="ml-1.5 rounded-full bg-destructive px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                {reviewCount}
+              </span>
+            )}
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Payments the gateway could not settle for us. Surfaced first when any
+            exist: unresolved money is the one thing on this page that needs an
+            action rather than a look. */}
+        <TabsContent value="review">
+          <ReconciliationQueue />
+        </TabsContent>
+
+        <TabsContent value="ledger">
+
       <div className="grid gap-3 sm:grid-cols-3">
         <StatCard
           label="Collected" hint="Successful payments, excluding refunds"
@@ -224,6 +256,8 @@ export default function PaymentsPage() {
         onPageChange={setPage}
         onRowClick={(row) => setOpenId(row.id)}
       />
+        </TabsContent>
+      </Tabs>
 
       {openId && <PaymentDialog paymentId={openId} onClose={() => setOpenId(null)} />}
     </>

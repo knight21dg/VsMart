@@ -7,12 +7,31 @@ from django.db import transaction
 from .models import Notification
 
 
-def notify(user, *, type, title, body="", data=None):
-    """Create an in-app notification for `user` and schedule a device push."""
+def notify(user, *, type, title, body="", data=None, dedupe_key=""):
+    """Create an in-app notification for `user` and schedule a device push.
+
+    Pass ``dedupe_key`` to make the send **idempotent for that event**: the key
+    identifies the thing that happened ("delivery_assigned:task:412"), not the
+    attempt, so replaying the operation is silent — no second inbox row and, more
+    importantly, no second buzz in someone's pocket. Nothing deduplicated before,
+    so every retried dispatch re-alerted the agent for a task they already had.
+
+    Omit it for messages that are genuinely repeatable (a re-sent OTP, a
+    marketing blast) — those must still be able to arrive twice.
+    """
     payload = data or {}
-    n = Notification.objects.create(
-        user=user, type=type, title=title, body=body, data=payload
-    )
+    if dedupe_key:
+        n, created = Notification.objects.get_or_create(
+            user=user,
+            dedupe_key=dedupe_key,
+            defaults={"type": type, "title": title, "body": body, "data": payload},
+        )
+        if not created:
+            return n  # already delivered for this event — stay silent
+    else:
+        n = Notification.objects.create(
+            user=user, type=type, title=title, body=body, data=payload
+        )
     # Carry the notification type into the push so the device can route it to the
     # right (branded) channel — without mutating the stored inbox row's data.
     push_data = {**payload, "type": type}
@@ -20,7 +39,7 @@ def notify(user, *, type, title, body="", data=None):
     return n
 
 
-def notify_store_staff(store, *, type, title, body="", data=None):
+def notify_store_staff(store, *, type, title, body="", data=None, dedupe_key=""):
     """Fan a notification out to a store's active staff (New Order, Delivery
     Failed, Low Stock, …). Each staff member gets their own inbox row + push.
     No-op when the store is None or has no active staff. NOTE: the store-admin
@@ -40,7 +59,10 @@ def notify_store_staff(store, *, type, title, body="", data=None):
     from accounts.models import User
 
     for user in User.objects.filter(id__in=user_ids, is_active=True):
-        notify(user, type=type, title=title, body=body, data=data)
+        # The key is per-event; each staff member still gets their own copy
+        # because `dedupe_key` is unique per (user, key), not globally.
+        notify(user, type=type, title=title, body=body, data=data,
+               dedupe_key=dedupe_key)
 
 
 def broadcast(users, *, type, title, body="", data=None):

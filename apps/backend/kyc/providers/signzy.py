@@ -157,25 +157,9 @@ class SignzyProvider(base.VerificationProvider):
                  message="PAN verified.", raw=_trim(body))
 
     # ── Aadhaar via DigiLocker / offline ──
-    def start_digilocker(self, *, redirect_url, docs=None):
-        body = _post(AADHAAR_VERIFY_PATH, {"redirectUrl": redirect_url,
-                                           "docs": docs or ["AADHAAR"]})
-        r = _result_obj(body)
-        rid = r.get("id") or r.get("requestId") or ""
-        url = r.get("url") or r.get("authorizationUrl") or ""
-        if not (rid and url):
-            raise ProviderError("Signzy DigiLocker did not return an id/url")
-        return R(kind=base.DIGILOCKER, status=base.PENDING, reference_id=rid,
-                 redirect_url=url, message="Consent pending.")
+    # DigiLocker deliberately absent: Payon is the ONE DigiLocker provider
+    # (kyc/providers/payon.py).
 
-    def fetch_digilocker(self, *, request_id, name=""):
-        body = _post(AADHAAR_VERIFY_PATH, {"requestId": request_id})
-        if not _is_success(body):
-            return R(kind=base.AADHAAR, status=base.PENDING, reference_id=request_id,
-                     message="Consent not completed yet.", raw=_trim(body))
-        return self._aadhaar_result(body, request_id, name)
-
-    # ── Aadhaar OKYC (OTP) ──
     def aadhaar_okyc_init(self, *, aadhaar):
         body = _post(AADHAAR_OTP_INIT_PATH, {"uid": (aadhaar or "").strip(), "consent": "Y"})
         r = _result_obj(body)

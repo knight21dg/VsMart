@@ -1,0 +1,1790 @@
+{
+  "endpoints": {
+    "/admin/accounting/accounts": {
+      "calledAs": "/admin/accounting/accounts",
+      "empty": true,
+      "keys": [],
+      "status": 200
+    },
+    "/admin/accounting/balance-sheet": {
+      "calledAs": "/admin/accounting/balance-sheet",
+      "empty": false,
+      "keys": [
+        "asOf",
+        "assets",
+        "balanced",
+        "equity",
+        "liabilities",
+        "retainedEarnings",
+        "totalAssets",
+        "totalEquity",
+        "totalLiabilities"
+      ],
+      "status": 200
+    },
+    "/admin/accounting/by-store": {
+      "calledAs": "/admin/accounting/by-store",
+      "empty": false,
+      "keys": [
+        "periodDays",
+        "stores",
+        "stores[].margin",
+        "stores[].orders",
+        "stores[].platformFees",
+        "stores[].procurement",
+        "stores[].revenue",
+        "stores[].store",
+        "stores[].storeId",
+        "stores[].warehouseId"
+      ],
+      "status": 200
+    },
+    "/admin/accounting/cashflow": {
+      "calledAs": "/admin/accounting/cashflow",
+      "empty": false,
+      "keys": [
+        "periodDays",
+        "series",
+        "series[].date",
+        "series[].inflow",
+        "series[].net",
+        "series[].outflow"
+      ],
+      "status": 200
+    },
+    "/admin/accounting/journal": {
+      "calledAs": "/admin/accounting/journal",
+      "empty": true,
+      "keys": [],
+      "status": 200
+    },
+    "/admin/accounting/pnl": {
+      "calledAs": "/admin/accounting/pnl",
+      "empty": false,
+      "keys": [
+        "expenses",
+        "from",
+        "income",
+        "netProfit",
+        "to",
+        "totalExpenses",
+        "totalIncome"
+      ],
+      "status": 200
+    },
+    "/admin/accounting/settlements": {
+      "calledAs": "/admin/accounting/settlements",
+      "empty": false,
+      "keys": [
+        "settlements",
+        "totalPayable"
+      ],
+      "status": 200
+    },
+    "/admin/accounting/summary": {
+      "calledAs": "/admin/accounting/summary",
+      "empty": false,
+      "keys": [
+        "expenses",
+        "expenses.procurement",
+        "income",
+        "income.cashCollected",
+        "income.platformFees",
+        "income.repayments",
+        "income.revenue",
+        "note",
+        "periodDays",
+        "pnl",
+        "pnl.cogsProxy",
+        "pnl.grossMarginPct",
+        "pnl.grossProfit",
+        "pnl.grossRevenue"
+      ],
+      "status": 200
+    },
+    "/admin/accounting/trial-balance": {
+      "calledAs": "/admin/accounting/trial-balance",
+      "empty": false,
+      "keys": [
+        "asOf",
+        "balanced",
+        "rows",
+        "totalCredit",
+        "totalDebit"
+      ],
+      "status": 200
+    },
+    "/admin/agents": {
+      "calledAs": "/admin/agents",
+      "empty": true,
+      "keys": [],
+      "status": 200
+    },
+    "/admin/agents/leaderboard": {
+      "calledAs": "/admin/agents/leaderboard",
+      "empty": true,
+      "keys": [],
+      "status": 200
+    },
+    "/admin/analytics/overview": {
+      "calledAs": "/admin/analytics/overview",
+      "empty": false,
+      "keys": [
+        "averageOrderValue",
+        "creditOutstanding",
+        "gmv",
+        "newCustomers",
+        "orders",
+        "overdueStatements",
+        "periodDays",
+        "platformFeeCollected",
+        "repaymentsCollected",
+        "revenue"
+      ],
+      "status": 200
+    },
+    "/admin/analytics/sales": {
+      "calledAs": "/admin/analytics/sales",
+      "empty": false,
+      "keys": [
+        "[].date",
+        "[].gmv",
+        "[].orders"
+      ],
+      "status": 200
+    },
+    "/admin/analytics/top-products": {
+      "calledAs": "/admin/analytics/top-products",
+      "empty": false,
+      "keys": [
+        "[].name",
+        "[].productId",
+        "[].revenue",
+        "[].units"
+      ],
+      "status": 200
+    },
+    "/admin/analytics/zones": {
+      "calledAs": "/admin/analytics/zones",
+      "empty": false,
+      "keys": [
+        "[].gmv",
+        "[].orders",
+        "[].zone"
+      ],
+      "status": 200
+    },
+    "/admin/cash/deposits": {
+      "calledAs": "/admin/cash/deposits",
+      "empty": false,
+      "keys": [
+        "[].agentName",
+        "[].agentPhone",
+        "[].amount",
+        "[].channel",
+        "[].collectionCount",
+        "[].createdAt",
+        "[].depositedOn",
+        "[].id",
+        "[].method",
+        "[].notes",
+        "[].reference",
+        "[].shortfall",
+        "[].status",
+        "[].verifiedAmount",
+        "[].verifiedAt",
+        "[].verifiedByName"
+      ],
+      "status": 200
+    },
+    "/admin/cash/deposits/${depositId}": {
+      "calledAs": "/admin/cash/deposits/1",
+      "empty": false,
+      "keys": [
+        "agentName",
+        "agentPhone",
+        "amount",
+        "channel",
+        "collectionCount",
+        "collections",
+        "createdAt",
+        "depositedOn",
+        "id",
+        "method",
+        "notes",
+        "reference",
+        "shortfall",
+        "status",
+        "verifiedAmount",
+        "verifiedAt",
+        "verifiedByName"
+      ],
+      "status": 200
+    },
+    "/admin/cash/reconciliation": {
+      "calledAs": "/admin/cash/reconciliation",
+      "empty": false,
+      "keys": [
+        "byAgent",
+        "collected",
+        "declared",
+        "inHand",
+        "pendingDeposits",
+        "shortfall",
+        "verified"
+      ],
+      "status": 200
+    },
+    "/admin/catalog/categories": {
+      "calledAs": "/admin/catalog/categories",
+      "empty": false,
+      "keys": [
+        "[].iconName",
+        "[].id",
+        "[].imageUrl",
+        "[].isActive",
+        "[].name",
+        "[].nameHi",
+        "[].nameTe",
+        "[].parentId",
+        "[].productCount",
+        "[].slug",
+        "[].sortOrder"
+      ],
+      "status": 200
+    },
+    "/admin/catalog/home-sections": {
+      "calledAs": "/admin/catalog/home-sections",
+      "empty": false,
+      "keys": [
+        "[].items",
+        "[].label",
+        "[].section"
+      ],
+      "status": 200
+    },
+    "/admin/catalog/products": {
+      "calledAs": "/admin/catalog/products",
+      "empty": false,
+      "keys": [
+        "[].brand",
+        "[].categoryId",
+        "[].categoryName",
+        "[].creditPrice",
+        "[].description",
+        "[].descriptionHi",
+        "[].descriptionTe",
+        "[].gstRate",
+        "[].hsn",
+        "[].id",
+        "[].imageUrl",
+        "[].inStock",
+        "[].isActive",
+        "[].mrp",
+        "[].name",
+        "[].nameHi",
+        "[].nameTe",
+        "[].originStoreName",
+        "[].price",
+        "[].sku",
+        "[].stockCount",
+        "[].storeCount",
+        "[].unit"
+      ],
+      "status": 200
+    },
+    "/admin/catalog/products/${productId}/variants": {
+      "calledAs": "/admin/catalog/products/1/variants",
+      "empty": false,
+      "keys": [
+        "hasVariants",
+        "productId",
+        "productName",
+        "variants"
+      ],
+      "status": 200
+    },
+    "/admin/collections": {
+      "calledAs": "/admin/collections",
+      "empty": true,
+      "keys": [],
+      "status": 200
+    },
+    "/admin/collections/agents": {
+      "calledAs": "/admin/collections/agents",
+      "empty": false,
+      "keys": [
+        "[].id",
+        "[].name"
+      ],
+      "status": 200
+    },
+    "/admin/collections/command-center": {
+      "calledAs": "/admin/collections/command-center",
+      "empty": false,
+      "keys": [
+        "aging",
+        "aging[].amount",
+        "aging[].bucket",
+        "aging[].count",
+        "kpis",
+        "kpis.collectedToday",
+        "kpis.disputed",
+        "kpis.escalated",
+        "kpis.openCount",
+        "kpis.pendingAmount"
+      ],
+      "status": 200
+    },
+    "/admin/collections/metrics": {
+      "calledAs": "/admin/collections/metrics",
+      "empty": false,
+      "keys": [
+        "agentPerformance",
+        "byZone",
+        "collectedToday",
+        "overdueAmount",
+        "pendingAmount",
+        "pendingCount",
+        "priorityCount"
+      ],
+      "status": 200
+    },
+    "/admin/config": {
+      "calledAs": "/admin/config",
+      "empty": false,
+      "keys": [
+        "creditDefaultLimit",
+        "currency",
+        "deliveryFee",
+        "freeDeliveryThreshold",
+        "gstRate",
+        "lateFeeFlat",
+        "lateFeePercent",
+        "minCollectionAmount",
+        "minOrder",
+        "platformFeeCap",
+        "platformFeeType",
+        "platformFeeValue",
+        "supportEmail",
+        "supportPhone",
+        "updatedAt"
+      ],
+      "status": 200
+    },
+    "/admin/credit/applications": {
+      "calledAs": "/admin/credit/applications",
+      "empty": false,
+      "keys": [
+        "[].approvedLimit",
+        "[].bureauScoreAtSubmit",
+        "[].createdAt",
+        "[].creditEnabled",
+        "[].customerName",
+        "[].customerPhone",
+        "[].decidedAt",
+        "[].decidedById",
+        "[].decisionNote",
+        "[].familyMembers",
+        "[].houseType",
+        "[].id",
+        "[].kycStatus",
+        "[].kycStatusAtSubmit",
+        "[].monthlyIncome",
+        "[].occupation",
+        "[].ownership",
+        "[].rejectionReason",
+        "[].requestedLimit",
+        "[].status",
+        "[].submittedAt",
+        "[].userId"
+      ],
+      "status": 200
+    },
+    "/admin/credit/applications/${applicationId}": {
+      "calledAs": "/admin/credit/applications/1",
+      "empty": false,
+      "keys": [
+        "account",
+        "approvedLimit",
+        "bureau",
+        "bureauScoreAtSubmit",
+        "createdAt",
+        "creditEnabled",
+        "customerName",
+        "customerPhone",
+        "decidedAt",
+        "decidedById",
+        "decisionNote",
+        "familyMembers",
+        "houseType",
+        "id",
+        "kycStatus",
+        "kycStatusAtSubmit",
+        "monthlyIncome",
+        "occupation",
+        "ownership",
+        "rejectionReason",
+        "requestedLimit",
+        "status",
+        "submittedAt",
+        "userId"
+      ],
+      "status": 200
+    },
+    "/admin/credit/cibil/${customerId}": {
+      "calledAs": "/admin/credit/cibil/2",
+      "empty": false,
+      "keys": [
+        "report"
+      ],
+      "status": 200
+    },
+    "/admin/crm/customers": {
+      "calledAs": "/admin/crm/customers",
+      "empty": false,
+      "keys": [
+        "[].active",
+        "[].creditStatus",
+        "[].id",
+        "[].kycStatus",
+        "[].lastActiveAt",
+        "[].name",
+        "[].orders",
+        "[].outstanding",
+        "[].phone",
+        "[].revenue",
+        "[].risk",
+        "[].vsId",
+        "[].vsScore"
+      ],
+      "status": 200
+    },
+    "/admin/crm/customers/${id}": {
+      "calledAs": "/admin/crm/customers/2",
+      "empty": false,
+      "keys": [
+        "aiInsights",
+        "aiInsights.Note",
+        "aiInsights.dormant",
+        "aiInsights.eligibleForLimitIncrease",
+        "aiInsights.eligibleForPromotion",
+        "aiInsights.highValue",
+        "aiInsights.likelyToDefault",
+        "aiInsights.likelyToRepay",
+        "collectionAnalytics",
+        "collectionAnalytics.averageRecoveryDays",
+        "collectionAnalytics.collectionAgent",
+        "collectionAnalytics.failed",
+        "collectionAnalytics.lastCollectionAt",
+        "collectionAnalytics.pending",
+        "collectionAnalytics.totalCollections",
+        "collectionAnalytics.totalCount",
+        "creditIntelligence",
+        "creditIntelligence.hasAccount",
+        "financialExposure",
+        "financialExposure.hasExposure",
+        "geographic",
+        "geographic.customer",
+        "geographic.customer.address",
+        "geographic.customer.lat",
+        "geographic.customer.lng",
+        "geographic.store",
+        "geographic.store.lat",
+        "geographic.store.lng",
+        "geographic.store.name",
+        "geographic.zone",
+        "geographic.zone.name",
+        "geographic.zone.polygon",
+        "header",
+        "header.assignedAdmin",
+        "header.avatarUrl",
+        "header.collectionAgent",
+        "header.customerSince",
+        "header.deliveryAgent",
+        "header.name",
+        "header.phone",
+        "header.risk",
+        "header.status",
+        "header.store",
+        "header.vsId",
+        "header.zone",
+        "health",
+        "health.collectionEfficiency",
+        "health.collections",
+        "health.creditUsed",
+        "health.lifetimeRevenue",
+        "health.orders",
+        "health.outstanding",
+        "health.retentionMonths",
+        "health.vsScore",
+        "network",
+        "network.familyMembers",
+        "network.referrals",
+        "network.referredBy",
+        "network.sameHousehold",
+        "notes",
+        "notes.admin",
+        "notes.collection",
+        "notes.delivery",
+        "notes.verification",
+        "orderAnalytics",
+        "orderAnalytics.averageOrderValue",
+        "orderAnalytics.cancelled",
+        "orderAnalytics.charts",
+        "orderAnalytics.charts.byMonth",
+        "orderAnalytics.charts.byMonth[].month",
+        "orderAnalytics.charts.byMonth[].orders",
+        "orderAnalytics.charts.byMonth[].revenue",
+        "orderAnalytics.charts.categorySpend",
+        "orderAnalytics.charts.categorySpend[].category",
+        "orderAnalytics.charts.categorySpend[].spend",
+        "orderAnalytics.delivered",
+        "orderAnalytics.favoriteBrands",
+        "orderAnalytics.favoriteCategories",
+        "orderAnalytics.highestOrder",
+        "orderAnalytics.monthlySpend",
+        "orderAnalytics.preferredPurchaseHour",
+        "orderAnalytics.returned",
+        "orderAnalytics.totalOrders",
+        "risk",
+        "risk.factors",
+        "risk.factors.accountAgeDays",
+        "risk.factors.creditExposure",
+        "risk.level",
+        "risk.score",
+        "support",
+        "support.complaints",
+        "support.escalations",
+        "support.open",
+        "support.refunds",
+        "support.returns",
+        "support.tickets",
+        "timeline",
+        "timeline[].amount",
+        "timeline[].at",
+        "timeline[].label",
+        "timeline[].type",
+        "verification",
+        "verification.aadhaar",
+        "verification.agentVerified",
+        "verification.evidence",
+        "verification.gps",
+        "verification.house",
+        "verification.pan",
+        "verification.selfie",
+        "verification.verifiedAt",
+        "verification.verifiedBy"
+      ],
+      "status": 200
+    },
+    "/admin/crm/customers/analytics": {
+      "calledAs": "/admin/crm/customers/analytics",
+      "empty": false,
+      "keys": [
+        "activeCustomers",
+        "creditCustomers",
+        "riskDistribution",
+        "riskDistribution.critical",
+        "riskDistribution.high",
+        "riskDistribution.low",
+        "riskDistribution.medium",
+        "totalCustomers",
+        "totalOutstanding"
+      ],
+      "status": 200
+    },
+    "/admin/dashboard": {
+      "calledAs": "/admin/dashboard",
+      "empty": false,
+      "keys": [
+        "activeCreditOutstanding",
+        "agents",
+        "customers",
+        "gmvToday",
+        "ordersToday",
+        "overdueStatements"
+      ],
+      "status": 200
+    },
+    "/admin/deletion-requests": {
+      "calledAs": "/admin/deletion-requests",
+      "empty": false,
+      "keys": [
+        "requests"
+      ],
+      "status": 200
+    },
+    "/admin/delivery": {
+      "calledAs": "/admin/delivery",
+      "empty": true,
+      "keys": [],
+      "status": 200
+    },
+    "/admin/delivery/agents": {
+      "calledAs": "/admin/delivery/agents",
+      "empty": false,
+      "keys": [
+        "[].active",
+        "[].deliveredToday",
+        "[].id",
+        "[].name",
+        "[].onDuty"
+      ],
+      "status": 200
+    },
+    "/admin/delivery/command-center": {
+      "calledAs": "/admin/delivery/command-center",
+      "empty": false,
+      "keys": [
+        "active",
+        "kpis",
+        "kpis.activeDeliveries",
+        "kpis.avgMinutes",
+        "kpis.deliveredToday",
+        "kpis.failedToday",
+        "kpis.reattemptRate",
+        "kpis.successRate",
+        "zones"
+      ],
+      "status": 200
+    },
+    "/admin/delivery/dashboard": {
+      "calledAs": "/admin/delivery/dashboard",
+      "empty": false,
+      "keys": [
+        "activeDeliveries",
+        "agentsOnDuty",
+        "avgDeliveryMinutes",
+        "deliveredToday",
+        "failedToday",
+        "onTimeRate",
+        "outForDelivery",
+        "pendingAcceptance"
+      ],
+      "status": 200
+    },
+    "/admin/delivery/reattempt-queue": {
+      "calledAs": "/admin/delivery/reattempt-queue",
+      "empty": true,
+      "keys": [],
+      "status": 200
+    },
+    "/admin/employees": {
+      "calledAs": "/admin/employees",
+      "empty": false,
+      "keys": [
+        "employees",
+        "employees[].createdAt",
+        "employees[].email",
+        "employees[].id",
+        "employees[].isActive",
+        "employees[].name",
+        "employees[].onDuty",
+        "employees[].phone",
+        "employees[].role",
+        "employees[].zones",
+        "summary",
+        "summary.admin",
+        "summary.agent",
+        "summary.storeStaff",
+        "summary.superadmin",
+        "summary.total"
+      ],
+      "status": 200
+    },
+    "/admin/expansion-requests": {
+      "calledAs": "/admin/expansion-requests",
+      "empty": true,
+      "keys": [],
+      "status": 200
+    },
+    "/admin/inventory": {
+      "calledAs": "/admin/inventory",
+      "empty": false,
+      "keys": [
+        "[].brand",
+        "[].category",
+        "[].id",
+        "[].inStock",
+        "[].low",
+        "[].name",
+        "[].price",
+        "[].stockCount"
+      ],
+      "status": 200
+    },
+    "/admin/kyc/queue": {
+      "calledAs": "/admin/kyc/queue",
+      "empty": false,
+      "keys": [
+        "applications",
+        "summary",
+        "summary.pending",
+        "summary.rejected",
+        "summary.verified"
+      ],
+      "status": 200
+    },
+    "/admin/loyalty/ledger": {
+      "calledAs": "/admin/loyalty/ledger",
+      "empty": true,
+      "keys": [],
+      "status": 200
+    },
+    "/admin/loyalty/members": {
+      "calledAs": "/admin/loyalty/members",
+      "empty": true,
+      "keys": [],
+      "status": 200
+    },
+    "/admin/loyalty/summary": {
+      "calledAs": "/admin/loyalty/summary",
+      "empty": false,
+      "keys": [
+        "members",
+        "pointsAdjusted",
+        "pointsEarned",
+        "pointsExpired",
+        "pointsOutstanding",
+        "pointsRedeemed"
+      ],
+      "status": 200
+    },
+    "/admin/marketing/coupons": {
+      "calledAs": "/admin/marketing/coupons",
+      "empty": true,
+      "keys": [],
+      "status": 200
+    },
+    "/admin/marketing/offers": {
+      "calledAs": "/admin/marketing/offers",
+      "empty": true,
+      "keys": [],
+      "status": 200
+    },
+    "/admin/ops/live": {
+      "calledAs": "/admin/ops/live",
+      "empty": false,
+      "keys": [
+        "agents",
+        "agents[].activeDeliveries",
+        "agents[].id",
+        "agents[].lastSeenAt",
+        "agents[].lat",
+        "agents[].lng",
+        "agents[].name",
+        "agents[].onDuty",
+        "agents[].online",
+        "asOf",
+        "collections",
+        "deliveries",
+        "summary",
+        "summary.activeCollections",
+        "summary.activeDeliveries",
+        "summary.agentsOnDuty",
+        "summary.agentsOnline",
+        "summary.ordersOutForDelivery",
+        "summary.totalAgents"
+      ],
+      "status": 200
+    },
+    "/admin/orders": {
+      "calledAs": "/admin/orders",
+      "empty": false,
+      "keys": [
+        "[].agent",
+        "[].code",
+        "[].customer",
+        "[].deliveryStatus",
+        "[].items",
+        "[].paymentMethod",
+        "[].paymentStatus",
+        "[].phone",
+        "[].placedAt",
+        "[].status",
+        "[].store",
+        "[].value",
+        "[].zone"
+      ],
+      "status": 200
+    },
+    "/admin/orders/${code}": {
+      "calledAs": "/admin/orders/VSORD100001",
+      "empty": false,
+      "keys": [
+        "credit",
+        "credit.isCredit",
+        "customer",
+        "customer.address",
+        "customer.id",
+        "customer.name",
+        "customer.outstanding",
+        "customer.phone",
+        "customer.pincode",
+        "customer.since",
+        "customer.vsScore",
+        "delivery",
+        "delivery.agent",
+        "delivery.agentId",
+        "delivery.assignedAt",
+        "delivery.deliveredAt",
+        "delivery.distanceKm",
+        "delivery.eta",
+        "delivery.otp",
+        "delivery.outForDeliveryAt",
+        "delivery.photoUrl",
+        "delivery.pickedUpAt",
+        "delivery.status",
+        "exceptions",
+        "financialSummary",
+        "financialSummary.deliveryFee",
+        "financialSummary.discount",
+        "financialSummary.grossRevenue",
+        "financialSummary.gst",
+        "financialSummary.netRevenue",
+        "financialSummary.platformFee",
+        "header",
+        "header.code",
+        "header.createdBy",
+        "header.customerType",
+        "header.deliveryStatus",
+        "header.estimatedDelivery",
+        "header.paymentStatus",
+        "header.placedAt",
+        "header.source",
+        "header.status",
+        "header.store",
+        "header.zone",
+        "inventoryImpact",
+        "inventoryImpact[].before",
+        "inventoryImpact[].name",
+        "inventoryImpact[].ordered",
+        "inventoryImpact[].remaining",
+        "items",
+        "items[].brand",
+        "items[].discount",
+        "items[].mrp",
+        "items[].name",
+        "items[].price",
+        "items[].quantity",
+        "items[].total",
+        "payment",
+        "payment.creditDueDate",
+        "payment.creditPlan",
+        "payment.creditUsed",
+        "payment.gatewayOrderId",
+        "payment.gatewayPaymentId",
+        "payment.method",
+        "payment.refundId",
+        "payment.refundStatus",
+        "payment.status",
+        "timeline",
+        "totals",
+        "totals.deliveryFee",
+        "totals.discount",
+        "totals.gst",
+        "totals.platformFee",
+        "totals.subtotal",
+        "totals.total"
+      ],
+      "status": 200
+    },
+    "/admin/orders/dashboard": {
+      "calledAs": "/admin/orders/dashboard",
+      "empty": false,
+      "keys": [
+        "averageOrderValue",
+        "cancelledToday",
+        "codOrders",
+        "creditOrders",
+        "deliveredToday",
+        "onlineOrders",
+        "ordersToday",
+        "outForDelivery",
+        "packed",
+        "pending",
+        "revenueToday"
+      ],
+      "status": 200
+    },
+    "/admin/orders/queues": {
+      "calledAs": "/admin/orders/queues",
+      "empty": false,
+      "keys": [
+        "counts",
+        "counts.outForDelivery",
+        "counts.packed",
+        "counts.readyForDispatch",
+        "counts.toPack",
+        "outForDelivery",
+        "packed",
+        "readyForDispatch",
+        "toPack",
+        "toPack[].agent",
+        "toPack[].code",
+        "toPack[].customer",
+        "toPack[].deliveryStatus",
+        "toPack[].items",
+        "toPack[].paymentMethod",
+        "toPack[].paymentStatus",
+        "toPack[].phone",
+        "toPack[].placedAt",
+        "toPack[].status",
+        "toPack[].store",
+        "toPack[].value",
+        "toPack[].zone"
+      ],
+      "status": 200
+    },
+    "/admin/pages": {
+      "calledAs": "/admin/pages",
+      "empty": false,
+      "keys": [
+        "pages"
+      ],
+      "status": 200
+    },
+    "/admin/payments": {
+      "calledAs": "/admin/payments",
+      "empty": false,
+      "keys": [
+        "[].amount",
+        "[].createdAt",
+        "[].customerName",
+        "[].customerPhone",
+        "[].gateway",
+        "[].gatewayOrderId",
+        "[].gatewayPaymentId",
+        "[].gatewayRefundId",
+        "[].id",
+        "[].method",
+        "[].orderCode",
+        "[].purpose",
+        "[].refundOfId",
+        "[].statementId",
+        "[].status",
+        "[].userId"
+      ],
+      "status": 200
+    },
+    "/admin/payments/${paymentId}": {
+      "calledAs": "/admin/payments/1",
+      "empty": false,
+      "keys": [
+        "amount",
+        "createdAt",
+        "customerName",
+        "customerPhone",
+        "events",
+        "gateway",
+        "gatewayOrderId",
+        "gatewayPaymentId",
+        "gatewayRefundId",
+        "id",
+        "method",
+        "orderCode",
+        "purpose",
+        "refundOfId",
+        "refunds",
+        "statementId",
+        "status",
+        "userId"
+      ],
+      "status": 200
+    },
+    "/admin/payments/summary": {
+      "calledAs": "/admin/payments/summary",
+      "empty": false,
+      "keys": [
+        "byMethod",
+        "byMethod[].amount",
+        "byMethod[].count",
+        "byMethod[].method",
+        "byStatus",
+        "byStatus[].amount",
+        "byStatus[].count",
+        "byStatus[].status",
+        "collected",
+        "failedCount",
+        "refunded",
+        "total"
+      ],
+      "status": 200
+    },
+    "/admin/pos/transactions": {
+      "calledAs": "/admin/pos/transactions",
+      "empty": false,
+      "keys": [
+        "summary",
+        "summary.count",
+        "summary.salesCount",
+        "summary.salesTotal",
+        "transactions"
+      ],
+      "status": 200
+    },
+    "/admin/procurement/invoices": {
+      "calledAs": "/admin/procurement/invoices",
+      "empty": false,
+      "keys": [
+        "[].amountPaid",
+        "[].balanceDue",
+        "[].createdAt",
+        "[].dueDate",
+        "[].grnId",
+        "[].id",
+        "[].invoiceDate",
+        "[].invoiceNumber",
+        "[].notes",
+        "[].purchaseOrderId",
+        "[].status",
+        "[].storeId",
+        "[].subtotal",
+        "[].supplierId",
+        "[].supplierName",
+        "[].tax",
+        "[].total"
+      ],
+      "status": 200
+    },
+    "/admin/procurement/invoices/${invoiceId}": {
+      "calledAs": "/admin/procurement/invoices/1",
+      "empty": false,
+      "keys": [
+        "amountPaid",
+        "balanceDue",
+        "createdAt",
+        "dueDate",
+        "grnId",
+        "id",
+        "invoiceDate",
+        "invoiceNumber",
+        "notes",
+        "payments",
+        "purchaseOrderId",
+        "status",
+        "storeId",
+        "subtotal",
+        "supplierId",
+        "supplierName",
+        "tax",
+        "total"
+      ],
+      "status": 200
+    },
+    "/admin/procurement/payables": {
+      "calledAs": "/admin/procurement/payables",
+      "empty": false,
+      "keys": [
+        "asOf",
+        "buckets",
+        "buckets[].amount",
+        "buckets[].bucket",
+        "buckets[].count",
+        "bySupplier",
+        "totalOutstanding"
+      ],
+      "status": 200
+    },
+    "/admin/redemptions": {
+      "calledAs": "/admin/redemptions",
+      "empty": true,
+      "keys": [],
+      "status": 200
+    },
+    "/admin/redemptions/outstanding": {
+      "calledAs": "/admin/redemptions/outstanding",
+      "empty": false,
+      "keys": [
+        "issued",
+        "outstanding",
+        "outstandingValue",
+        "spent"
+      ],
+      "status": 200
+    },
+    "/admin/referrals": {
+      "calledAs": "/admin/referrals",
+      "empty": true,
+      "keys": [],
+      "status": 200
+    },
+    "/admin/referrals/summary": {
+      "calledAs": "/admin/referrals/summary",
+      "empty": false,
+      "keys": [
+        "completed",
+        "conversionRate",
+        "expired",
+        "pending",
+        "referrers",
+        "rewardsPaid",
+        "total"
+      ],
+      "status": 200
+    },
+    "/admin/referrers": {
+      "calledAs": "/admin/referrers",
+      "empty": true,
+      "keys": [],
+      "status": 200
+    },
+    "/admin/referrers/${userId}": {
+      "calledAs": "/admin/referrers/2",
+      "empty": false,
+      "keys": [
+        "completed",
+        "invited",
+        "invitees",
+        "name",
+        "phone",
+        "userId"
+      ],
+      "status": 200
+    },
+    "/admin/returns": {
+      "calledAs": "/admin/returns",
+      "empty": false,
+      "keys": [
+        "[].code",
+        "[].createdAt",
+        "[].customer",
+        "[].items",
+        "[].orderCode",
+        "[].phone",
+        "[].reason",
+        "[].refundAmount",
+        "[].resolvedAt",
+        "[].status"
+      ],
+      "status": 200
+    },
+    "/admin/returns/${code}": {
+      "calledAs": "/admin/returns/RET1001",
+      "empty": false,
+      "keys": [
+        "code",
+        "createdAt",
+        "customer",
+        "customer.id",
+        "customer.name",
+        "customer.phone",
+        "decidedBy",
+        "decisionNote",
+        "description",
+        "evidence",
+        "items",
+        "order",
+        "order.code",
+        "order.paymentMethod",
+        "order.paymentStatus",
+        "order.status",
+        "order.total",
+        "reason",
+        "refundAmount",
+        "resolvedAt",
+        "status"
+      ],
+      "status": 200
+    },
+    "/admin/reviews": {
+      "calledAs": "/admin/reviews",
+      "empty": true,
+      "keys": [],
+      "status": 200
+    },
+    "/admin/staff": {
+      "calledAs": "/admin/staff",
+      "empty": false,
+      "keys": [
+        "[].id",
+        "[].isActive",
+        "[].name",
+        "[].phone",
+        "[].role"
+      ],
+      "status": 200
+    },
+    "/admin/stores": {
+      "calledAs": "/admin/stores",
+      "empty": false,
+      "keys": [
+        "[].acceptingOrders",
+        "[].address",
+        "[].closesAt",
+        "[].code",
+        "[].dailyOrderCapacity",
+        "[].gstin",
+        "[].id",
+        "[].latitude",
+        "[].longitude",
+        "[].name",
+        "[].opensAt",
+        "[].phone",
+        "[].status",
+        "[].warehouse"
+      ],
+      "status": 200
+    },
+    "/admin/stores/${id}": {
+      "calledAs": "/admin/stores/1",
+      "empty": false,
+      "keys": [
+        "acceptingOrders",
+        "address",
+        "closesAt",
+        "code",
+        "dailyOrderCapacity",
+        "gstin",
+        "id",
+        "latitude",
+        "longitude",
+        "name",
+        "opensAt",
+        "phone",
+        "status",
+        "warehouse"
+      ],
+      "status": 200
+    },
+    "/admin/stores/${id}/admin": {
+      "calledAs": "/admin/stores/1/admin",
+      "empty": true,
+      "keys": [],
+      "status": 200
+    },
+    "/admin/stores/${storeId}": {
+      "calledAs": "/admin/stores/1",
+      "empty": false,
+      "keys": [
+        "acceptingOrders",
+        "address",
+        "closesAt",
+        "code",
+        "dailyOrderCapacity",
+        "gstin",
+        "id",
+        "latitude",
+        "longitude",
+        "name",
+        "opensAt",
+        "phone",
+        "status",
+        "warehouse"
+      ],
+      "status": 200
+    },
+    "/admin/support/tickets": {
+      "calledAs": "/admin/support/tickets",
+      "empty": false,
+      "keys": [
+        "summary",
+        "summary.closed",
+        "summary.inProgress",
+        "summary.open",
+        "summary.resolved",
+        "tickets",
+        "tickets[].assignedToName",
+        "tickets[].category",
+        "tickets[].code",
+        "tickets[].createdAt",
+        "tickets[].id",
+        "tickets[].orderCode",
+        "tickets[].priority",
+        "tickets[].status",
+        "tickets[].storeName",
+        "tickets[].subject",
+        "tickets[].userName",
+        "tickets[].userPhone",
+        "tickets[].zoneName"
+      ],
+      "status": 200
+    },
+    "/admin/support/tickets/${code}": {
+      "calledAs": "/admin/support/tickets/TKT1001",
+      "empty": false,
+      "keys": [
+        "assignedToName",
+        "category",
+        "code",
+        "createdAt",
+        "id",
+        "messages",
+        "orderCode",
+        "priority",
+        "status",
+        "subject",
+        "userName",
+        "userPhone"
+      ],
+      "status": 200
+    },
+    "/admin/zones": {
+      "calledAs": "/admin/zones",
+      "empty": false,
+      "keys": [
+        "[].centerLat",
+        "[].centerLng",
+        "[].code",
+        "[].creditEnabled",
+        "[].deliveryFee",
+        "[].estimatedDeliveryMinutes",
+        "[].freeDeliveryThreshold",
+        "[].id",
+        "[].isActive",
+        "[].minOrder",
+        "[].name",
+        "[].pincodes",
+        "[].platformFeeValue",
+        "[].polygonGeojson",
+        "[].priority",
+        "[].radiusKm",
+        "[].store",
+        "[].storeName"
+      ],
+      "status": 200
+    },
+    "/admin/zones/${activeZone}/agents": {
+      "calledAs": "/admin/zones/1/agents",
+      "empty": true,
+      "keys": [],
+      "status": 200
+    },
+    "/admin/zones/${zoneId}": {
+      "calledAs": "/admin/zones/1",
+      "empty": false,
+      "keys": [
+        "centerLat",
+        "centerLng",
+        "code",
+        "creditEnabled",
+        "deliveryFee",
+        "estimatedDeliveryMinutes",
+        "freeDeliveryThreshold",
+        "id",
+        "isActive",
+        "minOrder",
+        "name",
+        "pincodes",
+        "platformFeeValue",
+        "polygonGeojson",
+        "priority",
+        "radiusKm",
+        "store",
+        "storeName"
+      ],
+      "status": 200
+    },
+    "/audit/logs": {
+      "calledAs": "/audit/logs",
+      "empty": true,
+      "keys": [],
+      "status": 200
+    },
+    "/geo/places/autocomplete": {
+      "calledAs": "/geo/places/autocomplete",
+      "empty": false,
+      "keys": [
+        "predictions",
+        "source"
+      ],
+      "status": 200
+    },
+    "/geo/places/detail": {
+      "calledAs": "/geo/places/detail",
+      "empty": false,
+      "keys": [
+        "area",
+        "city",
+        "formatted",
+        "lat",
+        "lng",
+        "pincode",
+        "source",
+        "state"
+      ],
+      "status": 200
+    },
+    "/geo/reverse": {
+      "calledAs": "/geo/reverse",
+      "empty": false,
+      "keys": [
+        "area",
+        "city",
+        "formatted",
+        "lat",
+        "lng",
+        "pincode",
+        "source",
+        "state"
+      ],
+      "status": 200
+    },
+    "/home/sections": {
+      "calledAs": "/home/sections",
+      "empty": false,
+      "keys": [
+        "[].fallbackSort",
+        "[].key",
+        "[].label",
+        "[].limit"
+      ],
+      "status": 200
+    },
+    "/inventory/aging": {
+      "calledAs": "/inventory/aging",
+      "empty": false,
+      "keys": [
+        "aging",
+        "aging[].bucket",
+        "aging[].quantity",
+        "aging[].value",
+        "nearExpiry"
+      ],
+      "status": 200
+    },
+    "/inventory/audit": {
+      "calledAs": "/inventory/audit",
+      "empty": true,
+      "keys": [],
+      "status": 200
+    },
+    "/inventory/dead-stock": {
+      "calledAs": "/inventory/dead-stock",
+      "empty": false,
+      "keys": [
+        "days",
+        "items",
+        "items[].archived",
+        "items[].daysSinceSale",
+        "items[].lastSale",
+        "items[].name",
+        "items[].productId",
+        "items[].quantity",
+        "items[].value"
+      ],
+      "status": 200
+    },
+    "/inventory/finance": {
+      "calledAs": "/inventory/finance",
+      "empty": false,
+      "keys": [
+        "assumptions",
+        "assumptions.carryingRate",
+        "assumptions.leadTimeDays",
+        "cogsAnnualized",
+        "cogsPeriod",
+        "deadStockValue",
+        "expectedRevenue",
+        "gmroi",
+        "grossMarginPeriod",
+        "holdingCost",
+        "inventoryValue",
+        "marginPotential",
+        "periodDays",
+        "shrinkagePct",
+        "shrinkageUnits",
+        "shrinkageValue",
+        "turnoverRatio"
+      ],
+      "status": 200
+    },
+    "/inventory/grn": {
+      "calledAs": "/inventory/grn",
+      "empty": true,
+      "keys": [],
+      "status": 200
+    },
+    "/inventory/ledger": {
+      "calledAs": "/inventory/ledger",
+      "empty": true,
+      "keys": [],
+      "status": 200
+    },
+    "/inventory/movers": {
+      "calledAs": "/inventory/movers",
+      "empty": false,
+      "keys": [
+        "days",
+        "fast",
+        "slow",
+        "slow[].archived",
+        "slow[].lastSale",
+        "slow[].name",
+        "slow[].onHand",
+        "slow[].productId",
+        "slow[].revenue",
+        "slow[].unitsSold",
+        "slow[].value"
+      ],
+      "status": 200
+    },
+    "/inventory/overview": {
+      "calledAs": "/inventory/overview",
+      "empty": false,
+      "keys": [
+        "consumptionToday",
+        "damagedUnits",
+        "damagedValue",
+        "deadStockCount",
+        "deadStockValue",
+        "lowStock",
+        "nearExpiryValue",
+        "outOfStock",
+        "pendingPurchaseOrders",
+        "pendingTransfers",
+        "replenishmentToday",
+        "totalInventoryValue",
+        "totalSkus",
+        "totalUnits"
+      ],
+      "status": 200
+    },
+    "/inventory/products/${id}/overview": {
+      "calledAs": "/inventory/products/1/overview",
+      "empty": false,
+      "keys": [
+        "distribution",
+        "distribution[].available",
+        "distribution[].damaged",
+        "distribution[].onHand",
+        "distribution[].reserved",
+        "distribution[].warehouse",
+        "distribution[].warehouseId",
+        "ledger",
+        "reorder",
+        "reorder.avgDaily",
+        "reorder.daysRemaining",
+        "reorder.leadTimeDays",
+        "reorder.suggestedQty",
+        "summary",
+        "summary.avgCost",
+        "summary.brand",
+        "summary.category",
+        "summary.creditPrice",
+        "summary.id",
+        "summary.margin",
+        "summary.marginPct",
+        "summary.mrp",
+        "summary.name",
+        "summary.sellingPrice",
+        "summary.unit",
+        "suppliers",
+        "totals",
+        "totals.available",
+        "totals.damaged",
+        "totals.networkValue",
+        "totals.onHand",
+        "totals.reserved",
+        "velocity",
+        "velocity.avgDaily",
+        "velocity.lastSale",
+        "velocity.units30d",
+        "velocity.units7d",
+        "velocity.units90d"
+      ],
+      "status": 200
+    },
+    "/inventory/purchase-orders": {
+      "calledAs": "/inventory/purchase-orders",
+      "empty": true,
+      "keys": [],
+      "status": 200
+    },
+    "/inventory/reorder": {
+      "calledAs": "/inventory/reorder",
+      "empty": false,
+      "keys": [
+        "items",
+        "leadTimeDays"
+      ],
+      "status": 200
+    },
+    "/inventory/stock": {
+      "calledAs": "/inventory/stock",
+      "empty": false,
+      "keys": [
+        "[].available",
+        "[].id",
+        "[].lowStockThreshold",
+        "[].productId",
+        "[].productName",
+        "[].quantity",
+        "[].reserved",
+        "[].warehouseId",
+        "[].warehouseName"
+      ],
+      "status": 200
+    },
+    "/inventory/stores": {
+      "calledAs": "/inventory/stores",
+      "empty": false,
+      "keys": [
+        "[].fillRate",
+        "[].healthScore",
+        "[].inventoryValue",
+        "[].lowStock",
+        "[].outOfStock",
+        "[].pendingTransfers",
+        "[].salesToday",
+        "[].skuCount",
+        "[].status",
+        "[].storeId",
+        "[].storeName",
+        "[].warehouseId"
+      ],
+      "status": 200
+    },
+    "/inventory/stores/${wid}/products": {
+      "calledAs": "/inventory/stores/1/products",
+      "empty": false,
+      "keys": [
+        "[].available",
+        "[].brand",
+        "[].effectivePrice",
+        "[].globalPrice",
+        "[].isAvailable",
+        "[].lowStockThreshold",
+        "[].mrp",
+        "[].name",
+        "[].onHand",
+        "[].productId",
+        "[].reserved",
+        "[].storePrice"
+      ],
+      "status": 200
+    },
+    "/inventory/suppliers": {
+      "calledAs": "/inventory/suppliers",
+      "empty": false,
+      "keys": [
+        "[].address",
+        "[].email",
+        "[].gstin",
+        "[].id",
+        "[].isActive",
+        "[].name",
+        "[].phone",
+        "[].store"
+      ],
+      "status": 200
+    },
+    "/inventory/transfer-suggestions": {
+      "calledAs": "/inventory/transfer-suggestions",
+      "empty": false,
+      "keys": [
+        "leadTimeDays",
+        "suggestions"
+      ],
+      "status": 200
+    },
+    "/inventory/transfers": {
+      "calledAs": "/inventory/transfers",
+      "empty": true,
+      "keys": [],
+      "status": 200
+    },
+    "/inventory/valuation": {
+      "calledAs": "/inventory/valuation",
+      "empty": false,
+      "keys": [
+        "rows",
+        "rows[].name",
+        "rows[].productId",
+        "rows[].quantity",
+        "rows[].unitCost",
+        "rows[].value",
+        "rows[].warehouseId",
+        "rows[].warehouseName",
+        "skuCount",
+        "total"
+      ],
+      "status": 200
+    },
+    "/inventory/warehouses": {
+      "calledAs": "/inventory/warehouses",
+      "empty": false,
+      "keys": [
+        "[].code",
+        "[].id",
+        "[].isActive",
+        "[].isDefault",
+        "[].name"
+      ],
+      "status": 200
+    },
+    "/offers/specs": {
+      "calledAs": "/offers/specs",
+      "empty": false,
+      "keys": [
+        "placements",
+        "placements[].aspect",
+        "placements[].label",
+        "placements[].master",
+        "placements[].master.height",
+        "placements[].master.width",
+        "placements[].minUpload",
+        "placements[].minUpload.height",
+        "placements[].minUpload.width",
+        "placements[].note",
+        "placements[].placement",
+        "placements[].ratio",
+        "placements[].sizes",
+        "placements[].sizes[].height",
+        "placements[].sizes[].name",
+        "placements[].sizes[].width"
+      ],
+      "status": 200
+    },
+    "/reports/${active}": {
+      "calledAs": "/reports/sales",
+      "empty": false,
+      "keys": [
+        "columns",
+        "meta",
+        "meta.page",
+        "meta.pageSize",
+        "meta.total",
+        "rows",
+        "title"
+      ],
+      "status": 200
+    },
+    "/search/global": {
+      "calledAs": "/search/global",
+      "empty": false,
+      "keys": [
+        "count",
+        "products",
+        "results"
+      ],
+      "status": 200
+    },
+    "/users/me": {
+      "calledAs": "/users/me",
+      "empty": false,
+      "keys": [
+        "avatar_url",
+        "created_at",
+        "credit_enabled",
+        "date_of_birth",
+        "email",
+        "gender",
+        "id",
+        "kyc_status",
+        "name",
+        "phone",
+        "role"
+      ],
+      "status": 200
+    }
+  },
+  "failures": [],
+  "skipped": [
+    {
+      "reason": "writes provider credentials",
+      "route": "/admin/settings/integrations"
+    }
+  ]
+}

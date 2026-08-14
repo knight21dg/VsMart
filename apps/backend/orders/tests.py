@@ -625,3 +625,104 @@ class TrackingLocationTests(TestCase):
         data = TrackingSerializer(tracking).data
         self.assertIsNone(data["store_lat"])
         self.assertIsNone(data["dest_lat"])
+
+
+class MinimumOrderEnforcementTests(TestCase):
+    """A zone's minimum order value was configured, displayed on the bill, and
+    then never checked — a zone set to ₹1,000 accepted a ₹300 order. The gate has
+    to live on the server: the app's Place Order button is a courtesy, not a
+    control (a replayed or crafted request skips it entirely).
+    """
+
+    SQUARE = {
+        "type": "Polygon",
+        "coordinates": [[
+            [77.55, 12.95], [77.65, 12.95], [77.65, 13.00],
+            [77.55, 13.00], [77.55, 12.95],
+        ]],
+    }
+
+    def setUp(self):
+        from addresses.models import Address
+        from cart.services import get_cart, upsert_item
+        from stores.models import Store
+        from zones.models import Zone
+
+        self.upsert_item, self.get_cart = upsert_item, get_cart
+        self.wh = Warehouse.objects.create(name="MinWh", code="MINWH", is_default=True)
+        cat, _ = Category.objects.get_or_create(name="Grocery", slug="grocery")
+        self.product = Product.objects.create(
+            name="Dal", brand="VS", unit="1 kg", price=Decimal("100"),
+            mrp=Decimal("120"), category=cat, stock_count=None,
+        )
+        InventoryService.post_movement(
+            product=self.product, warehouse=self.wh,
+            type=InventoryLedger.Type.GRN, quantity=200,
+        )
+        self.store = Store.objects.create(
+            code="MS1", name="Min Store", warehouse=self.wh,
+            status=Store.Status.ACTIVE,
+        )
+        self.zone = Zone.objects.create(
+            code="MZ1", name="Min Zone", polygon_geojson=self.SQUARE,
+            store=self.store, is_active=True, priority=9,
+            min_order=Decimal("1000"),
+        )
+        self.user = User.objects.create(phone="+910000000088", name="MinCust")
+        self.address = Address.objects.create(
+            user=self.user, name="MinCust", phone="9000000088", line1="MG Rd",
+            latitude=Decimal("12.97"), longitude=Decimal("77.60"), pincode="560001",
+        )
+
+    def _order(self, qty):
+        from .services import place_order
+
+        self.upsert_item(self.get_cart(self.user), self.product, None, qty)
+        return place_order(
+            self.user, address=self.address, payment_method=Order.PaymentMethod.COD
+        )
+
+    def test_below_minimum_is_refused_with_the_shortfall(self):
+        from .services import CheckoutError
+
+        with self.assertRaises(CheckoutError) as ctx:
+            self._order(3)  # ₹300 against a ₹1,000 minimum
+        self.assertEqual(ctx.exception.code, "MIN_ORDER_NOT_MET")
+        self.assertIn("1,000", str(ctx.exception))
+        self.assertIn("700", str(ctx.exception))  # the shortfall, spelled out
+        self.assertEqual(Order.objects.filter(user=self.user).count(), 0)
+
+    def test_at_the_minimum_is_allowed(self):
+        order = self._order(10)  # exactly ₹1,000
+        self.assertIsNotNone(order.pk)
+
+    def test_fees_do_not_count_toward_the_minimum(self):
+        """Delivery/GST/platform fees are not goods. Counting them would let a
+        ₹900 basket clear a ₹1,000 minimum on charges alone."""
+        from .services import CheckoutError
+
+        with self.assertRaises(CheckoutError) as ctx:
+            self._order(9)  # ₹900 subtotal; total-with-fees exceeds ₹1,000
+        self.assertEqual(ctx.exception.code, "MIN_ORDER_NOT_MET")
+
+    def test_zone_without_a_minimum_is_unaffected(self):
+        self.zone.min_order = None
+        self.zone.save(update_fields=["min_order"])
+        # PlatformConfig default is 0, so nothing should gate.
+        self.assertIsNotNone(self._order(1).pk)
+
+    def test_api_surfaces_the_actionable_code(self):
+        from rest_framework.test import APIClient
+
+        self.upsert_item(self.get_cart(self.user), self.product, None, 2)
+        client = APIClient()
+        client.force_authenticate(self.user)
+        r = client.post(
+            "/api/v1/checkout",
+            {"addressId": str(self.address.id), "paymentMethod": "cod"},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 400, r.content)
+        body = r.json()
+        self.assertEqual(body["code"], "MIN_ORDER_NOT_MET")
+        self.assertIn("Minimum order value", body["message"])

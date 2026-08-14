@@ -100,12 +100,23 @@ def agent_store(agent):
     return profile.store
 
 
-def _claim_collections(agent, collection_ids, deposit):
+def _claim_collections(agent, collection_ids, deposit, *, declared=None):
     """Attach the named collections to ``deposit``, exclusively.
 
     select_for_update so two concurrent hand-overs can't claim the same
     collection and double-count the cash. Raises if any id isn't a bankable,
     still-in-hand collection belonging to this agent.
+
+    ``declared`` is the agent's stated amount. When collections are attached it
+    MUST equal their total, because claiming a collection is what removes its
+    cash from `cash_in_hand`. Without this check an agent could attach ₹5,000 of
+    collections while declaring ₹500: all five would leave the exposure figure,
+    the deposit would book ₹500, and finance counting ₹500 would mark it
+    **VERIFIED** (counted >= declared) — the missing ₹4,500 invisible at every
+    step. That is precisely the "collected and banked drift apart with no way to
+    see it" the deposit record exists to prevent, and the online hand-over path
+    already refuses it by deriving the amount from the rows instead of trusting
+    a client figure.
     """
     if not collection_ids:
         return
@@ -114,14 +125,25 @@ def _claim_collections(agent, collection_ids, deposit):
         .filter(id__in=collection_ids, agent=agent,
                 status__in=BANKABLE_STATUSES, deposit__isnull=True)
     )
-    ids = list(claimed.values_list("id", flat=True))
-    if len(ids) != len(set(collection_ids)):
+    rows = list(claimed)
+    if len(rows) != len(set(collection_ids)):
         raise AppError(
             "DEPOSIT_COLLECTION_CONFLICT",
             message="Some of those collections are already deposited or "
                     "don't belong to this agent.",
         )
-    CashCollection.objects.filter(id__in=ids).update(deposit=deposit)
+    if declared is not None:
+        held = sum((r.collected_amount for r in rows), ZERO)
+        if declared != held:
+            raise AppError(
+                "VALIDATION_ERROR",
+                message=(
+                    f"The selected collections total ₹{held}, but ₹{declared} "
+                    f"was declared. Hand over the full amount for the "
+                    f"collections you've selected, or select different ones."
+                ),
+            )
+    CashCollection.objects.filter(id__in=[r.id for r in rows]).update(deposit=deposit)
 
 
 @transaction.atomic
@@ -149,7 +171,7 @@ def create_deposit(agent, *, amount, method, deposited_on=None, reference="",
         slip_key=slip_key or "",
         notes=notes or "",
     )
-    _claim_collections(agent, collection_ids, deposit)
+    _claim_collections(agent, collection_ids, deposit, declared=amount)
 
     record_audit(actor or agent, "cash.deposit.create", target=deposit,
                  after={"amount": str(amount), "method": deposit.method,

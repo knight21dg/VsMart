@@ -214,3 +214,151 @@ class AdminStoreCreateTests(TestCase):
 
         self.zone.refresh_from_db()
         self.assertIsNone(self.zone.store_id)
+
+
+class ZoneStoreDeletionContractTests(TestCase):
+    """Deleting a zone or a store.
+
+    Two things were wrong here. The response was a bare ``204 No Content``, which
+    the web console's fetch client could not read at all (a 204 is a null-body
+    status, so ``res.json()`` rejected and a *successful* delete surfaced as
+    "Empty response from server." with no cache invalidation). And the outcome is
+    conditional — anything with trading history is deactivated, not deleted — so
+    a 204 could not tell the operator which of the two they had just done.
+    """
+
+    def setUp(self):
+        from rest_framework.test import APIClient
+
+        from accounts.models import User
+
+        self.super = User.objects.create(
+            phone="+919000000501", name="Super", role="superadmin"
+        )
+        self.client = APIClient()
+        self.client.force_authenticate(self.super)
+
+    # ── zones ──
+    def test_unused_zone_is_really_deleted_and_says_so(self):
+        zone = Zone.objects.create(code="ZD1", name="Kakinada", is_active=True)
+        r = self.client.delete(f"/api/v1/admin/zones/{zone.id}")
+        self.assertEqual(r.status_code, 200, r.content)
+        body = r.json()
+        self.assertTrue(body["success"])
+        self.assertEqual(body["code"], "RECORD_DELETED")
+        self.assertIn("deleted", body["message"].lower())
+        self.assertFalse(Zone.objects.filter(pk=zone.pk).exists())
+
+    def test_zone_with_orders_is_deactivated_not_deleted(self):
+        from accounts.models import User
+        from orders.models import Order
+
+        zone = Zone.objects.create(code="ZD2", name="Traded", is_active=True)
+        customer = User.objects.create(
+            phone="+919000000502", name="Cust", role="customer"
+        )
+        Order.objects.create(user=customer, zone=zone)
+
+        r = self.client.delete(f"/api/v1/admin/zones/{zone.id}")
+        self.assertEqual(r.status_code, 200, r.content)
+        body = r.json()
+        self.assertEqual(body["code"], "RECORD_DEACTIVATED")
+        zone.refresh_from_db()
+        self.assertFalse(zone.is_active)
+        # The order keeps its zone attribution — that is the whole point.
+        self.assertEqual(Order.objects.filter(zone=zone).count(), 1)
+
+    def test_duplicate_zone_name_is_refused_with_a_readable_message(self):
+        Zone.objects.create(code="ZK1", name="Kakinada", is_active=True)
+        r = self.client.post(
+            "/api/v1/admin/zones",
+            {"name": "  kakinada ", "code": "ZK2"},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 400, r.content)
+        detail = str(r.json())
+        self.assertIn("already exists", detail)
+        self.assertEqual(Zone.objects.filter(name__iexact="kakinada").count(), 1)
+
+    def test_blank_zone_codes_do_not_collide(self):
+        """`code` is unique+nullable; a blank string is a value and collided."""
+        for name in ("Alpha", "Beta"):
+            r = self.client.post(
+                "/api/v1/admin/zones", {"name": name, "code": ""}, format="json"
+            )
+            self.assertEqual(r.status_code, 201, r.content)
+        self.assertEqual(Zone.objects.filter(code__isnull=True).count(), 2)
+
+    def test_codeless_zone_can_still_be_edited(self):
+        """`code` is nullable, so a zone without one has to stay editable.
+
+        The console used to disable Save until a code was typed, which made every
+        zone created without one permanently uneditable.
+        """
+        zone = Zone.objects.create(name="No Code", code=None)
+        r = self.client.patch(
+            f"/api/v1/admin/zones/{zone.id}",
+            {"name": "No Code", "code": None, "delivery_fee": "15.00"},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 200, r.content)
+        zone.refresh_from_db()
+        self.assertIsNone(zone.code)
+        self.assertEqual(str(zone.delivery_fee), "15.00")
+
+    def test_not_null_numeric_fields_must_be_omitted_not_nulled(self):
+        """radius_km / priority / estimated_delivery_minutes are NOT NULL with DB
+        defaults. Posting an explicit null 400s — the console has to leave a blank
+        input out of the payload instead, which is what this pins down."""
+        zone = Zone.objects.create(name="Numeric", code="ZN1")
+        rejected = self.client.patch(
+            f"/api/v1/admin/zones/{zone.id}", {"radius_km": None}, format="json"
+        )
+        self.assertEqual(rejected.status_code, 400, rejected.content)
+
+        omitted = self.client.patch(
+            f"/api/v1/admin/zones/{zone.id}",
+            {"name": "Numeric", "delivery_fee": None},
+            format="json",
+        )
+        self.assertEqual(omitted.status_code, 200, omitted.content)
+        zone.refresh_from_db()
+        # The nullable fee override really is nulled; the NOT NULL radius survives.
+        self.assertIsNone(zone.delivery_fee)
+        self.assertIsNotNone(zone.radius_km)
+
+    # ── stores ──
+    def test_unused_store_is_really_deleted_and_says_so(self):
+        store = Store.objects.create(code="SD1", name="Fresh Store")
+        r = self.client.delete(f"/api/v1/admin/stores/{store.id}")
+        self.assertEqual(r.status_code, 200, r.content)
+        body = r.json()
+        self.assertEqual(body["code"], "RECORD_DELETED")
+        self.assertFalse(Store.objects.filter(pk=store.pk).exists())
+
+    def test_store_with_orders_is_deactivated_and_reported_as_such(self):
+        from accounts.models import User
+        from orders.models import Order
+
+        store = Store.objects.create(code="SD2", name="Busy Store")
+        customer = User.objects.create(
+            phone="+919000000503", name="Cust2", role="customer"
+        )
+        Order.objects.create(user=customer, store=store)
+
+        r = self.client.delete(f"/api/v1/admin/stores/{store.id}")
+        self.assertEqual(r.status_code, 200, r.content)
+        body = r.json()
+        self.assertEqual(body["code"], "RECORD_DEACTIVATED")
+        self.assertIn("deactivated", body["message"].lower())
+        store.refresh_from_db()
+        self.assertEqual(store.status, Store.Status.INACTIVE)
+        self.assertFalse(store.accepting_orders)
+
+    def test_duplicate_store_code_names_the_owner(self):
+        Store.objects.create(code="DUP", name="First Store")
+        r = self.client.post(
+            "/api/v1/admin/stores", {"code": "dup", "name": "Second"}, format="json"
+        )
+        self.assertEqual(r.status_code, 400, r.content)
+        self.assertIn("First Store", str(r.json()))

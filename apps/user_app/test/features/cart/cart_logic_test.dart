@@ -90,4 +90,65 @@ void main() {
       expect(s.savings, 40); // (120-100) * 2
     });
   });
+
+  // The zone's minimum order value. `minOrder` arrived on every bill and was
+  // never read: the checkout CTA stayed live on a ₹300 cart in a ₹1,000 zone,
+  // and the order was only refused at the payment step. The gate is enforced on
+  // the server; these cover the client's half of it.
+  group('minimum order value', () {
+    CartSummary summary({
+      num subtotal = 0,
+      num minOrder = 0,
+      num deliveryCharges = 0,
+      num gstAmount = 0,
+      num? total,
+    }) =>
+        CartSummary(
+          itemsCount: 1,
+          subtotal: subtotal,
+          savings: 0,
+          deliveryCharges: deliveryCharges,
+          gstAmount: gstAmount,
+          total: total ?? subtotal,
+          minOrder: minOrder,
+        );
+
+    test('no minimum configured blocks nothing', () {
+      final s = summary(subtotal: 1);
+      expect(s.minOrderShortfall, 0);
+      expect(s.meetsMinimumOrder, isTrue);
+    });
+
+    test('below the minimum reports the exact shortfall', () {
+      final s = summary(subtotal: 300, minOrder: 1000);
+      expect(s.minOrderShortfall, 700);
+      expect(s.meetsMinimumOrder, isFalse);
+    });
+
+    test('exactly at the minimum qualifies', () {
+      expect(summary(subtotal: 1000, minOrder: 1000).meetsMinimumOrder, isTrue);
+    });
+
+    test('above the minimum never reports a negative shortfall', () {
+      expect(summary(subtotal: 1500, minOrder: 1000).minOrderShortfall, 0);
+    });
+
+    test('measured on the subtotal, not the total', () {
+      // A ₹900 basket whose fees push the total past ₹1,000 must still be
+      // blocked — fees are not goods, and the server gates on the subtotal.
+      final s = summary(
+        subtotal: 900, minOrder: 1000,
+        deliveryCharges: 60, gstAmount: 45, total: 1005,
+      );
+      expect(s.meetsMinimumOrder, isFalse);
+      expect(s.minOrderShortfall, 100);
+    });
+
+    test('copyWith carries the minimum through a coupon re-quote', () {
+      final s = summary(subtotal: 300, minOrder: 1000)
+          .copyWith(total: 250, couponDiscount: 50);
+      expect(s.minOrder, 1000);
+      expect(s.meetsMinimumOrder, isFalse);
+    });
+  });
 }

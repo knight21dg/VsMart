@@ -34,6 +34,14 @@ class Payment(TimeStampedModel):
         SUCCESS = "success"
         FAILED = "failed"
         REFUNDED = "refunded"
+        #: The gateway could not tell us what happened within the operational
+        #: window. NOT a failure and NOT a success — an explicit "a human must
+        #: look at this". Introduced because the alternative was leaving the row
+        #: PENDING forever, which held the order's stock indefinitely with nothing
+        #: anywhere surfacing it (prod order VSORD100025 sat this way for 17 days).
+        #: Inventory stays reserved while in this state: cancelling an order whose
+        #: money may already be captured is the worse error.
+        RECONCILIATION_REQUIRED = "reconciliation_required"
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="payments"
@@ -55,8 +63,20 @@ class Payment(TimeStampedModel):
     refund_of = models.ForeignKey(
         "self", on_delete=models.SET_NULL, null=True, blank=True, related_name="refunds"
     )
-    status = models.CharField(max_length=10, choices=Status.choices, default=Status.CREATED)
+    status = models.CharField(max_length=24, choices=Status.choices, default=Status.CREATED)
     idempotency_key = models.CharField(max_length=80, blank=True, db_index=True)
+
+    # Reconciliation bookkeeping. Without these the sweep re-asked the gateway
+    # about the same row forever with no record of having tried, so there was no
+    # way to tell a payment nobody had checked from one checked fifty times.
+    reconcile_attempts = models.PositiveIntegerField(default=0)
+    last_reconciled_at = models.DateTimeField(null=True, blank=True)
+    reconcile_note = models.CharField(max_length=200, blank=True)
+    resolved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="resolved_payments",
+    )
+    resolved_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["-created_at"]
@@ -82,7 +102,15 @@ class PaymentEvent(models.Model):
     the append-only credit ledger."""
 
     payment = models.ForeignKey(Payment, on_delete=models.CASCADE, related_name="events")
-    status = models.CharField(max_length=10, choices=Payment.Status.choices)
+    status = models.CharField(max_length=24, choices=Payment.Status.choices)
+    #: Where the payment came FROM. Without it the trail shows a sequence of states
+    #: but not the transitions, so "who moved this off RECONCILIATION_REQUIRED, and
+    #: from what" could not be answered from the ledger alone.
+    previous_status = models.CharField(max_length=24, blank=True)
+    #: What the provider actually captured, when this event records a settlement.
+    #: Distinct from `payment.amount`, which is what was DUE — the two differing is
+    #: precisely the short-capture case that must never be settled silently.
+    amount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     note = models.CharField(max_length=200, blank=True)
     # The gateway id relevant to this transition (payment id on success, refund id
     # on a refund, etc.) — kept here so the trail is complete even if the Payment

@@ -273,6 +273,46 @@ class StoreOrderStatusRestrictionTests(TestCase):
         self.assertIsNone(d["delivery"]["photoUrl"])
 
     def test_store_staff_can_load_the_proof_photo(self):
+        """The bytes actually come back — not merely "didn't 403".
+
+        This used to assert `status_code not in (403, 404)` against an asset with
+        no file behind it, so it passed on the 500 that a missing file produced.
+        A missing file is now an honest 404, which turned the weak assertion into
+        a failure and exposed that the test had never proven delivery is
+        viewable at all. It writes a real file so it does.
+        """
+        from django.core.files.base import ContentFile
+        from django.core.files.storage import default_storage
+
+        from accounts.models import AgentProfile
+        from delivery.models import DeliveryTask
+        from mediastore.models import MediaAsset
+
+        order = self._order("delivered")
+        agent = User.objects.create(phone=_ph(), name="Rider", role=Role.AGENT)
+        AgentProfile.objects.create(user=agent, code=f"AG{next(_seq)}", store=self.store)
+        asset = MediaAsset.objects.create(
+            category="delivery_pod", owner=agent, visibility="private",
+            content_type="image/webp",
+        )
+        key = default_storage.save(
+            asset.variant_key("medium"), ContentFile(b"proof-bytes")
+        )
+
+        task = DeliveryTask.objects.create(
+            order=order, agent=agent, status="delivered", photo_key=str(asset.id))
+        r = self.mgr.get(f"/api/v1/deliveries/{task.id}/proof-photo")
+        self.assertEqual(r.status_code, 200)
+        body = b"".join(r.streaming_content)
+        # Close before deleting — Windows refuses to unlink a file the
+        # FileResponse still holds open.
+        r.close()
+        self.addCleanup(default_storage.delete, key)
+        self.assertEqual(body, b"proof-bytes")
+
+    def test_a_proof_photo_whose_file_is_gone_is_a_404_not_a_500(self):
+        """A store manager opening delivery proof for an asset whose bytes have
+        been lost must be told the image is gone, not that the server broke."""
         from accounts.models import AgentProfile
         from delivery.models import DeliveryTask
         from mediastore.models import MediaAsset
@@ -287,9 +327,8 @@ class StoreOrderStatusRestrictionTests(TestCase):
         task = DeliveryTask.objects.create(
             order=order, agent=agent, status="delivered", photo_key=str(asset.id))
         r = self.mgr.get(f"/api/v1/deliveries/{task.id}/proof-photo")
-        # Not 403/404 — StoreScopedMixin already proved self.mgr is staff of
-        # this order's store; a real file backend would 200 here.
-        self.assertNotIn(r.status_code, (403, 404))
+        self.assertEqual(r.status_code, 404, r.content)
+        self.assertIn("no longer available", r.json()["message"])
 
     def test_other_stores_staff_cannot_load_the_proof_photo(self):
         from accounts.models import AgentProfile
@@ -352,6 +391,32 @@ class StoreStaffTests(TestCase):
         r = self.mgr.post("/api/v1/store/staff/attendance/check-in", {}, format="json")
         self.assertEqual(r.status_code, 200)
         self.assertIsNotNone(_data(r)["checkInAt"])
+
+    def test_my_attendance_reports_server_truth(self):
+        """The panel's clock-in button used to keep a local boolean that reset to
+        "out" on every remount. It now reads this, so the state has to be real."""
+        before = _data(self.mgr.get("/api/v1/store/staff/attendance/me"))
+        self.assertFalse(before["clockedIn"])
+        self.assertIsNone(before["checkInAt"])
+
+        self.mgr.post("/api/v1/store/staff/attendance/check-in", {}, format="json")
+        after = _data(self.mgr.get("/api/v1/store/staff/attendance/me"))
+        self.assertTrue(after["clockedIn"])
+        self.assertIsNotNone(after["checkInAt"])
+
+        out = _data(self.mgr.post("/api/v1/store/staff/attendance/check-out", {}, format="json"))
+        # The write returns the same shape, so the client can trust either.
+        self.assertFalse(out["clockedIn"])
+        self.assertIsNotNone(out["checkOutAt"])
+        self.assertFalse(_data(self.mgr.get("/api/v1/store/staff/attendance/me"))["clockedIn"])
+
+    def test_my_attendance_needs_no_employees_view_permission(self):
+        """Everyone may read their own attendance — the roster endpoint's
+        `employees.view` gate would lock a cashier out of their own clock."""
+        cashier = client_for(mk_staff(self.store, "cashier"))
+        self.assertEqual(
+            cashier.get("/api/v1/store/staff/attendance/me").status_code, 200
+        )
 
 
 class StoreProcurementInventoryTests(TestCase):

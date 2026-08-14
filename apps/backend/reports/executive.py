@@ -6,7 +6,7 @@ payments/collections, inventory, accounts, delivery, verification, zones,
 returns). Aggregation is DB-side (grouped annotations); cross-module attribution
 (collections/outstanding → store/zone) uses a single user→store/zone map.
 """
-from datetime import timedelta
+from datetime import datetime, time, timedelta
 
 from django.db.models import (
     Avg,
@@ -41,27 +41,35 @@ def dashboard(params=None):
     from payments.models import CashCollection
     from verification.models import VerificationTask
 
+    from core.financials import cash_recovered, inventory_valuation, net_revenue
+
     today = timezone.now().date()
     month_start = today.replace(day=1)
+    tz = timezone.get_current_timezone()
+    day_start = timezone.make_aware(datetime.combine(today, time.min), tz)
+    mtd_start = timezone.make_aware(datetime.combine(month_start, time.min), tz)
+
     orders = Order.objects.exclude(status="cancelled")
-    coll = CashCollection.objects.filter(status="collected")
+    inv_value, inv_costed_pct = inventory_valuation()
     acc = CreditAccount.objects.aggregate(out=Sum("outstanding"), lim=Sum("credit_limit"))
     customers = User.objects.filter(role=Role.CUSTOMER)
-    inv_val = StockItem.objects.aggregate(
-        v=Sum(F("quantity") * F("product__price"), output_field=DecimalField())
-    )["v"]
     low_stock = (
         StockItem.objects.annotate(avail=F("quantity") - F("reserved"))
         .filter(avail__lte=F("low_stock_threshold"))
         .count()
     )
     widgets = {
-        "revenueToday": _num(orders.filter(placed_at__date=today).aggregate(s=Sum("total"))["s"]),
-        "revenueMtd": _num(orders.filter(placed_at__date__gte=month_start).aggregate(s=Sum("total"))["s"]),
+        # Was `Sum(total)` over every non-cancelled order — money booked the moment an
+        # order was placed, returns still counted, POS missing. That made the most-read
+        # KPI on the platform disagree with the accounting page. One definition now.
+        "revenueToday": net_revenue(day_start)["net"],
+        "revenueMtd": net_revenue(mtd_start)["net"],
         "ordersToday": orders.filter(placed_at__date=today).count(),
         "ordersMtd": orders.filter(placed_at__date__gte=month_start).count(),
-        "collectionsToday": _num(coll.filter(collected_at__date=today).aggregate(s=Sum("amount"))["s"]),
-        "collectionsMtd": _num(coll.filter(collected_at__date__gte=month_start).aggregate(s=Sum("amount"))["s"]),
+        # Was `Sum(amount)` — the target, not the recovery, so a partial collection
+        # reported as a full one.
+        "collectionsToday": cash_recovered(day_start),
+        "collectionsMtd": cash_recovered(mtd_start),
         "outstandingCredit": _num(acc["out"]),
         "creditUtilization": _pct(acc["out"], acc["lim"]),
         "activeCustomers": customers.filter(is_active=True).count(),
@@ -70,7 +78,13 @@ def dashboard(params=None):
         "pendingVerifications": VerificationTask.objects.filter(
             status__in=["pending", "assigned", "in_progress"]
         ).count(),
-        "inventoryValue": _num(inv_val),
+        # Was `quantity x product.price` -- stock valued at the SELLING price, which
+        # overstates the holding by its entire margin. Now weighted-average cost, with
+        # the share genuinely backed by costed receipts published alongside it: stock
+        # never received at a recorded cost still falls back to the selling price, and
+        # an unqualified "value at cost" would quietly carry that overstatement.
+        "inventoryValue": inv_value,
+        "inventoryValueCostedPct": inv_costed_pct,
         "lowStockCount": low_stock,
     }
     return {"title": "Executive Dashboard", "widgets": widgets}
@@ -89,8 +103,10 @@ def recovery_performance(params=None):
     collected = coll.filter(status="collected")
     total_outstanding = _num(CreditAccount.objects.aggregate(s=Sum("outstanding"))["s"])
     overdue = _num(Statement.objects.filter(status="overdue").aggregate(s=Sum("closing_balance"))["s"])
-    collected_month = _num(collected.filter(collected_at__date__gte=month_start).aggregate(s=Sum("amount"))["s"])
-    collected_today = _num(collected.filter(collected_at__date=today).aggregate(s=Sum("amount"))["s"])
+    # `amount` is the target; `collected_amount` is the recovery. Summing the
+    # target reported every partial collection as a full one.
+    collected_month = _num(collected.filter(collected_at__date__gte=month_start).aggregate(s=Sum("collected_amount"))["s"])
+    collected_today = _num(collected.filter(collected_at__date=today).aggregate(s=Sum("collected_amount"))["s"])
     assigned = coll.exclude(status__in=["cancelled", "requested"]).count()
     completed = collected.count()
 
@@ -121,7 +137,7 @@ def recovery_performance(params=None):
         .annotate(
             assigned=Count("id", filter=~Q(status__in=["cancelled", "requested"])),
             collected=Count("id", filter=Q(status="collected")),
-            amount=Sum("amount", filter=Q(status="collected")),
+            amount=Sum("collected_amount", filter=Q(status="collected")),
         )
         .order_by("-amount")
     ):
@@ -136,7 +152,7 @@ def recovery_performance(params=None):
     trend = []
     d = start
     while d <= end:
-        amt = _num(collected.filter(collected_at__date=d).aggregate(s=Sum("amount"))["s"])
+        amt = _num(collected.filter(collected_at__date=d).aggregate(s=Sum("collected_amount"))["s"])
         trend.append({"date": d.isoformat(), "collected": amt})
         d += timedelta(days=1)
 
@@ -179,14 +195,16 @@ def store_performance(params=None):
             b["customers"] = r["customers"]
             b["creditIssued"] = _num(r["credit"])
 
-    # Inventory value per store (warehouse → store).
+    # Inventory value per store (warehouse -> store), at weighted-average COST.
+    # This was `quantity x product.price` -- the SELLING price -- which overstates
+    # every store's holding by its full margin and made "inventory value" mean
+    # something different here than it does on a balance sheet.
+    from core.financials import inventory_value_at_cost
+
     wh_to_store = {s.warehouse_id: sid for sid, s in stores.items() if s.warehouse_id}
-    for r in StockItem.objects.values("warehouse_id").annotate(
-        val=Sum(F("quantity") * F("product__price"), output_field=DecimalField())
-    ):
-        sid = wh_to_store.get(r["warehouse_id"])
+    for wid, sid in wh_to_store.items():
         if sid in rows_by_store:
-            rows_by_store[sid]["inventoryValue"] = _num(r["val"])
+            rows_by_store[sid]["inventoryValue"] = inventory_value_at_cost(warehouse=wid)
 
     # Returns + delivery success per store (order-attributed).
     for r in ReturnRequest.objects.values("order__store_id").annotate(n=Count("id")):
@@ -390,7 +408,7 @@ def collection_efficiency(params=None):
         .annotate(
             assigned=Count("id", filter=~Q(status="requested")),
             completed=Count("id", filter=Q(status="collected")),
-            amount=Sum("amount", filter=Q(status="collected")),
+            amount=Sum("collected_amount", filter=Q(status="collected")),
         )
         .order_by("-completed")
     ):

@@ -306,6 +306,13 @@ SETU_CLIENT_ID = env("SETU_CLIENT_ID", default="")
 SETU_CLIENT_SECRET = env("SETU_CLIENT_SECRET", default="")
 SETU_PAN_PRODUCT_ID = env("SETU_PAN_PRODUCT_ID", default="")
 SETU_DIGILOCKER_PRODUCT_ID = env("SETU_DIGILOCKER_PRODUCT_ID", default="")
+
+# Payon — the ONE DigiLocker provider. NOTE the `reseller.` host: the bare
+# apipayon.in rejects reseller keys with "Invalid API key", which reads as a
+# dead key. Same trap as the credit-score API.
+PAYON_API_KEY = env("PAYON_API_KEY", default="")
+PAYON_BASE_URL = env(
+    "PAYON_BASE_URL", default="https://reseller.apipayon.in/api/v1/serv2")
 SETU_AADHAAR_PRODUCT_ID = env("SETU_AADHAAR_PRODUCT_ID", default="")
 SETU_BANK_PRODUCT_ID = env("SETU_BANK_PRODUCT_ID", default="")
 # KYC — Signzy (recommended production provider). Set KYC_PROVIDER=signzy + either

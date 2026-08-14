@@ -55,18 +55,108 @@ class VerificationFlowTests(TestCase):
         self.assertEqual(resp.status_code, 400)
         self.assertEqual(resp.json()["code"], "CONSENT_REQUIRED")
 
-    # ── Aadhaar: DigiLocker (optional path) ──
-    def test_digilocker_start_then_status(self):
+    # ── Aadhaar: DigiLocker — ONE provider (Payon), no mock ──
+    #
+    # This used to run on the mock verifier and assert AADHAAR_VERIFIED. That made
+    # a green test out of a fabricated government identity: with no credentials
+    # configured anywhere (the state prod is in today), the generic selector falls
+    # through to MockProvider, which returns "verified" for any input. DigiLocker
+    # now resolves only to Payon, so an unconfigured install fails loudly.
+    def test_digilocker_without_credentials_fails_loudly(self):
         start = self.client.post("/api/v1/kyc/aadhaar/digilocker/start", {}, format="json")
-        self.assertEqual(start.status_code, 200)
-        ref = start.json()["data"]["referenceId"]
-        self.assertTrue(start.json()["data"]["redirectUrl"])
+        self.assertEqual(start.status_code, 503)
+        self.assertEqual(start.json()["code"], "KYC_PROVIDER_ERROR")
+        # Nothing was recorded — an unconfigured provider must not create a step.
+        self.assertFalse(
+            KycApplication.objects.filter(user=self.user)
+            .filter(steps__step="aadhaar", steps__status="approved").exists())
 
-        status = self.client.get(f"/api/v1/kyc/aadhaar/digilocker/{ref}/status")
-        self.assertEqual(status.status_code, 200)
-        self.assertEqual(status.json()["code"], "AADHAAR_VERIFIED")
-        app = KycApplication.objects.get(user=self.user)
-        self.assertEqual(app.steps.get(step="aadhaar").status, "approved")
+    #: What a live `digilocker_initiate.php` success actually looks like, captured
+    #: from the vendor on 2026-08-11 against a funded wallet.
+    LIVE_INITIATE = {
+        "success": True,
+        "message": "DigiLocker session initiated. Redirect user to authUrl",
+        "data": {
+            "recordId": "rec_456", "publicId": "digilocker_1786467333601_g2lqh4o1e",
+            "authUrl": "https://digilocker.idto.ai/digilocker?client_id=e7b&state=st_123",
+            "state": "st_123",
+            "accountCheck": {"status": True, "code": 1004, "accountExists": True},
+            "redirectToSignup": False},
+        "statusCode": 200,
+    }
+
+    def test_digilocker_start_calls_payon_and_returns_the_consent_url(self):
+        from unittest.mock import patch
+
+        with patch("kyc.providers.payon._post",
+                   return_value=self.LIVE_INITIATE) as post:
+            start = self.client.post("/api/v1/kyc/aadhaar/digilocker/start",
+                                     {}, format="json")
+        self.assertEqual(start.status_code, 200)
+        data = start.json()["data"]
+        self.assertEqual(data["referenceId"], "rec_456")
+        self.assertTrue(data["redirectUrl"].startswith("https://digilocker.idto.ai/"))
+        path, fields = post.call_args[0]
+        self.assertEqual(path, "/digilocker_initiate.php")
+        self.assertTrue(fields["redirectUrl"])
+        # The state is kept so the completion call can present it back.
+        rec = KycVerification.objects.get(reference_id="rec_456")
+        self.assertEqual(rec.raw["state"], "st_123")
+        self.assertIs(rec.raw["accountExists"], True)
+
+    def test_digilocker_sends_the_field_types_the_vendor_enforces(self):
+        """The vendor validates types, and its own PHP sample gets them wrong.
+
+        Each of these was a live `Validation error` before it was fixed, and the
+        previous version of this test pinned the broken shape (`consent="Y"`,
+        a comma-joined document string) — so the integration could not work while
+        the suite stayed green. Asserted at the `requests` boundary, because the
+        array encoding only exists once the form is built.
+        """
+        from unittest.mock import patch
+
+        resp = type("R", (), {"status_code": 200,
+                              "json": lambda self: self.LIVE})()
+        resp.LIVE = self.LIVE_INITIATE
+        with patch("kyc.providers.payon.requests.post", return_value=resp) as post, \
+                patch("kyc.providers.payon._api_key", return_value="k"):
+            self.client.post("/api/v1/kyc/aadhaar/digilocker/start", {}, format="json")
+
+        sent = post.call_args.kwargs["data"]
+        # "Y" is rejected with '"consent" must be a boolean'.
+        self.assertIn(str(sent["consent"]).lower(), ("true", "1"))
+        # A joined string is rejected with '"documentsForConsent" must be an array';
+        # `requests` renders a list as the repeated keys the API wants.
+        self.assertEqual(sent["documentsForConsent[]"], ["AADHAAR"])
+        self.assertNotIn("documentsForConsent", sent)
+        # Required, and the bare 10 digits — the user is stored as E.164.
+        self.assertEqual(sent["mobileNumber"], "9000001001")
+
+    def test_digilocker_start_without_a_mobile_is_refused_before_the_call(self):
+        """The vendor requires it; failing here beats spending a wallet charge."""
+        from unittest.mock import patch
+
+        from kyc.providers.payon import PayonProvider, ProviderError
+
+        with patch("kyc.providers.payon._post") as post:
+            with self.assertRaises(ProviderError):
+                PayonProvider().start_digilocker(
+                    redirect_url="https://x.test/cb", mobile="")
+        post.assert_not_called()
+
+    def test_digilocker_status_replays_the_state_from_the_start_record(self):
+        """The status GET carries no state, so it must be recovered, not dropped."""
+        from unittest.mock import patch
+
+        with patch("kyc.providers.payon._post", return_value=self.LIVE_INITIATE):
+            self.client.post("/api/v1/kyc/aadhaar/digilocker/start", {}, format="json")
+
+        pending = {"success": True, "data": {"status": "PENDING"}}
+        with patch("kyc.providers.payon._post", return_value=pending) as post:
+            self.client.get("/api/v1/kyc/aadhaar/digilocker/rec_456/status")
+        _, fields = post.call_args[0]
+        self.assertEqual(fields["state"], "st_123")
+        self.assertEqual(fields["recordId"], "rec_456")
 
     # ── Aadhaar: OTP eKYC (primary, no DigiLocker) ──
     def test_aadhaar_otp_flow(self):

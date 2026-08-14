@@ -7,6 +7,7 @@ import '../../attendance/presentation/attendance_screen.dart';
 import '../../dashboard/presentation/dashboard_providers.dart';
 import '../../earnings/presentation/earnings_screen.dart';
 import '../../history/history_screen.dart';
+import '../../kyc/presentation/my_kyc_screen.dart';
 import '../../performance/presentation/performance_screen.dart';
 import '../../support/presentation/support_screen.dart';
 import '../data/profile_data.dart';
@@ -185,6 +186,18 @@ class _BodyState extends ConsumerState<_Body> {
           padding: EdgeInsets.zero,
           child: Column(
             children: [
+              // The agent's OWN verification. The app only ever had the
+              // reviewer queue for CUSTOMER applications, so an agent whose own
+              // KYC was pending or rejected saw a status word on this screen and
+              // had no way to act on it.
+              _MenuRow(
+                icon: Icons.verified_user_outlined,
+                color: AgentColors.pink,
+                label: 'My KYC',
+                onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => const MyKycScreen())),
+              ),
+              const Divider(height: 1, color: AgentColors.divider),
               _MenuRow(
                 icon: Icons.history_rounded,
                 color: AgentColors.brandBright,

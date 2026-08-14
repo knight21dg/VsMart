@@ -6,6 +6,10 @@
   • KYC_PROVIDER=setu     + credentials → live Setu
   • anything else (blank / `mock` / missing keys) → the mock verifier
 
+DIGILOCKER IS NOT PART OF THAT CHOICE. It always resolves to Payon via
+`get_digilocker_provider()` — there is one DigiLocker vendor by directive, and no
+mock, so a missing key fails loudly instead of fabricating a verified Aadhaar.
+
 so dev/CI and any environment without keys run the full flow end-to-end. Adding a
 new provider (e.g. an NBFC partner's own API) is one class + one branch here.
 """
@@ -23,6 +27,7 @@ from .base import (  # noqa: F401  (re-exported for callers)
     VerificationResult,
 )
 from .mock import MockProvider
+from .payon import PayonProvider  # noqa: F401
 
 
 def get_provider() -> VerificationProvider:
@@ -53,3 +58,15 @@ def get_provider() -> VerificationProvider:
         except Exception:
             return MockProvider()
     return MockProvider()
+
+
+def get_digilocker_provider() -> VerificationProvider:
+    """The DigiLocker provider — always Payon, never the mock.
+
+    Kept separate from `get_provider()` on purpose. DigiLocker returns a
+    government-sourced identity document; a mock that answers "verified" for any
+    input is not an acceptable fallback for that, and with every provider
+    credential currently empty the generic selector resolves to exactly that mock.
+    An unconfigured DigiLocker now raises instead.
+    """
+    return PayonProvider()

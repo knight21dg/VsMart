@@ -12,6 +12,8 @@ from rest_framework.test import APIClient
 
 from accounts.models import User
 
+from core.app_errors import AppError
+
 from .cashbook_services import cash_in_hand, create_deposit, reconciliation
 from .models import CashCollection, CashDeposit
 
@@ -353,3 +355,62 @@ class OnlineHandoverCancelTests(TestCase):
         self.client.force_authenticate(other)
         r = self.client.post(f"/api/v1/agent/cash/online/{deposit_id}/cancel")
         self.assertEqual(r.status_code, 404)
+
+
+class DeclaredAmountMustMatchCollectionsTests(TestCase):
+    """A physical hand-over's declared amount must equal the collections it claims.
+
+    Claiming a collection is what removes its cash from `cash_in_hand`. Nothing
+    checked the declared figure against the rows, so an agent could attach
+    ₹5,000 of collections while declaring ₹500: all of it left the exposure
+    figure, the deposit booked ₹500, and finance counting ₹500 marked it
+    VERIFIED (counted >= declared) — the missing ₹4,500 invisible at every step.
+    The ONLINE hand-over path already refused this by deriving the amount from
+    the rows; the physical path trusted the client.
+    """
+
+    def setUp(self):
+        self.agent = User.objects.create(
+            phone="+919000004001", name="Ravi", role="agent")
+        self.customer = User.objects.create(
+            phone="+919000004002", name="Cust", role="customer")
+
+    def _collection(self, amount):
+        return CashCollection.objects.create(
+            user=self.customer, agent=self.agent,
+            amount=Decimal(amount), collected_amount=Decimal(amount),
+            status=CashCollection.Status.COLLECTED, collected_at=timezone.now(),
+        )
+
+    def test_a_matching_declaration_is_accepted(self):
+        a, b = self._collection("500"), self._collection("300")
+        d = create_deposit(self.agent, amount="800", method="bank",
+                           collection_ids=[a.id, b.id])
+        self.assertEqual(d.amount, Decimal("800"))
+        self.assertEqual(cash_in_hand(), [])
+
+    def test_under_declaring_is_refused_and_nothing_is_claimed(self):
+        a, b = self._collection("500"), self._collection("300")
+        with self.assertRaises(AppError) as ctx:
+            create_deposit(self.agent, amount="100", method="bank",
+                           collection_ids=[a.id, b.id])
+        self.assertIn("total ₹800", str(ctx.exception))
+        # Atomic: the whole deposit rolls back, so the cash is still in hand.
+        self.assertEqual(cash_in_hand()[0]["amount"], Decimal("800"))
+        self.assertEqual(CashDeposit.objects.count(), 0)
+
+    def test_over_declaring_is_refused_too(self):
+        """An inflated declaration would book cash the collections don't back."""
+        a = self._collection("500")
+        with self.assertRaises(AppError):
+            create_deposit(self.agent, amount="900", method="bank",
+                           collection_ids=[a.id])
+        self.assertEqual(cash_in_hand()[0]["amount"], Decimal("500"))
+
+    def test_a_deposit_with_no_collections_keeps_a_free_amount(self):
+        """A loose top-up has nothing to reconcile against, so it stays open."""
+        self._collection("500")
+        d = create_deposit(self.agent, amount="120", method="office")
+        self.assertEqual(d.amount, Decimal("120"))
+        # Nothing was claimed, so the collection is still in hand.
+        self.assertEqual(cash_in_hand()[0]["amount"], Decimal("500"))

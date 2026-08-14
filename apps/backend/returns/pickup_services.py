@@ -139,6 +139,34 @@ def _alert_store_unassigned(ret, reason):
         pass
 
 
+def _notify_store_requested(ret):
+    """Tell the store a return has been raised against one of its orders.
+
+    Store staff were only ever notified when a pickup **failed** to auto-assign.
+    A return that assigned cleanly — the normal case — reached the store silently,
+    so the only way to know one existed was to be watching the board. It is the
+    store that reviews and approves the return, so this is the notification the
+    workflow actually turns on.
+    """
+    try:
+        from notifications.services import notify_store_staff
+
+        customer = getattr(ret.user, "name", "") or getattr(ret.user, "phone", "")
+        order_code = getattr(ret.order, "code", "") or "—"
+        notify_store_staff(
+            return_store(ret), type="return", title="Return requested",
+            body=f"{customer} raised return {ret.code} on order {order_code}"
+                 f" — {ret.reason or 'no reason given'}.",
+            data={"returnCode": ret.code, "kind": "return_requested",
+                  "route": "returns"},
+            # One alert per return, however many times the pickup is re-created
+            # (a re-attempt after a failed visit opens a fresh task).
+            dedupe_key=f"return_requested:{ret.code}",
+        )
+    except Exception:  # noqa: BLE001 — an alert must never undo the return
+        pass
+
+
 def create_pickup(ret, *, by=None, attempt_no=1):
     """Open a pickup task for a return and try to assign it immediately.
 
@@ -150,6 +178,7 @@ def create_pickup(ret, *, by=None, attempt_no=1):
         return_request=ret, status=S.ASSIGNED, attempt_no=attempt_no,
         dest_lat=dlat, dest_lng=dlng,
     )
+    _notify_store_requested(ret)
     return auto_assign(task, by=by)
 
 

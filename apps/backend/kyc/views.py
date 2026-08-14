@@ -311,8 +311,13 @@ class DigiLockerStartView(APIView):
     def post(self, request):
         redirect_url = (request.data.get("redirect_url")
                         or "https://thevsmart.com/kyc/digilocker/callback")
+        # The provider requires a mobile number. It is taken from the authenticated
+        # user, never from the request body: the DigiLocker session is issued
+        # against whoever's number is supplied, so accepting a client-supplied one
+        # would let a customer start consent for somebody else's identity.
         rec = verification.start_aadhaar_digilocker(
-            _app_for(request), redirect_url=redirect_url)
+            _app_for(request), redirect_url=redirect_url,
+            mobile=request.user.phone or "")
         return Response(ok("DIGILOCKER_CONSENT_REQUIRED",
                            data=VerificationSerializer(rec).data))
 

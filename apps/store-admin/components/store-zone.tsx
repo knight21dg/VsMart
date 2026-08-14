@@ -1,9 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
 import { MapPin } from "lucide-react";
-import { api } from "@/lib/api/client";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export interface NamedRef {
   id: string;
@@ -24,42 +21,16 @@ export function StoreZone({ store, zone }: { store?: string | null; zone?: strin
   );
 }
 
-/** Shared store + zone reference lists for filter dropdowns. */
-export function useStoreZoneRefs() {
-  const stores = useQuery({ queryKey: ["ref", "stores"], queryFn: () => api.get<NamedRef[]>("/admin/stores"), staleTime: 300_000 });
-  const zones = useQuery({ queryKey: ["ref", "zones"], queryFn: () => api.get<NamedRef[]>("/admin/zones"), staleTime: 300_000 });
-  return { stores: stores.data ?? [], zones: zones.data ?? [] };
-}
-
-/** Two-select store/zone filter. Values "" mean "all". */
-export function StoreZoneFilter({
-  store,
-  zone,
-  onStore,
-  onZone,
-}: {
-  store: string;
-  zone: string;
-  onStore: (v: string) => void;
-  onZone: (v: string) => void;
-}) {
-  const { stores, zones } = useStoreZoneRefs();
-  return (
-    <div className="flex flex-wrap gap-2">
-      <Select value={store || "all"} onValueChange={(v) => onStore(v === "all" ? "" : v)}>
-        <SelectTrigger className="h-9 w-[160px]"><SelectValue placeholder="All stores" /></SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All stores</SelectItem>
-          {stores.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-        </SelectContent>
-      </Select>
-      <Select value={zone || "all"} onValueChange={(v) => onZone(v === "all" ? "" : v)}>
-        <SelectTrigger className="h-9 w-[160px]"><SelectValue placeholder="All zones" /></SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All zones</SelectItem>
-          {zones.map((z) => <SelectItem key={z.id} value={z.id}>{z.name}</SelectItem>)}
-        </SelectContent>
-      </Select>
-    </div>
-  );
-}
+/*
+ * `useStoreZoneRefs` / `StoreZoneFilter` used to live here: two dropdowns fed by
+ * `/admin/stores` and `/admin/zones`. Nothing ever rendered them, which is the
+ * only reason it never caused an incident — a store employee is not an admin, so
+ * both calls answer 403 and both dropdowns would have come up permanently empty.
+ *
+ * They are gone rather than repaired because the idea itself is wrong here: this
+ * panel serves ONE store, so a "which store?" filter either shows a single fixed
+ * value or lists every store on the platform inside one store's console — the
+ * cross-store leak this codebase has already had to fix four times. A page that
+ * needs the current store reads it from `/store/me`, which is scoped by the
+ * caller's own membership and cannot leak.
+ */

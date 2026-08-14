@@ -343,6 +343,16 @@ class StockTransfer(TimeStampedModel):
         CANCELLED = "cancelled"
 
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    #: Which pack is moving. Stock is held per product×variant×warehouse, so a
+    #: transfer that doesn't name the pack can only ever move the `variant=NULL`
+    #: unallocated pool — which is what this did: sending "10 Rice" between
+    #: stores drew on unallocated units rather than the 1 kg packs the operator
+    #: had chosen, and simply failed when there were none. NULL still means the
+    #: unallocated pool, consistent with the rest of the inventory model.
+    variant = models.ForeignKey(
+        "catalog.ProductVariant", on_delete=models.SET_NULL,
+        null=True, blank=True, related_name="transfers",
+    )
     from_warehouse = models.ForeignKey(
         Warehouse, on_delete=models.CASCADE, related_name="transfers_out"
     )

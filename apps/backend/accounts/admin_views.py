@@ -44,9 +44,15 @@ class AdminEmployeesView(APIView):
 
         role = request.query_params.get("role")
         rows = []
-        summary = {"superadmin": 0, "admin": 0, "agent": 0, "store_staff": 0, "total": 0}
+        # Keyed by ROLE, which is data — and the renderer camelCases every key it
+        # sees, so a `store_staff` bucket left here goes out as `storeStaff` and
+        # the console's "Store Staff" tile read undefined and showed 0 forever.
+        # Building the wire name here means what this code says is what ships.
+        summary = {"superadmin": 0, "admin": 0, "agent": 0, "storeStaff": 0, "total": 0}
+        wire = {Role.STORE_STAFF: "storeStaff"}
         for u in staff:
-            summary[u.role] = summary.get(u.role, 0) + 1
+            bucket = wire.get(u.role, u.role)
+            summary[bucket] = summary.get(bucket, 0) + 1
             summary["total"] += 1
             if role and u.role != role:
                 continue

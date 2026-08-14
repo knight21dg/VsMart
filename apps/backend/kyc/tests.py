@@ -200,3 +200,65 @@ class AdminKycQueueReviewabilityTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.app.refresh_from_db()
         self.assertEqual(self.app.status, "verified")
+
+
+@override_settings(MEDIA_ROOT=TMP_MEDIA)
+class AgentSelfKycTests(TestCase):
+    """An AGENT verifying their own identity.
+
+    The agent app only ever had the reviewer side of KYC (the queue of customer
+    applications), so an agent whose own verification was pending or rejected had
+    no route to submit anything. No new backend was needed — `/kyc/status` and
+    `/kyc/submit` key on `request.user` and have never cared about role — but
+    that has to stay true, so it is pinned here.
+    """
+
+    def setUp(self):
+        from rest_framework.test import APIClient
+
+        from accounts.models import Role, User
+
+        self.agent = User.objects.create(
+            phone="+919600055001", name="Rider", role=Role.AGENT
+        )
+        self.client = APIClient()
+        self.client.force_authenticate(self.agent)
+
+    def test_an_agent_can_read_their_own_kyc_status(self):
+        r = self.client.get("/api/v1/kyc/status")
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertEqual(r.json()["data"]["status"], "not_started")
+
+    def test_an_agent_can_submit_their_own_documents(self):
+        r = self.client.post("/api/v1/kyc/submit", {
+            "aadhaar": _png_upload("aadhaar.png"),
+            "selfie": _png_upload("selfie.png"),
+        }, format="multipart")
+        self.assertEqual(r.status_code, 201, r.content)
+
+        from kyc.models import KycApplication
+
+        app = KycApplication.objects.get(user=self.agent)
+        self.assertNotEqual(app.status, "not_started")
+        self.assertEqual(
+            {d.type for d in app.documents.all()}, {"aadhaar", "selfie"}
+        )
+
+    def test_an_agents_application_reaches_the_admin_review_queue(self):
+        """Otherwise the agent submits into a void — nobody ever sees it."""
+        from rest_framework.test import APIClient
+
+        from accounts.models import Role, User
+        from kyc.models import KycApplication
+
+        KycApplication.objects.create(user=self.agent, status="pending")
+        admin_client = APIClient()
+        admin_client.force_authenticate(User.objects.create(
+            phone="+919600055002", name="Admin", role=Role.ADMIN
+        ))
+        r = admin_client.get("/api/v1/admin/kyc/queue")
+        self.assertEqual(r.status_code, 200, r.content)
+        phones = {
+            a["userPhone"] for a in r.json()["data"]["applications"]
+        }
+        self.assertIn(self.agent.phone, phones)

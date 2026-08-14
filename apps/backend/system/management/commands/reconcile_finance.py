@@ -45,15 +45,27 @@ class Command(BaseCommand):
                     f"Credit account user={acct.user_id}: outstanding {acct.outstanding} "
                     f"!= ledger {truth}")
 
-        # 2. Inventory: StockItem.quantity == Σ ledger.qty
-        for item in StockItem.objects.select_related("product", "warehouse"):
-            truth = InventoryLedger.objects.filter(
-                product=item.product, warehouse=item.warehouse
+        # 2. Inventory: StockItem.quantity == Sum(ledger.qty) PER BUCKET.
+        #
+        # Scoped by variant, like `inventory.services.reconcile` already is. Without
+        # that this compares one variant's cache against the whole product's ledger,
+        # so any product with variants reports a permanent false ERROR — and a check
+        # that is always red is a check nobody reads. Prod showed exactly this:
+        # variant 5 held 993/993 and the variant-NULL bucket 0/0, both correct, while
+        # the command reported "cache 0 != ledger 993".
+        from inventory.services import _scope_variant
+
+        for item in StockItem.objects.select_related("product", "warehouse", "variant"):
+            truth = _scope_variant(
+                InventoryLedger.objects.filter(
+                    product=item.product, warehouse=item.warehouse
+                ),
+                item.variant,
             ).aggregate(s=Sum("quantity"))["s"] or 0
             if truth != item.quantity:
                 errors.append(
-                    f"Stock product={item.product_id} wh={item.warehouse_id}: "
-                    f"cache {item.quantity} != ledger {truth}")
+                    f"Stock product={item.product_id} variant={item.variant_id} "
+                    f"wh={item.warehouse_id}: cache {item.quantity} != ledger {truth}")
 
         # 3. Coupons: redemptions <= usage_limit
         for c in Coupon.objects.filter(usage_limit__isnull=False):

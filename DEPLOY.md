@@ -109,6 +109,29 @@ docker compose logs backend     # migrate + collectstatic ran in the entrypoint
 First boot: Caddy obtains a Let's Encrypt cert for each hostname (needs DNS + ports 80/443 open).
 The backend entrypoint runs `migrate` and `collectstatic` automatically.
 
+### Migrations run on container boot — don't race them
+
+Because the entrypoint migrates, running `migrate` by hand straight after
+`docker compose up -d backend` races the startup migration and can fail with a
+**misleading** error even though the migration succeeded:
+
+```
+django.db.utils.ProgrammingError: column "..." of relation "..." already exists
+```
+
+That is the boot migration having already applied it — not a broken migration.
+**Check the recorded state before concluding anything failed:**
+
+```bash
+docker compose exec -T backend python manage.py showmigrations <app> | tail -5
+# [X] 0010_...  -> applied; nothing to do, the error was the race.
+# [ ] 0010_...  -> genuinely not applied; investigate before re-running.
+```
+
+A normal deploy needs no manual `migrate` at all — `docker compose up -d backend`
+is enough. Run it by hand only when you have a reason to, and check
+`showmigrations` first.
+
 ---
 
 ## 5. Post-deploy
@@ -153,9 +176,34 @@ project's Android build notes. The Google Maps API key still needs to be set in 
 
 ## 7. Operations
 
+> ### ⚠️ Shipping from Windows — use `git archive`, never a tar of the working tree
+>
+> `core.autocrlf=true` checks files out with **CRLF**. The repository stores LF,
+> so the files are fine *in git* and wrong *on disk*. Ship the working tree and
+> the container gets `#!/bin/sh\r`, the kernel looks for an interpreter named
+> `/bin/sh\r`, and the backend crash-loops with:
+>
+> ```
+> exec /app/docker-entrypoint.sh: no such file or directory
+> ```
+>
+> — on a file that plainly exists. This took the API down for ~8 minutes during
+> the 2026-08-09 deploy. `.gitattributes` now pins `eol=lf` on every file Linux
+> executes or parses, and `git archive` exports **repository** content (already
+> LF) rather than the working tree:
+>
+> ```bash
+> # From the repo root — LF-correct by construction:
+> git archive --format=tar HEAD apps/backend apps/admin apps/store-admin \
+>   | ssh root@187.127.153.152 'cd /opt/vsmart && tar -xf -'
+> ```
+>
+> If you ever do copy the working tree, check before building:
+> `find apps -name '*.sh' -o -name 'Dockerfile*' | xargs file | grep CRLF`
+
 ```bash
 # Redeploy after a code change
-git pull   # or rsync again
+git pull   # or: git archive (see the CRLF warning above)
 docker compose up -d --build
 
 # Logs / restart / shell

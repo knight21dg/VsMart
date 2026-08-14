@@ -88,6 +88,45 @@ class ResetPasswordSerializer(serializers.Serializer):
         return normalize_phone(value)
 
 
+class ChangePasswordSerializer(serializers.Serializer):
+    """A signed-in password change.
+
+    ``confirm_password`` is validated here rather than only in the browser: the
+    endpoint is reachable without the form, and a typo silently locking someone
+    out of the console is not a failure worth risking on client-side checks.
+    """
+
+    current_password = serializers.CharField()
+    new_password = serializers.CharField(min_length=8)
+    confirm_password = serializers.CharField(required=False, allow_blank=True)
+
+    def validate(self, attrs):
+        new = attrs["new_password"]
+        confirm = attrs.get("confirm_password")
+        if confirm and confirm != new:
+            raise serializers.ValidationError(
+                {"confirm_password": ["The two passwords don't match."]}
+            )
+        if new == attrs["current_password"]:
+            raise serializers.ValidationError(
+                {"new_password": ["Choose a password different from your current one."]}
+            )
+        return attrs
+
+    def validate_new_password(self, value):
+        """Run Django's configured password validators (length, common-password,
+        numeric-only, similarity) so a console password is held to the same
+        standard as one set through the reset flow."""
+        from django.contrib.auth.password_validation import validate_password
+        from django.core.exceptions import ValidationError as DjangoValidationError
+
+        try:
+            validate_password(value)
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError(list(exc.messages))
+        return value
+
+
 # ── Account deletion ──
 class DeletionRequestSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=120, required=False, allow_blank=True)

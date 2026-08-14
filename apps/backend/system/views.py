@@ -7,6 +7,8 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.pricing import gst_fraction_to_pct
+
 from .models import Feedback, FeatureFlag
 
 
@@ -16,7 +18,25 @@ def _maintenance_enabled():
 
 
 def _feature_flags():
-    return {f.key: f.enabled for f in FeatureFlag.objects.all()}
+    """Flag key -> enabled.
+
+    The keys here are DATA (``zone_store_visibility``), and the response is
+    rendered by ``EnvelopeJSONRenderer``, which camelCases every key it sees — so
+    the wire name has always been ``zoneStoreVisibility`` while this code
+    appeared to emit the snake one. A client looking a flag up by its real key
+    silently read "off". Nothing looks one up by name yet, so it is a trap rather
+    than a live fault.
+
+    Emitting the camel name explicitly keeps the wire byte-identical to what
+    ships today (no client change) while making the code say what it sends. Look
+    a flag up by its camel name: ``flags["zoneStoreVisibility"]``.
+    """
+    return {_camel(f.key): f.enabled for f in FeatureFlag.objects.all()}
+
+
+def _camel(key):
+    head, *rest = key.split("_")
+    return head + "".join(part.title() for part in rest)
 
 
 class VersionView(APIView):
@@ -71,7 +91,9 @@ class AppConfigView(APIView):
         return Response(
             {
                 "currency": cfg.currency,
-                "gst_rate": cfg.gst_rate,
+                # A PERCENTAGE (18), consistent with every other API surface.
+                # See core.pricing for the single conversion rule.
+                "gst_rate": gst_fraction_to_pct(cfg.gst_rate),
                 "delivery_fee": cfg.delivery_fee,
                 "free_delivery_threshold": cfg.free_delivery_threshold,
                 "support_phone": cfg.support_phone,

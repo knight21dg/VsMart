@@ -1,7 +1,6 @@
 """Credit money operations. Every balance change goes through here and writes an
 append-only ledger entry inside a DB transaction. `outstanding` is the running
 cache; `reconcile()` rebuilds it from the ledger as the integrity check."""
-import re
 from datetime import timedelta
 from decimal import Decimal
 
@@ -10,6 +9,7 @@ from django.db.models import Sum
 from django.utils import timezone
 
 from core.app_errors import AppError
+from core.phone import msisdn10
 
 from . import bureau
 from .models import CreditAccount, CreditBureauReport, CreditLedgerEntry
@@ -140,10 +140,9 @@ def reconcile(account: CreditAccount) -> Decimal:
 
 # ══════════════════════ CIBIL / credit-bureau score ══════════════════════
 
-def _normalise_mobile(mobile) -> str:
-    """Reduce any input (E.164 '+91…', spaces, etc.) to the last 10 digits."""
-    digits = re.sub(r"\D", "", str(mobile or ""))
-    return digits[-10:] if len(digits) >= 10 else digits
+#: The bare 10-digit form Payon requires. Shared with the DigiLocker integration,
+#: which talks to the same vendor and would otherwise carry its own copy.
+_normalise_mobile = msisdn10
 
 
 def latest_bureau_report(user) -> CreditBureauReport | None:

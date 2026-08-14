@@ -352,3 +352,122 @@ class FuzzyInt(int):
 
     def __repr__(self):
         return f"[{self.lo}..{self.hi}]"
+
+
+class GstPercentageContractTests(TestCase):
+    """GST has ONE unit rule: the API and storage speak percentages (18), only
+    the pricing maths uses fractions (0.18).
+
+    Before this the two were mixed. The admin form was labelled "GST rate (0–1)"
+    so operators stored 0.18 on products, and `place_order` copied
+    `PlatformConfig.gst_rate` (a fraction) straight into `OrderItem.gst_rate` — a
+    column documented as a percentage. Every order line without an explicit
+    product rate recorded 0.18% tax instead of 18%.
+    """
+
+    def setUp(self):
+        from rest_framework.test import APIClient
+
+        from accounts.models import User
+
+        self.admin = User.objects.create(
+            phone="+919000000601", name="Admin", role="admin"
+        )
+        self.client = APIClient()
+        self.client.force_authenticate(self.admin)
+        self.category, _ = Category.objects.get_or_create(name="Grocery", slug="grocery")
+
+    def _create(self, gst):
+        return self.client.post("/api/v1/admin/catalog/products", {
+            "name": "Taxed Item", "brand": "VS", "unit": "1 kg",
+            "price": "100", "mrp": "120",
+            "categoryId": self.category.id, "gstRate": gst,
+        }, format="json")
+
+    def test_a_slab_percentage_is_accepted_and_stored_verbatim(self):
+        r = self._create("18")
+        self.assertEqual(r.status_code, 201, r.content)
+        self.assertEqual(Decimal(str(r.json()["data"]["gstRate"])), Decimal("18"))
+        self.assertEqual(Product.objects.get(name="Taxed Item").gst_rate, Decimal("18"))
+
+    def test_a_fraction_is_refused_and_the_error_names_the_fix(self):
+        r = self._create("0.18")
+        self.assertEqual(r.status_code, 400, r.content)
+        detail = str(r.json())
+        self.assertIn("standard slabs", detail)
+        # The message spells out what they should have typed.
+        self.assertIn("Enter 18 for 18%", detail)
+
+    def test_an_off_slab_typo_is_refused(self):
+        for typo in ("1.8", "180", "17"):
+            self.assertEqual(self._create(typo).status_code, 400, typo)
+
+    def test_null_gst_falls_back_to_the_platform_default(self):
+        r = self._create(None)
+        self.assertEqual(r.status_code, 201, r.content)
+        self.assertIsNone(Product.objects.get(name="Taxed Item").gst_rate)
+
+    def test_zero_rated_goods_are_allowed(self):
+        self.assertEqual(self._create("0").status_code, 201)
+
+
+class GstUnitHelperTests(TestCase):
+    def test_round_trip(self):
+        from core.pricing import gst_fraction_to_pct, gst_pct_to_fraction
+
+        self.assertEqual(gst_pct_to_fraction(18), Decimal("0.1800"))
+        self.assertEqual(gst_fraction_to_pct(Decimal("0.18")), Decimal("18.00"))
+        self.assertEqual(gst_fraction_to_pct(gst_pct_to_fraction(5)), Decimal("5.00"))
+        self.assertEqual(gst_pct_to_fraction(Decimal("0.25")), Decimal("0.0025"))
+
+
+class OrderLineGstSnapshotTests(TestCase):
+    """`OrderItem.gst_rate` must be the percentage its docstring promises."""
+
+    def setUp(self):
+        from addresses.models import Address
+        from accounts.models import User
+        from cart.services import get_cart, upsert_item
+        from inventory.models import Warehouse
+
+        Warehouse.objects.create(name="GstWh", code="GSTWH", is_default=True)
+        self.category, _ = Category.objects.get_or_create(name="Grocery", slug="grocery")
+        self.user = User.objects.create(phone="+919000000602", name="GstCust")
+        self.address = Address.objects.create(
+            user=self.user, name="GstCust", phone="9000000602", line1="Rd",
+            pincode="560001",
+        )
+        self.upsert_item, self.get_cart = upsert_item, get_cart
+
+    def _place(self, product):
+        from orders.models import Order
+        from orders.services import place_order
+
+        self.upsert_item(self.get_cart(self.user), product, None, 1)
+        order = place_order(
+            self.user, address=self.address, payment_method=Order.PaymentMethod.COD
+        )
+        return order.items.first()
+
+    def test_explicit_product_rate_is_snapshotted_as_a_percentage(self):
+        product = Product.objects.create(
+            name="Rated", brand="VS", unit="1", price=Decimal("100"),
+            mrp=Decimal("100"), category=self.category, stock_count=None,
+            gst_rate=Decimal("5"),
+        )
+        self.assertEqual(self._place(product).gst_rate, Decimal("5.00"))
+
+    def test_platform_fallback_is_converted_not_copied_raw(self):
+        """PlatformConfig stores the fraction 0.18; the line must read 18.00,
+        not 0.18 — which is what the old code wrote."""
+        from siteconfig.models import PlatformConfig
+
+        cfg = PlatformConfig.load()
+        cfg.gst_rate = Decimal("0.18")
+        cfg.save(update_fields=["gst_rate"])
+        product = Product.objects.create(
+            name="Unrated", brand="VS", unit="1", price=Decimal("100"),
+            mrp=Decimal("100"), category=self.category, stock_count=None,
+            gst_rate=None,
+        )
+        self.assertEqual(self._place(product).gst_rate, Decimal("18.00"))

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { type ColumnDef } from "@tanstack/react-table";
 import { Pencil, Plus, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import { api } from "@/lib/api/client";
 import { useApiMutation } from "@/lib/api/hooks";
 import { useAuth } from "@/lib/auth/auth-context";
@@ -42,11 +43,20 @@ export default function ZonesPage() {
     retry: false,
   });
 
-  const remove = useApiMutation((id: string) => api.del(`/admin/zones/${id}`), {
-    invalidate: [["admin", "zones"]],
-    successMessage: "Zone deleted.",
-    onDone: () => setToDelete(null),
-  });
+  // A zone that has already served orders is deactivated rather than row-deleted
+  // (history stays attributable), so the row is still in the list afterwards —
+  // just inactive. Toasting a flat "Zone deleted." over that reads as a bug. Use
+  // the server's own coded message, which names the outcome and the order count.
+  const remove = useApiMutation(
+    (id: string) => api.delWithMessage<{ outcome?: string }>(`/admin/zones/${id}`),
+    {
+      invalidate: [["admin", "zones"]],
+      onDone: (res) => {
+        toast.success(res.message || "Zone deleted.");
+        setToDelete(null);
+      },
+    }
+  );
 
   const columns: ColumnDef<Zone, unknown>[] = [
     { accessorKey: "name", header: "Zone", cell: ({ row }) => <span className="font-medium">{row.original.name}</span> },
@@ -60,7 +70,7 @@ export default function ZonesPage() {
       header: "",
       cell: ({ row }) =>
         canWrite ? (
-          <div className="flex justify-end gap-1">
+          <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
             <Button variant="ghost" size="icon" onClick={() => router.push(`/zones/${row.original.id}/edit`)} title="Edit zone">
               <Pencil className="size-4" />
             </Button>

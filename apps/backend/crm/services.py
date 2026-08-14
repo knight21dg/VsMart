@@ -292,17 +292,18 @@ def _health(user):
     from payments.models import CashCollection
 
     acc = getattr(user, "credit_account", None)
+    # Shared definitions: revenue is delivered-less-refunds (not every order ever
+    # placed), and a collection's worth is what came BACK, not what we set out to
+    # recover. Both were computed independently here and both were wrong.
+    from core.financials import cash_recovered, customer_lifetime_revenue
+
     o = Order.objects.filter(user=user).exclude(status="cancelled").aggregate(
-        revenue=Sum("total"), orders=Count("id")
+        orders=Count("id")
     )
-    collected = _f(
-        CashCollection.objects.filter(user=user, status="collected").aggregate(
-            s=Sum("amount")
-        )["s"]
-    )
+    collected = cash_recovered(user=user)
     months = max(1, round((timezone.now() - user.created_at).days / 30))
     return {
-        "lifetimeRevenue": _f(o["revenue"]),
+        "lifetimeRevenue": customer_lifetime_revenue(user),
         "orders": o["orders"],
         "creditUsed": _f(acc.outstanding) if acc else 0,
         "collections": collected,
@@ -458,7 +459,9 @@ def _collections(user):
         for c in collected.exclude(collected_at__isnull=True)[:500]
     ]
     return {
-        "totalCollections": _f(collected.aggregate(s=Sum("amount"))["s"]),
+        # Recovered, not targeted — `amount` is the due, `collected_amount` is the
+        # money. Summing the due reported every partial recovery as a full one.
+        "totalCollections": _f(collected.aggregate(s=Sum("collected_amount"))["s"]),
         "totalCount": collected.count(),
         "pending": _f(pending.aggregate(s=Sum("amount"))["s"]),
         "failed": failed.count(),
@@ -631,7 +634,10 @@ def compute_risk(user) -> dict:
     late = stmts.filter(status__in=["overdue", "partially_paid"]).count()
 
     coll = CashCollection.objects.filter(user=user)
-    collected = _f(coll.filter(status="collected").aggregate(s=Sum("amount"))["s"])
+    collected = _f(
+        coll.filter(status__in=["collected", "partially_collected"])
+        .aggregate(s=Sum("collected_amount"))["s"]
+    )
     pending = _f(coll.filter(status__in=["requested", "assigned"]).aggregate(s=Sum("amount"))["s"])
     coll_eff = collected / (collected + pending) if (collected + pending) else 1.0
 

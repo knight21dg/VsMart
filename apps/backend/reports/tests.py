@@ -43,9 +43,14 @@ class ReportsBaseData(TestCase):
         self.agent = User.objects.create(
             phone="+919777777060", name="Agent", role="agent",
         )
+        # `collected_amount` must be set, as the real collect service does: `amount`
+        # is the target and `collected_amount` is what came back. The fixture used to
+        # set only `amount`, which quietly asserted the old (wrong) definition —
+        # recovery figures read the target and reported every partial as a full
+        # recovery.
         self.collection = CashCollection.objects.create(
             user=self.customer, agent=self.agent, amount=Decimal("1500"),
-            status="collected",
+            collected_amount=Decimal("1500"), status="collected",
         )
         # collected_at set via update (no auto field).
         from django.utils import timezone

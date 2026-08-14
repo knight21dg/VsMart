@@ -179,3 +179,146 @@ class AdminPaymentSummaryView(APIView):
             "byStatus": by_status,
             "byMethod": by_method,
         }))
+
+
+# ── Reconciliation queue ────────────────────────────────────────────────────
+#
+# The one mutating endpoint in this module, and deliberately so: when every
+# automated path has failed to establish what the gateway did, someone has to
+# decide, and that decision needs a screen, an authorisation check and a trail.
+#
+# Before this existed an unresolvable payment simply stayed PENDING. Nothing
+# surfaced it, the expiry sweep correctly refused to cancel the order (the money
+# might be captured), and its stock stayed reserved indefinitely — prod order
+# VSORD100025 held stock for 17 days with no operator anywhere able to see why.
+
+class AdminReconciliationListView(APIView):
+    """GET /admin/payments/reconciliation — payments awaiting a human decision.
+
+    Carries everything needed to act without leaving the page: what the gateway last
+    said, how many times we asked, and whether the order's stock is still held —
+    which is what leaving one unresolved actually costs.
+    """
+
+    permission_classes = [IsAdmin]
+
+    def get(self, request):
+        from .reconciliation import payments_needing_reconciliation
+
+        now = timezone.now()
+        rows = []
+        for p in payments_needing_reconciliation():
+            order = p.order
+            rows.append({
+                "id": p.id,
+                "amount": float(p.amount),
+                "status": p.status,
+                "method": p.method,
+                "gateway": p.gateway,
+                "gatewayOrderId": p.gateway_order_id,
+                "gatewayPaymentId": p.gateway_payment_id,
+                "customer": p.user.name or p.user.phone,
+                "customerPhone": p.user.phone,
+                "createdAt": p.created_at,
+                "ageMinutes": int((now - p.created_at).total_seconds() // 60),
+                "attempts": p.reconcile_attempts,
+                "lastCheckedAt": p.last_reconciled_at,
+                "lastGatewaySaid": p.reconcile_note,
+                "orderCode": getattr(order, "code", None),
+                "orderStatus": getattr(order, "status", None),
+                "stockHeld": bool(order and order.stock_state == "reserved"),
+                # A capture against a cancelled order is money owed back, not
+                # revenue — surfaced so the operator knows before they click.
+                "refundOnCapture": bool(order and order.status == "cancelled"),
+            })
+        return Response(ok("OK", data={
+            "payments": rows,
+            "total": len(rows),
+            "note": (
+                "Verify each capture in the payment provider's dashboard before "
+                "confirming. Confirming a capture on a cancelled order records the "
+                "capture and then raises a refund; confirming no capture releases "
+                "the order's stock."
+            ),
+        }))
+
+
+class AdminConfirmCapturedView(APIView):
+    """POST /admin/payments/<pk>/confirm-captured — record a verified capture.
+
+    Body: ``{"capturedAmount": "649.00", "attested": true,
+             "gatewayPaymentId": "pay_...", "reason": "..."}``
+
+    Deliberately not a "Mark Paid" button. It asserts an externally observed fact,
+    so it requires the amount the provider captured and an explicit attestation that
+    the operator has seen it. Settlement itself still runs through
+    ``finalize_payment`` — including its refusal to settle a short capture.
+    """
+
+    permission_classes = [IsAdmin]
+
+    def post(self, request, pk):
+        from .reconciliation import confirm_captured
+
+        payment = get_object_or_404(Payment, pk=pk)
+        data = request.data or {}
+        payment, applied = confirm_captured(
+            payment,
+            captured_amount=data.get("capturedAmount", data.get("captured_amount")),
+            by=request.user,
+            attested=bool(data.get("attested")),
+            gateway_payment_id=str(
+                data.get("gatewayPaymentId") or data.get("gateway_payment_id") or ""),
+            reason=str(data.get("reason") or ""),
+        )
+        return Response(ok(
+            "PAYMENT_SUCCESS" if applied else "OK",
+            data=_resolution_payload(payment, applied),
+        ))
+
+
+class AdminConfirmNotCapturedView(APIView):
+    """POST /admin/payments/<pk>/confirm-not-captured — the provider took nothing.
+
+    Body: ``{"reason": "..."}``. Marks the payment failed, which lifts the in-flight
+    guard so the order's stock can be released by the normal expiry path.
+    """
+
+    permission_classes = [IsAdmin]
+
+    def post(self, request, pk):
+        from .reconciliation import confirm_not_captured
+
+        payment = get_object_or_404(Payment, pk=pk)
+        payment, applied = confirm_not_captured(
+            payment, by=request.user,
+            reason=str((request.data or {}).get("reason") or ""),
+        )
+        return Response(ok(
+            "PAYMENT_FAILED" if applied else "OK",
+            data=_resolution_payload(payment, applied),
+        ))
+
+
+def _resolution_payload(payment, applied):
+    """The row's state after the decision — including when someone else got there first."""
+    order = payment.order
+    return {
+        "id": payment.id,
+        "status": payment.status,
+        "applied": applied,
+        "alreadyFinal": not applied,
+        "resolvedAt": payment.resolved_at,
+        "orderCode": getattr(order, "code", None),
+        "orderStatus": getattr(order, "status", None),
+        "orderPaymentStatus": getattr(order, "payment_status", None),
+        # Present when a cancelled order's capture was reversed.
+        "refundId": (
+            payment.refunds.values_list("id", flat=True).first()
+            if hasattr(payment, "refunds") else None
+        ),
+        "message": (
+            "Recorded." if applied
+            else "Already resolved elsewhere — showing the current state."
+        ),
+    }

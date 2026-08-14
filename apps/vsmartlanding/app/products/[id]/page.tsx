@@ -53,7 +53,7 @@ interface Offer {
   badge?: string | null;
   discountPercent?: number | null;
   imageUrl?: string | null;
-  image?: { medium?: string; large?: string; small?: string; legacy_url?: string } | null;
+  image?: { medium?: string; large?: string; small?: string; legacyUrl?: string } | null;
 }
 
 /** Fetch a product from the public catalog API. Returns null on 404/any failure. */
@@ -93,7 +93,11 @@ const inr = (v?: number | null) =>
 /** Resolve an offer image to an absolute URL (WebP variant or legacy pasted URL). */
 function offerImage(o: Offer): string | null {
   const img = o.image;
-  const rel = img?.medium || img?.large || img?.small || img?.legacy_url;
+  // `legacyUrl`, not `legacy_url`: the serializer writes the snake key but the
+  // camelCase renderer rewrites it on the way out. Reading the snake name never
+  // matched — harmless only because the `o.imageUrl` fallback below carries the
+  // same URL.
+  const rel = img?.medium || img?.large || img?.small || img?.legacyUrl;
   return mediaUrl(rel) ?? mediaUrl(o.imageUrl);
 }
 

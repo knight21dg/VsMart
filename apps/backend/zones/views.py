@@ -7,6 +7,7 @@ from rest_framework.views import APIView
 
 from accounts.models import User
 from accounts.services import record_audit
+from core.app_errors import AppError, ok
 from core.permissions import IsAdmin, IsSuperAdmin
 from stores.models import Store
 
@@ -105,6 +106,51 @@ class AdminZoneViewSet(viewsets.ModelViewSet):
             emit_zone_event("store_assigned", zone=zone, actor=self.request.user,
                             store_id=zone.store_id)
 
+    def destroy(self, request, *args, **kwargs):
+        """Delete a zone, or deactivate it if it has already served orders.
+
+        ``Order.zone`` is SET_NULL, so row-deleting a zone that has traded
+        silently strips the zone off every historical order — every per-zone
+        revenue, density and delivery-time report quietly loses those rows, with
+        nothing in the UI hinting it happened. Deactivating takes the zone out of
+        serviceability (the engine only resolves ``is_active`` zones) while the
+        history stays attributable. A zone that never served an order is really
+        deleted. The response says which, because the two outcomes look different
+        in the list afterwards.
+        """
+        from orders.models import Order
+
+        zone = self.get_object()
+        order_count = Order.objects.filter(zone=zone).count()
+        if order_count:
+            zone.is_active = False
+            zone.save(update_fields=["is_active", "updated_at"])
+            record_audit(request.user, "zone.deactivate", target=zone,
+                         after={"code": zone.code,
+                                "reason": f"delete requested; {order_count} order(s) preserved"})
+            emit_zone_event("zone_updated", zone=zone, actor=request.user)
+            return Response(ok(
+                "RECORD_DEACTIVATED",
+                message=(
+                    f"{zone.name} has {order_count} order(s) on record, so it was "
+                    f"deactivated instead of deleted. It no longer serves customers."
+                ),
+                data={"id": str(zone.id), "outcome": "deactivated", "isActive": False},
+            ))
+        record_audit(request.user, "zone.delete", target=zone,
+                     after={"code": zone.code, "name": zone.name})
+        # ZoneEvent.zone is SET_NULL, so the row survives the delete but loses
+        # its pointer — carry the identity in the payload or the trail is blank.
+        emit_zone_event("zone_deleted", zone=zone, actor=request.user,
+                        zone_name=zone.name, zone_code=zone.code)
+        name, zone_id = zone.name, str(zone.id)
+        zone.delete()
+        return Response(ok(
+            "RECORD_DELETED",
+            message=f"{name} zone has been deleted.",
+            data={"id": zone_id, "outcome": "deleted"},
+        ))
+
 
 class AdminStoreViewSet(viewsets.ModelViewSet):
     """Super-Admin creates/edits stores; admins can list/view their stores."""
@@ -145,8 +191,8 @@ class AdminStoreViewSet(viewsets.ModelViewSet):
             self._link_zone(store)
         record_audit(self.request.user, "store.update", target=store, after=serializer.data)
 
-    def perform_destroy(self, store):
-        """Delete a store.
+    def destroy(self, request, *args, **kwargs):
+        """Delete a store, and say which of the two things actually happened.
 
         A store that has ever traded is **deactivated**, not row-deleted. The
         delete cascades far wider than the confirm dialog implies: it takes the
@@ -159,9 +205,15 @@ class AdminStoreViewSet(viewsets.ModelViewSet):
         ``status``) while every record it touched stays intact and attributable.
         A store that never traded is really deleted. Either way it is audited —
         create and update were, the deletion was not.
+
+        This returns 200 + a coded message rather than a bare 204 because the
+        outcome is *conditional*: a "Store deleted" toast over a store that was
+        only deactivated (and is therefore still sitting in the list, greyed
+        out) reads as a bug to the operator. Tell them which one they got.
         """
         from orders.models import Order
 
+        store = self.get_object()
         has_history = (
             Order.objects.filter(store=store).exists()
             or store.own_products.exists()
@@ -174,10 +226,25 @@ class AdminStoreViewSet(viewsets.ModelViewSet):
             record_audit(self.request.user, "store.deactivate", target=store,
                          after={"code": store.code,
                                 "reason": "delete requested; trading history preserved"})
-            return
+            return Response(ok(
+                "RECORD_DEACTIVATED",
+                message=(
+                    f"{store.name} has orders, products or staff on record, so it was "
+                    f"deactivated instead of deleted. It no longer serves customers."
+                ),
+                data={"id": str(store.id), "outcome": "deactivated",
+                      "status": store.status},
+            ))
         record_audit(self.request.user, "store.delete", target=store,
                      after={"code": store.code, "name": store.name})
+        name = store.name
+        store_id = str(store.id)
         store.delete()
+        return Response(ok(
+            "RECORD_DELETED",
+            message=f"{name} has been deleted.",
+            data={"id": store_id, "outcome": "deleted"},
+        ))
 
     def _link_zone(self, store):
         """Optionally bind the serving zone to this store (the store-onboarding flow
@@ -267,7 +334,23 @@ class AdminZoneAgentsView(APIView):
     def get_permissions(self):
         return [IsAdmin()]
 
-    def get(self, request, zone_id):
+    def get(self, request, zone_id, agent_id=None):
+        """List the zone's agents.
+
+        ``agent_id`` is accepted but unused: the same view serves
+        ``…/agents/<agent_id>`` for the unassign DELETE, and an APIView hands a
+        GET on that URL to this method with the extra kwarg. Without the
+        parameter that raised TypeError — a **500** on a URL that should simply
+        answer 405, which is what the contract sweep caught.
+        """
+        if agent_id is not None:
+            return Response(
+                {"error": {"code": "method_not_allowed",
+                           "message": "Use DELETE to unassign an agent, or GET "
+                                      "the zone's agent list without an id.",
+                           "fields": {}}},
+                status=http.HTTP_405_METHOD_NOT_ALLOWED,
+            )
         zone = get_object_or_404(Zone, pk=zone_id)
         agents = agents_for_zone(zone)
         return Response([

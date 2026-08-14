@@ -85,6 +85,23 @@ CATALOG: dict[str, dict] = {
         "Password Updated", "Your password has been changed.",
         http=200, success=True, severity=SUCCESS,
         next_step="Sign in with your new password.", module="auth"),
+    # Distinct from PASSWORD_RESET_OK: a signed-in change does NOT end the
+    # session, so telling the operator to sign in again would be wrong.
+    "PASSWORD_CHANGED": E(
+        "Password Changed", "Your password has been updated.",
+        http=200, success=True, severity=SUCCESS,
+        next_step="Use your new password the next time you sign in.",
+        module="auth"),
+    "CURRENT_PASSWORD_WRONG": E(
+        "Incorrect Password", "The current password you entered isn't right.",
+        http=400, severity=WARNING, retryable=True,
+        next_step="Re-enter your current password, or reset it from the sign-in page.",
+        module="auth", security=True),
+    "PASSWORD_LOGIN_UNAVAILABLE": E(
+        "Not Applicable", "This account signs in with a mobile OTP, not a password.",
+        http=400, severity=INFO,
+        next_step="Nothing to change — you'll always sign in with a one-time code.",
+        module="auth"),
     "DELETION_REQUEST_RECEIVED": E(
         "Request Received", "Your account deletion request has been received.",
         http=200, success=True, severity=SUCCESS,
@@ -113,6 +130,50 @@ CATALOG: dict[str, dict] = {
     "CONFLICT": E(
         "Already Done", "This action has already been completed.",
         http=409, severity=INFO, module="system"),
+    # A delete blocked by a PROTECT foreign key. Without this, Django's
+    # ProtectedError is not a DRF exception, so it fell through the handler as a
+    # bare 500 "SYSTEM_ERROR" — the operator was told the server broke when in
+    # fact the record was simply still in use.
+    # An inventory rule refused the movement — oversell, a pack-less movement on
+    # a product sold by pack, a negative adjustment below zero. `InventoryError`
+    # is a bare Exception raised throughout `inventory.services`, so every one of
+    # these reached the operator as a 500 "We hit a temporary problem on our
+    # end." The service's own message is already the useful sentence; this just
+    # gives it a status and a code so it survives the handler.
+    "INVENTORY_RULE": E(
+        "Stock Move Refused", "That stock movement isn't allowed.",
+        http=409, severity=WARNING, retryable=False,
+        next_step="Check the quantity and the pack, then try again.",
+        module="inventory"),
+    "RECORD_IN_USE": E(
+        "Still In Use", "This record can't be deleted because other records still depend on it.",
+        http=409, severity=WARNING, retryable=False,
+        next_step="Remove or reassign the dependent records first, then try again.",
+        module="system"),
+    # A unique-constraint violation that escaped serializer validation (a race,
+    # or a constraint with no matching serializer field). Same reasoning: a 500
+    # told the operator nothing, when "that code is already taken" is the truth.
+    "DUPLICATE_RECORD": E(
+        "Already Exists", "A record with these details already exists.",
+        http=409, severity=WARNING, retryable=False,
+        next_step="Use different details, or open the existing record instead.",
+        module="system"),
+    # ── outcomes of a destructive action ──
+    # A "Delete" button does not always erase a row: anything with trading
+    # history is deactivated or archived so the history stays attributable.
+    # The operator has to be told which of the two happened, or they close the
+    # dialog believing a store is gone while it is still sitting in the list.
+    "RECORD_DELETED": E(
+        "Deleted", "The record has been deleted.",
+        http=200, success=True, severity=SUCCESS, module="system"),
+    "RECORD_DEACTIVATED": E(
+        "Deactivated", "The record has trading history, so it was deactivated instead of deleted.",
+        http=200, success=True, severity=SUCCESS, module="system",
+        next_step="It no longer serves customers, and its history stays intact."),
+    "RECORD_ARCHIVED": E(
+        "Archived", "The record has been archived.",
+        http=200, success=True, severity=SUCCESS, module="system",
+        next_step="It's hidden from customers but its history stays intact."),
     "RATE_LIMITED": E(
         "Slow Down", "You're doing that a bit too fast.",
         http=429, severity=WARNING, retryable=True,
@@ -662,6 +723,39 @@ CATALOG: dict[str, dict] = {
         http=409, severity=CRITICAL,
         next_step="Contact support with your payment reference — don't retry.",
         module="payments"),
+    "PAYMENT_RECONCILIATION_REQUIRED": E(
+        "Needs Reconciliation",
+        "We couldn't confirm this payment with the gateway and it needs a manual check.",
+        http=409, severity=CRITICAL,
+        next_step="Check the gateway dashboard, then resolve it as captured or failed.",
+        module="payments"),
+    "PAYMENT_NOT_UNDER_REVIEW": E(
+        "Not Awaiting Review", "This payment isn't awaiting manual reconciliation.",
+        http=409, severity=WARNING,
+        next_step="Refresh the list — it may already have been resolved.",
+        module="payments"),
+    "PAYMENT_RESOLVER_REQUIRED": E(
+        "Who Decided?", "A manual reconciliation must record who made the decision.",
+        http=400, severity=WARNING,
+        next_step="Sign in again and retry.",
+        module="payments"),
+    "PAYMENT_ATTESTATION_REQUIRED": E(
+        "Verification Required",
+        "Confirm you have verified this capture in the payment provider's dashboard.",
+        http=400, severity=WARNING,
+        next_step="Open the provider dashboard, find the capture, then tick the box.",
+        module="payments"),
+    "PAYMENT_CAPTURED_AMOUNT_REQUIRED": E(
+        "Captured Amount Required",
+        "Enter the amount the payment provider actually captured.",
+        http=400, severity=WARNING,
+        next_step="Copy the captured amount from the provider dashboard.",
+        module="payments"),
+    "PAYMENT_RESOLUTION_INVALID": E(
+        "Invalid Resolution", "Resolve the payment as 'captured' or 'failed'.",
+        http=400, severity=WARNING,
+        next_step="Pick what the gateway actually shows — never guess.",
+        module="payments"),
     "REFUND_INITIATED": E(
         "Refund Started", "Your refund has been initiated.",
         http=200, success=True, severity=SUCCESS,
@@ -710,6 +804,15 @@ CATALOG: dict[str, dict] = {
         "Wrong OTP", "The delivery OTP entered is incorrect.",
         http=400, severity=WARNING, retryable=True,
         next_step="Ask the customer for the correct OTP.", module="delivery"),
+    # `generated_at` was recorded on every delivery OTP and never once read, so a
+    # code stayed valid indefinitely: a re-attempted delivery the next day still
+    # accepted yesterday's code, and the handover credential sat live in the
+    # customer's inbox forever.
+    "DELIVERY_OTP_EXPIRED": E(
+        "Code Expired", "That delivery code has expired.",
+        http=400, severity=WARNING, retryable=True, action=RETRY,
+        next_step="Confirm your arrival again to send the customer a fresh code.",
+        module="delivery"),
     "DELIVERY_FAILED": E(
         "Delivery Failed", "The delivery attempt was unsuccessful.",
         http=200, success=False, severity=WARNING,
@@ -838,10 +941,31 @@ CATALOG: dict[str, dict] = {
         "Verify OTP First", "Verify the customer's OTP before recording cash.",
         http=409, severity=WARNING,
         next_step="Send and verify the collection OTP.", module="collections"),
+    "COLLECTION_OTP_EXPIRED": E(
+        "Code Expired", "That confirmation code has expired.",
+        http=400, severity=WARNING, retryable=True, action=RETRY,
+        next_step="Request a new code for the customer to confirm.",
+        module="collections"),
     "COLLECTION_OTP_LOCKED": E(
         "Verification Locked", "Too many incorrect OTP attempts — supervisor approval needed.",
         http=423, severity=ERROR, action=SUPPORT,
         next_step="Contact the collections supervisor.", module="collections", security=True, risk=True),
+    # A locked collection could never be unlocked: `collect()` requires
+    # `otp_verified`, and unlike delivery there was no supervisor override at all
+    # — an agent standing there holding the customer's cash had no way to finish.
+    "COLLECTION_MANUALLY_VERIFIED": E(
+        "Manually Verified", "A supervisor has verified this collection.",
+        http=200, success=True, severity=SUCCESS, module="collections",
+        next_step="Record the cash collected.", security=True),
+    # The collections twin of DELIVERY_TASK_REQUIRED. A push alert is a
+    # snapshot; by the time the agent taps, auto-assignment may already have
+    # moved the collection to someone else. Distinct from a transition error so
+    # the app can dismiss the alert instead of inviting a pointless retry.
+    "COLLECTION_TASK_REQUIRED": E(
+        "No Longer Yours", "This collection isn't assigned to you as an active task.",
+        http=409, severity=WARNING,
+        next_step="Refresh your task list — it may have been reassigned.",
+        module="collections"),
     "INVALID_COLLECTION_TRANSITION": E(
         "Action Not Allowed", "That collection step can't be done from the current status.",
         http=409, severity=WARNING,

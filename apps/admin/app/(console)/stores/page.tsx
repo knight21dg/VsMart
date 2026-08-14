@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { type ColumnDef } from "@tanstack/react-table";
 import { Pencil, Plus, Trash2, UserCog } from "lucide-react";
+import { toast } from "sonner";
 import { api } from "@/lib/api/client";
 import { useApiMutation } from "@/lib/api/hooks";
 import { useAuth } from "@/lib/auth/auth-context";
@@ -31,11 +32,20 @@ export default function StoresPage() {
 
   const stores = useQuery({ queryKey: ["admin", "stores"], queryFn: () => api.getPaged<Store>("/admin/stores") });
 
-  const remove = useApiMutation((id: string) => api.del(`/admin/stores/${id}`), {
-    invalidate: [["admin", "stores"]],
-    successMessage: "Store deleted.",
-    onDone: () => setToDelete(null),
-  });
+  // A store with orders, products or staff is deactivated rather than deleted,
+  // so the row is still listed afterwards. "Store deleted." over a store that is
+  // plainly still there reads as a failure — use the server's coded message,
+  // which names which of the two happened and why.
+  const remove = useApiMutation(
+    (id: string) => api.delWithMessage(`/admin/stores/${id}`),
+    {
+      invalidate: [["admin", "stores"]],
+      onDone: (res) => {
+        toast.success(res.message || "Store deleted.");
+        setToDelete(null);
+      },
+    }
+  );
 
   const columns: ColumnDef<Store, unknown>[] = [
     { accessorKey: "name", header: "Store", cell: ({ row }) => <span className="font-medium">{row.original.name}</span> },

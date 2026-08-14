@@ -35,6 +35,7 @@ interface Zone {
 interface StoreLite { id: string; name: string; latitude: number | null; longitude: number | null }
 
 type ZoneForm = Partial<Zone>;
+type ZonePayload = Record<string, string | number | boolean | GeoJSONGeometry | null | undefined>;
 
 export function ZoneFormPage({ zoneId }: { zoneId?: string }) {
   const router = useRouter();
@@ -64,8 +65,10 @@ export function ZoneFormPage({ zoneId }: { zoneId?: string }) {
     setHydratedId(zoneId ?? null);
   }
 
+  // The wire body isn't a `ZoneForm`: nullable columns are sent as explicit
+  // nulls and NOT NULL ones are omitted entirely, so it's a partial payload.
   const save = useApiMutation(
-    (body: ZoneForm & { polygonGeojson: GeoJSONGeometry | null }) =>
+    (body: ZonePayload) =>
       editing ? api.patch(`/admin/zones/${zoneId}`, body) : api.post("/admin/zones", body),
     {
       invalidate: [["admin", "zones"]],
@@ -75,18 +78,23 @@ export function ZoneFormPage({ zoneId }: { zoneId?: string }) {
   );
 
   function submit() {
+    // The fee overrides are nullable on purpose — null means "fall back to
+    // PlatformConfig" — so a blank field is sent as an explicit null. Radius,
+    // ETA and priority are NOT NULL columns with DB defaults, so a blank field
+    // there has to be *omitted*: posting an explicit null made the API answer
+    // "This field may not be null." and the save silently failed every time.
     save.mutate({
       name: form.name,
-      code: form.code,
+      code: form.code?.trim() || null,
       store: form.store != null && String(form.store) !== "" ? Number(form.store) : null,
       isActive: form.isActive ?? true,
       creditEnabled: form.creditEnabled ?? false,
       deliveryFee: num(form.deliveryFee),
       freeDeliveryThreshold: num(form.freeDeliveryThreshold),
       minOrder: num(form.minOrder),
-      estimatedDeliveryMinutes: num(form.estimatedDeliveryMinutes),
-      priority: num(form.priority),
-      radiusKm: num(form.radiusKm),
+      ...optional("estimatedDeliveryMinutes", num(form.estimatedDeliveryMinutes)),
+      ...optional("priority", num(form.priority)),
+      ...optional("radiusKm", num(form.radiusKm)),
       polygonGeojson: polygon,
     });
   }
@@ -109,7 +117,9 @@ export function ZoneFormPage({ zoneId }: { zoneId?: string }) {
             <Button variant="outline" onClick={() => router.push("/zones")}>
               <ArrowLeft className="size-4" /> Back
             </Button>
-            <Button onClick={submit} disabled={save.isPending || !form.name || !form.code}>
+            {/* `code` is nullable on Zone — gating Save on it left every zone
+                that was created without one permanently uneditable. */}
+            <Button onClick={submit} disabled={save.isPending || !form.name?.trim()}>
               {save.isPending && <Loader2 className="size-4 animate-spin" />} {editing ? "Save changes" : "Create zone"}
             </Button>
           </div>
@@ -169,6 +179,12 @@ function num(v: unknown): number | null {
   if (v === "" || v == null) return null;
   const n = Number(v);
   return Number.isNaN(n) ? null : n;
+}
+
+/** `{key: value}` when the value is set, `{}` when it isn't — so a blank input
+ * leaves a NOT NULL column alone instead of trying to null it out. */
+function optional(key: string, value: number | null): Record<string, number> {
+  return value == null ? {} : { [key]: value };
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {

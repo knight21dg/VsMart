@@ -215,39 +215,32 @@ class BackendCatalogDataSource implements CatalogDataSource {
     return _toProduct(_obj(res.data));
   }
 
-  @override
-  Future<List<Product>> getRecommended() async {
+  /// One home rail, resolved by the SERVER.
+  ///
+  /// These used to be `/products?sort=…` calls, which hardcoded the front page
+  /// into the app: nothing in the admin console could push a product into
+  /// "Popular" or clear a slow line out of "Today's Deals". `/home/sections/…`
+  /// returns the merchandiser's pinned list when a rail is curated and the exact
+  /// same algorithmic ordering when it isn't, so an uncurated install is
+  /// unchanged. Scope params still travel, so a rail can never show a product
+  /// the serving store doesn't carry.
+  Future<List<Product>> _homeSection(String section, {required int take}) async {
     final res = await _client.get<dynamic>(
-      '/products',
-      query: {'sort': 'rating', ..._scopeQuery, 'page_size': 10},
+      '/home/sections/$section',
+      query: _scopeQuery,
       options: ApiClient.noAuth(),
     );
-    return _list(res.data).map(_toProduct).take(10).toList();
+    return _list(res.data).map(_toProduct).take(take).toList();
   }
 
   @override
-  Future<List<Product>> getFeatured() async {
-    // Highest-discount first, served by the backend in a single bounded page —
-    // no full-catalog sweep just to surface 8 deals on the home cold-start.
-    final res = await _client.get<dynamic>(
-      '/products',
-      query: {'sort': 'discount', ..._scopeQuery, 'page_size': 8},
-      options: ApiClient.noAuth(),
-    );
-    return _list(res.data).map(_toProduct).take(8).toList();
-  }
+  Future<List<Product>> getRecommended() => _homeSection('recommended', take: 10);
 
   @override
-  Future<List<Product>> getPopular() async {
-    // Most-reviewed first, one bounded page — the home "popular" rail no longer
-    // pays a full-catalog walk to take(6).
-    final res = await _client.get<dynamic>(
-      '/products',
-      query: {'sort': 'popular', ..._scopeQuery, 'page_size': 8},
-      options: ApiClient.noAuth(),
-    );
-    return _list(res.data).map(_toProduct).take(8).toList();
-  }
+  Future<List<Product>> getFeatured() => _homeSection('today_deals', take: 8);
+
+  @override
+  Future<List<Product>> getPopular() => _homeSection('popular', take: 8);
 
   @override
   Future<List<Product>> search(String query) async {

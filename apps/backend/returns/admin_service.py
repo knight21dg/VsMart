@@ -92,8 +92,38 @@ def return_detail(ret):
             "phone": ret.user.phone if ret.user else None,
         },
         "items": [
-            {"name": it.product_name, "quantity": it.quantity, "amount": _f(it.amount)}
+            {
+                "name": it.product_name,
+                "quantity": it.quantity,
+                "amount": _f(it.amount),
+                # What the agent actually accepted at the door, when they have
+                # inspected it — the reviewer is refunding on THIS, not on what
+                # was requested, so it has to be on screen.
+                "acceptedQuantity": it.accepted_quantity,
+                "acceptedAmount": (
+                    None if it.accepted_amount is None else _f(it.accepted_amount)
+                ),
+                "settledQuantity": it.settled_quantity,
+                "settledAmount": _f(it.settled_amount),
+            }
             for it in ret.items.all()
+        ],
+        # The photos. A return cannot even be submitted without them
+        # (RETURN_PHOTOS_REQUIRED), yet this payload — the one the review screen
+        # reads — carried none, so a reviewer approved or declined a return
+        # without ever seeing the evidence the customer was forced to upload.
+        # `ReturnPhotoView` has always served them, permission-gated; nothing
+        # ever handed out the URLs.
+        "evidence": [
+            {
+                "id": str(ev.id),
+                "source": ev.source,          # customer (submission) | agent (door)
+                "url": f"/returns/photos/{ev.id}",
+                "capturedAt": ev.captured_at,
+                "latitude": _f(ev.latitude) if ev.latitude is not None else None,
+                "longitude": _f(ev.longitude) if ev.longitude is not None else None,
+            }
+            for ev in ret.evidence.all()
         ],
     }
 
@@ -132,7 +162,63 @@ def set_return_status(ret, status, by=None, note=""):
         ret.resolved_at = timezone.now()
         fields.append("resolved_at")
     ret.save(update_fields=fields)
+    _notify_customer_decision(ret)
     return ret
+
+
+#: What the customer is told for each decision. Only the outcomes that mean
+#: something to them are here — an internal `picked` hop is not news.
+_DECISION_MESSAGE = {
+    ReturnStatus.APPROVED: (
+        "Return approved",
+        "We've approved your return {code}. We'll collect the items shortly.",
+    ),
+    ReturnStatus.REJECTED: (
+        "Return declined",
+        "Your return {code} was not approved.",
+    ),
+    ReturnStatus.REFUNDED: (
+        "Refund issued",
+        "Your refund of ₹{amount} for return {code} has been processed.",
+    ),
+}
+
+
+def _notify_customer_decision(ret):
+    """Tell the customer what was decided about their return.
+
+    Nothing did. A customer submitted a return with photos and then heard
+    nothing at all — approved, declined and refunded were equally silent, so the
+    only way to learn the outcome was to reopen the app and look. The pickup
+    phase has always notified (partner assigned, rescheduled, settled at the
+    door); the *review decision* — the one the customer is actually waiting on —
+    did not.
+
+    Fail-soft: a notification must never undo a refund that has already been
+    processed and restocked.
+    """
+    entry = _DECISION_MESSAGE.get(ret.status)
+    if entry is None or ret.user_id is None:
+        return
+    title, template = entry
+    body = template.format(code=ret.code, amount=ret.refund_amount or ZERO)
+    # A rejection is the one outcome the customer will ask "why?" about, so carry
+    # the reviewer's note when there is one.
+    if ret.status == ReturnStatus.REJECTED and ret.decision_note:
+        body = f"{body} Reason: {ret.decision_note}"
+    try:
+        from notifications.services import notify
+
+        notify(
+            ret.user, type="return", title=title, body=body,
+            data={"returnCode": ret.code, "route": f"/returns/{ret.code}",
+                  "kind": "return_decision", "status": ret.status},
+            # One message per (return, decision) — a re-saved review or a
+            # retried request must not buzz the customer twice.
+            dedupe_key=f"return_decision:{ret.code}:{ret.status}",
+        )
+    except Exception:  # noqa: BLE001 — never undo a completed refund
+        pass
 
 
 def _process_refund(ret, by=None):

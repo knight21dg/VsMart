@@ -1,0 +1,1049 @@
+{
+  "calls": [
+    {
+      "path": "/store/agents/cash",
+      "method": "get",
+      "type": "CashResponse",
+      "fields": [
+        "summary",
+        "deposits"
+      ],
+      "file": "app/(console)/agents/cash/page.tsx"
+    },
+    {
+      "path": "/store/agents",
+      "method": "get",
+      "type": "Agent[]",
+      "fields": [
+        "id",
+        "name",
+        "phone",
+        "isActive",
+        "available",
+        "vehicle",
+        "rating",
+        "bagCapacity",
+        "weightCapacityKg",
+        "cashCapacity",
+        "maxStops",
+        "activeLoad",
+        "employmentType"
+      ],
+      "file": "app/(console)/agents/page.tsx"
+    },
+    {
+      "path": "/store/agents/live",
+      "method": "get",
+      "type": "LiveOps",
+      "fields": [
+        "summary",
+        "totalAgents",
+        "agentsOnDuty",
+        "agentsOnline",
+        "activeDeliveries",
+        "agents"
+      ],
+      "file": "app/(console)/agents/page.tsx"
+    },
+    {
+      "path": "/store/audit",
+      "method": "get",
+      "type": "AuditRow[]",
+      "fields": [
+        "actor",
+        "action",
+        "targetType",
+        "targetId",
+        "at"
+      ],
+      "file": "app/(console)/audit/page.tsx"
+    },
+    {
+      "path": "/store/collections",
+      "method": "get",
+      "type": "CollectionRow[]",
+      "fields": [
+        "id",
+        "customerId",
+        "customer",
+        "phone",
+        "amount",
+        "collectedAmount",
+        "status",
+        "agent",
+        "method",
+        "reference",
+        "createdAt",
+        "collectedAt",
+        "isPriority",
+        "escalated"
+      ],
+      "file": "app/(console)/collections/page.tsx"
+    },
+    {
+      "path": "/store/delivery/agents",
+      "method": "get",
+      "type": "{ id: string; name: string; onDuty: boolean }[]",
+      "fields": [
+        "id",
+        "name",
+        "onDuty"
+      ],
+      "file": "app/(console)/collections/page.tsx"
+    },
+    {
+      "path": "/store/credit/overdue",
+      "method": "get",
+      "type": "OverdueRow[]",
+      "fields": [
+        "statementId",
+        "customerId",
+        "customer",
+        "phone",
+        "periodEnd",
+        "dueDate",
+        "daysOverdue",
+        "outstanding",
+        "status",
+        "collectionStatus",
+        "collectionAgent"
+      ],
+      "file": "app/(console)/collections/page.tsx"
+    },
+    {
+      "path": "/store/delivery/agents",
+      "method": "get",
+      "type": "OverdueAgent[]",
+      "fields": [
+        "id",
+        "name",
+        "onDuty"
+      ],
+      "file": "app/(console)/collections/page.tsx"
+    },
+    {
+      "path": "/store/collections/${id}",
+      "method": "get",
+      "type": "CollectionDetail",
+      "fields": [],
+      "file": "app/(console)/collections/page.tsx"
+    },
+    {
+      "path": "/store/credit",
+      "method": "get",
+      "type": "CreditRow[]",
+      "fields": [
+        "customerId",
+        "name",
+        "phone",
+        "creditLimit",
+        "outstanding",
+        "available",
+        "vsScore",
+        "status"
+      ],
+      "file": "app/(console)/credit/page.tsx"
+    },
+    {
+      "path": "/store/customers",
+      "method": "get",
+      "type": "CustomerRow[]",
+      "fields": [
+        "id",
+        "vsId",
+        "name",
+        "phone",
+        "kycStatus",
+        "vsScore",
+        "outstanding",
+        "orders",
+        "revenue",
+        "lastActiveAt",
+        "active",
+        "risk"
+      ],
+      "file": "app/(console)/customers/page.tsx"
+    },
+    {
+      "path": "/store/credit/${customerId}/cibil",
+      "method": "get",
+      "type": "{ report: StoreCibil | null }",
+      "fields": [
+        "report"
+      ],
+      "file": "app/(console)/customers/page.tsx"
+    },
+    {
+      "path": "/store/customers/${id}",
+      "method": "get",
+      "type": "Customer360",
+      "fields": [
+        "header",
+        "vsId",
+        "name",
+        "phone",
+        "customerSince",
+        "zone",
+        "store",
+        "collectionAgent",
+        "deliveryAgent",
+        "status",
+        "risk",
+        "health",
+        "lifetimeRevenue",
+        "orders",
+        "creditUsed",
+        "collections",
+        "outstanding",
+        "vsScore",
+        "collectionEfficiency",
+        "retentionMonths",
+        "creditIntelligence",
+        "hasAccount",
+        "creditLimit",
+        "availableCredit",
+        "usedCredit",
+        "overdue",
+        "nextDueDate",
+        "repaymentRate",
+        "latePayments",
+        "missedPayments",
+        "orderAnalytics",
+        "totalOrders",
+        "delivered",
+        "cancelled",
+        "returned",
+        "averageOrderValue",
+        "highestOrder",
+        "monthlySpend",
+        "favoriteCategories",
+        "favoriteBrands",
+        "collectionAnalytics",
+        "totalCollections",
+        "totalCount",
+        "pending",
+        "failed",
+        "averageRecoveryDays",
+        "lastCollectionAt",
+        "verification",
+        "aadhaar",
+        "pan",
+        "selfie",
+        "house",
+        "gps",
+        "agentVerified",
+        "verifiedAt",
+        "verifiedBy",
+        "score",
+        "level"
+      ],
+      "file": "app/(console)/customers/page.tsx"
+    },
+    {
+      "path": "/store/delivery",
+      "method": "get",
+      "type": "DeliveryRow[]",
+      "fields": [
+        "id",
+        "orderCode",
+        "customer",
+        "phone",
+        "address",
+        "agent",
+        "agentId",
+        "status",
+        "assignedAt",
+        "distanceKm"
+      ],
+      "file": "app/(console)/delivery/page.tsx"
+    },
+    {
+      "path": "/store/delivery/agents",
+      "method": "get",
+      "type": "AgentRow[]",
+      "fields": [
+        "id",
+        "name",
+        "onDuty",
+        "active",
+        "deliveredToday"
+      ],
+      "file": "app/(console)/delivery/page.tsx"
+    },
+    {
+      "path": "/store/delivery/returns",
+      "method": "get",
+      "type": "ReturnRow[]",
+      "fields": [
+        "taskId",
+        "orderCode",
+        "status",
+        "customer",
+        "agent",
+        "agentPhone",
+        "amount",
+        "failureReason",
+        "failedAt"
+      ],
+      "file": "app/(console)/delivery/page.tsx"
+    },
+    {
+      "path": "/store/dispatch/queue",
+      "method": "get",
+      "type": "Queue",
+      "fields": [
+        "queue",
+        "collections",
+        "agents",
+        "kpis",
+        "readyOrders",
+        "availableAgents",
+        "pendingCollections",
+        "collectionsValue",
+        "activeBatches"
+      ],
+      "file": "app/(console)/dispatch/page.tsx"
+    },
+    {
+      "path": "/store/dispatch/batches",
+      "method": "get",
+      "type": "BatchRow[]",
+      "fields": [
+        "id",
+        "status",
+        "priority",
+        "agent",
+        "stops",
+        "deliveries",
+        "collections",
+        "distanceKm",
+        "etaMinutes",
+        "pickupCode",
+        "createdAt"
+      ],
+      "file": "app/(console)/dispatch/page.tsx"
+    },
+    {
+      "path": "/store/dispatch/batches/${batchId}",
+      "method": "get",
+      "type": "BatchDetail",
+      "fields": [],
+      "file": "app/(console)/dispatch/page.tsx"
+    },
+    {
+      "path": "/store/staff",
+      "method": "get",
+      "type": "StaffRow[]",
+      "fields": [
+        "id",
+        "userId",
+        "name",
+        "phone",
+        "staffRole",
+        "staffRoleLabel",
+        "title",
+        "employeeCode",
+        "isManager",
+        "isActive",
+        "joinedOn",
+        "permissions",
+        "permissionCount",
+        "presentToday"
+      ],
+      "file": "app/(console)/employees/page.tsx"
+    },
+    {
+      "path": "/store/permissions",
+      "method": "get",
+      "type": "Catalog",
+      "fields": [
+        "groups",
+        "module",
+        "permissions",
+        "key",
+        "label",
+        "roleDefaults",
+        "roles",
+        "value"
+      ],
+      "file": "app/(console)/employees/page.tsx"
+    },
+    {
+      "path": "/store/inventory",
+      "method": "get",
+      "type": "StockRow[]",
+      "fields": [
+        "productId",
+        "variantId",
+        "variantLabel",
+        "unallocated",
+        "name",
+        "sku",
+        "brand",
+        "private",
+        "current",
+        "reserved",
+        "available",
+        "damaged",
+        "reorderLevel",
+        "sellingPrice",
+        "expiryDate",
+        "lowStock"
+      ],
+      "file": "app/(console)/inventory/page.tsx"
+    },
+    {
+      "path": "/store/inventory/expiry",
+      "method": "get",
+      "type": "ExpiryRow[]",
+      "fields": [
+        "batchId",
+        "productId",
+        "name",
+        "batchNo",
+        "quantity",
+        "expiryDate",
+        "daysLeft",
+        "expired"
+      ],
+      "file": "app/(console)/inventory/page.tsx"
+    },
+    {
+      "path": "/store/inventory/products/${row.productId}",
+      "method": "get",
+      "type": "{ variants: ProductVariantDetail[] }",
+      "fields": [
+        "variants"
+      ],
+      "file": "app/(console)/inventory/page.tsx"
+    },
+    {
+      "path": "/store/products",
+      "method": "get",
+      "type": "CatalogResult[]",
+      "fields": [
+        "productId",
+        "name",
+        "sku",
+        "brand",
+        "price",
+        "onHand"
+      ],
+      "file": "app/(console)/inventory/page.tsx"
+    },
+    {
+      "path": "/store/inventory/products/${productId}",
+      "method": "get",
+      "type": "ProductPayload",
+      "fields": [
+        "productId",
+        "private",
+        "name",
+        "brand",
+        "description",
+        "imageUrl",
+        "price",
+        "mrp",
+        "isAvailable",
+        "hasOverride",
+        "globalName",
+        "globalPrice",
+        "overridePrice",
+        "overrideMrp",
+        "variants",
+        "id",
+        "label",
+        "priceDelta"
+      ],
+      "file": "app/(console)/inventory/page.tsx"
+    },
+    {
+      "path": "/store/categories",
+      "method": "get",
+      "type": "Category[]",
+      "fields": [
+        "id",
+        "name",
+        "parentId"
+      ],
+      "file": "app/(console)/inventory/products/product-form.tsx"
+    },
+    {
+      "path": "/store/inventory/products/${productId}",
+      "method": "get",
+      "type": "ProductPayload",
+      "fields": [
+        "productId",
+        "private",
+        "categoryId",
+        "name",
+        "brand",
+        "unit",
+        "sku",
+        "hsn",
+        "description",
+        "imageUrl",
+        "images",
+        "price",
+        "mrp",
+        "barcode",
+        "variants",
+        "id",
+        "label",
+        "priceDelta",
+        "hasOwnImage",
+        "onHand",
+        "available",
+        "reorderLevel",
+        "inStock",
+        "unallocated"
+      ],
+      "file": "app/(console)/inventory/products/product-form.tsx"
+    },
+    {
+      "path": "/store/marketing/banners",
+      "method": "get",
+      "type": "{ results: StoreBanner[]; specs: BannerSpec[] }",
+      "fields": [
+        "results",
+        "specs"
+      ],
+      "file": "app/(console)/marketing/banners/page.tsx"
+    },
+    {
+      "path": "/store/marketing/notify",
+      "method": "get",
+      "type": "{ customerCount: number }",
+      "fields": [
+        "customerCount"
+      ],
+      "file": "app/(console)/marketing/page.tsx"
+    },
+    {
+      "path": "/store/marketing/coupons",
+      "method": "get",
+      "type": "StoreCoupon[]",
+      "fields": [
+        "id",
+        "code",
+        "discountType",
+        "value",
+        "minOrder",
+        "maxDiscount",
+        "validTo"
+      ],
+      "file": "app/(console)/marketing/page.tsx"
+    },
+    {
+      "path": "/store/orders/queues",
+      "method": "get",
+      "type": "Queues",
+      "fields": [
+        "toPack",
+        "packed",
+        "readyForDispatch",
+        "outForDelivery",
+        "counts"
+      ],
+      "file": "app/(console)/orders/board/page.tsx"
+    },
+    {
+      "path": "/store/orders",
+      "method": "get",
+      "type": "OrderRow[]",
+      "fields": [],
+      "file": "app/(console)/orders/page.tsx"
+    },
+    {
+      "path": "/store/orders/${code}",
+      "method": "get",
+      "type": "OrderDetail",
+      "fields": [],
+      "file": "app/(console)/orders/[code]/page.tsx"
+    },
+    {
+      "path": "/store/dashboard",
+      "method": "get",
+      "type": "Dashboard",
+      "fields": [
+        "kpis",
+        "todaySales",
+        "todayRevenue",
+        "todayOrders",
+        "pendingOrders",
+        "deliveredToday",
+        "codPending",
+        "codPendingCount",
+        "outstandingCredit",
+        "creditOrders",
+        "activeCustomers",
+        "lowStockItems",
+        "expiringItems",
+        "stockValue",
+        "monthlyRevenue",
+        "salesTrend",
+        "date",
+        "value",
+        "ordersTrend",
+        "topProducts",
+        "name",
+        "quantity",
+        "revenue",
+        "topCustomers",
+        "customer",
+        "spend",
+        "orders",
+        "lowStockAlerts",
+        "productId",
+        "available",
+        "reorderLevel",
+        "expiryAlerts",
+        "batchNo",
+        "expiryDate",
+        "daysLeft",
+        "expired",
+        "staffActivity",
+        "actor",
+        "action",
+        "at"
+      ],
+      "file": "app/(console)/page.tsx"
+    },
+    {
+      "path": "/store/pos/drafts",
+      "method": "get",
+      "type": "DraftRow[]",
+      "fields": [
+        "id",
+        "label",
+        "customerName",
+        "itemCount",
+        "total",
+        "createdAt"
+      ],
+      "file": "app/(console)/pos/drafts/page.tsx"
+    },
+    {
+      "path": "/store/pos/session",
+      "method": "get",
+      "type": "SessionResp",
+      "fields": [
+        "session",
+        "id",
+        "status",
+        "openingCash",
+        "cashier",
+        "drawer"
+      ],
+      "file": "app/(console)/pos/page.tsx"
+    },
+    {
+      "path": "/store/settings",
+      "method": "get",
+      "type": "{ platform: { gstRate: number; posPriceTaxInclusive: boolean } }",
+      "fields": [
+        "platform",
+        "gstRate",
+        "posPriceTaxInclusive"
+      ],
+      "file": "app/(console)/pos/page.tsx"
+    },
+    {
+      "path": "/store/pos/catalog",
+      "method": "get",
+      "type": "{ products: CachedProduct[] }",
+      "fields": [
+        "products"
+      ],
+      "file": "app/(console)/pos/page.tsx"
+    },
+    {
+      "path": "/store/pos/scan",
+      "method": "get",
+      "type": "ScanResp",
+      "fields": [
+        "productId",
+        "variantId",
+        "variantLabel",
+        "name",
+        "price",
+        "mrp",
+        "available",
+        "barcode"
+      ],
+      "file": "app/(console)/pos/page.tsx"
+    },
+    {
+      "path": "/store/pos/drafts/${resumeId}",
+      "method": "get",
+      "type": "{ payload: DraftPayload }",
+      "fields": [
+        "payload"
+      ],
+      "file": "app/(console)/pos/page.tsx"
+    },
+    {
+      "path": "/store/brands",
+      "method": "get",
+      "type": "string[]",
+      "fields": [],
+      "file": "app/(console)/pos/page.tsx"
+    },
+    {
+      "path": "/store/categories",
+      "method": "get",
+      "type": "{ id: string; name: string; parentId: string | null }[]",
+      "fields": [
+        "id",
+        "name",
+        "parentId"
+      ],
+      "file": "app/(console)/pos/page.tsx"
+    },
+    {
+      "path": "/store/pos/search",
+      "method": "get",
+      "type": "SearchRow[]",
+      "fields": [
+        "productId",
+        "name",
+        "brand",
+        "unit",
+        "price",
+        "mrp",
+        "available",
+        "baseAvailable",
+        "imageUrl",
+        "variants"
+      ],
+      "file": "app/(console)/pos/page.tsx"
+    },
+    {
+      "path": "/store/pos/product/${product.productId}",
+      "method": "get",
+      "type": "ProductDetail",
+      "fields": [
+        "productId",
+        "name",
+        "brand",
+        "unit",
+        "price",
+        "mrp",
+        "discountPercent",
+        "imageUrl",
+        "gallery",
+        "rating",
+        "reviews",
+        "description",
+        "available",
+        "baseAvailable",
+        "variants"
+      ],
+      "file": "app/(console)/pos/page.tsx"
+    },
+    {
+      "path": "/store/pos/customer",
+      "method": "get",
+      "type": "CustomerResp",
+      "fields": [
+        "customerId",
+        "name",
+        "phone",
+        "creditStatus",
+        "creditAvailable",
+        "outstanding"
+      ],
+      "file": "app/(console)/pos/page.tsx"
+    },
+    {
+      "path": "/store/pos/transactions",
+      "method": "get",
+      "type": "Txn[]",
+      "fields": [
+        "code",
+        "type",
+        "subtotal",
+        "tax",
+        "discount",
+        "total",
+        "creditUsed",
+        "changeDue",
+        "paymentStatus",
+        "createdAt",
+        "customerName",
+        "primaryMethod",
+        "items",
+        "payments"
+      ],
+      "file": "app/(console)/pos/sales/page.tsx"
+    },
+    {
+      "path": "/store/suppliers",
+      "method": "get",
+      "type": "Supplier[]",
+      "fields": [
+        "id",
+        "name",
+        "gstin",
+        "phone",
+        "email",
+        "address",
+        "isActive",
+        "shared"
+      ],
+      "file": "app/(console)/procurement/page.tsx"
+    },
+    {
+      "path": "/store/purchases",
+      "method": "get",
+      "type": "Purchase[]",
+      "fields": [
+        "id",
+        "reference",
+        "supplier",
+        "status",
+        "totalCost",
+        "postedAt",
+        "createdAt",
+        "lines"
+      ],
+      "file": "app/(console)/procurement/page.tsx"
+    },
+    {
+      "path": "/store/products",
+      "method": "get",
+      "type": "ProductHit[]",
+      "fields": [
+        "productId",
+        "name",
+        "sku",
+        "brand",
+        "price",
+        "onHand",
+        "variants"
+      ],
+      "file": "app/(console)/procurement/page.tsx"
+    },
+    {
+      "path": "/store/returns",
+      "method": "get",
+      "type": "ReturnRow[]",
+      "fields": [
+        "code",
+        "orderCode",
+        "customer",
+        "phone",
+        "reason",
+        "status",
+        "refundAmount",
+        "items",
+        "createdAt"
+      ],
+      "file": "app/(console)/returns/page.tsx"
+    },
+    {
+      "path": "/store/returns/${code}",
+      "method": "get",
+      "type": "ReturnDetail",
+      "fields": [
+        "code",
+        "status",
+        "reason",
+        "description",
+        "refundAmount",
+        "createdAt",
+        "resolvedAt",
+        "decisionNote",
+        "decidedBy",
+        "order",
+        "total",
+        "paymentMethod",
+        "paymentStatus",
+        "customer",
+        "id",
+        "name",
+        "phone",
+        "items",
+        "quantity",
+        "amount",
+        "acceptedQuantity",
+        "acceptedAmount",
+        "settledQuantity",
+        "settledAmount",
+        "evidence",
+        "source",
+        "url",
+        "capturedAt"
+      ],
+      "file": "app/(console)/returns/page.tsx"
+    },
+    {
+      "path": "/store/settings",
+      "method": "get",
+      "type": "Settings",
+      "fields": [
+        "store",
+        "id",
+        "code",
+        "name",
+        "address",
+        "phone",
+        "status",
+        "acceptingOrders",
+        "opensAt",
+        "closesAt",
+        "dailyOrderCapacity",
+        "isOpenNow",
+        "ordersToday",
+        "platform",
+        "gstRate",
+        "deliveryFee",
+        "freeDeliveryThreshold",
+        "creditDefaultLimit"
+      ],
+      "file": "app/(console)/settings/page.tsx"
+    },
+    {
+      "path": "/store/verification",
+      "method": "get",
+      "type": "KycRow[]",
+      "fields": [
+        "id",
+        "customerId",
+        "name",
+        "phone",
+        "status",
+        "submittedAt"
+      ],
+      "file": "app/(console)/verification/page.tsx"
+    },
+    {
+      "path": "/store/verification/${id}",
+      "method": "get",
+      "type": "KycDetail",
+      "fields": [
+        "id",
+        "customerId",
+        "name",
+        "phone",
+        "status",
+        "submittedAt",
+        "reviewedBy",
+        "reviewedAt",
+        "rejectionReason",
+        "documents",
+        "type",
+        "numberMasked",
+        "fileUrl",
+        "verifications",
+        "kind",
+        "provider",
+        "verifiedName",
+        "idMasked",
+        "nameMatch",
+        "verifiedAt",
+        "credit",
+        "score",
+        "band",
+        "bureauName",
+        "bureauPan",
+        "enteredName",
+        "enteredDob",
+        "enteredPan",
+        "panMatch",
+        "checkedAt",
+        "assignment",
+        "taskId",
+        "agent",
+        "agentId",
+        "recommendation",
+        "note",
+        "evidence",
+        "photoUrl",
+        "lat",
+        "lng",
+        "at"
+      ],
+      "file": "app/(console)/verification/page.tsx"
+    },
+    {
+      "path": "/store/verification/agents",
+      "method": "get",
+      "type": "StoreAgent[]",
+      "fields": [
+        "id",
+        "name",
+        "phone"
+      ],
+      "file": "app/(console)/verification/page.tsx"
+    },
+    {
+      "path": "/store/barcode?code=${encodeURIComponent(debounced)}",
+      "method": "get",
+      "type": "BarcodeOwner",
+      "fields": [
+        "found",
+        "code",
+        "productId",
+        "productName",
+        "variantLabel",
+        "carried",
+        "ownedByAnotherStore"
+      ],
+      "file": "components/barcode-field.tsx"
+    },
+    {
+      "path": "/store/staff/attendance/me",
+      "method": "get",
+      "type": "AttendanceState",
+      "fields": [
+        "date",
+        "checkInAt",
+        "checkOutAt",
+        "clockedIn"
+      ],
+      "file": "components/layout/topbar.tsx"
+    },
+    {
+      "path": "/admin/stores",
+      "method": "get",
+      "type": "NamedRef[]",
+      "fields": [
+        "id",
+        "name"
+      ],
+      "file": "components/store-zone.tsx"
+    },
+    {
+      "path": "/admin/zones",
+      "method": "get",
+      "type": "NamedRef[]",
+      "fields": [
+        "id",
+        "name"
+      ],
+      "file": "components/store-zone.tsx"
+    },
+    {
+      "path": "/store/me",
+      "method": "get",
+      "type": "StoreMe",
+      "fields": [],
+      "file": "lib/auth/auth-context.tsx"
+    },
+    {
+      "path": "/users/me",
+      "method": "get",
+      "type": "ApiUser",
+      "fields": [],
+      "file": "lib/auth/auth-context.tsx"
+    },
+    {
+      "path": "/store/me",
+      "method": "get",
+      "type": "StoreMe",
+      "fields": [],
+      "file": "lib/store/store-context.tsx"
+    }
+  ]
+}

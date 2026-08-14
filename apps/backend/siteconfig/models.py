@@ -33,6 +33,14 @@ class PlatformConfig(models.Model):
     late_fee_flat = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     late_fee_percent = models.DecimalField(max_digits=5, decimal_places=2, default=0)
 
+    # Smallest cash amount a field agent may collect on a visit. Zero and
+    # negative amounts were already refused, but there was no way to say "don't
+    # send someone across town for ₹20" — the floor was hardcoded at "greater
+    # than nothing". Default 0 keeps the previous behaviour until it is set.
+    min_collection_amount = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0
+    )
+
     # Dynamic fees (Blinkit-style; default 0 → no effect until the superadmin sets them)
     small_cart_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     small_cart_threshold = models.DecimalField(max_digits=10, decimal_places=2, default=0)

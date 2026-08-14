@@ -181,10 +181,16 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     // proactively and tell the customer why.
     final svc = ref.watch(currentServiceabilityProvider);
     final serviceabilityBlock = svc.blockedReason;
+    // The zone's minimum order value, gated here as well as in the cart: the
+    // shopper can reach this screen with a qualifying basket and then remove a
+    // line, and the backend refuses anything under the minimum. Only an
+    // authoritative bill carries one — never block on the on-device estimate.
+    final belowMinimum = !summary.isEstimate && !summary.meetsMinimumOrder;
     final canPlace = cart.isNotEmpty &&
         address != null &&
         creditOk &&
         !blocking &&
+        !belowMinimum &&
         svc.canCheckout &&
         !state.placing;
 
@@ -385,8 +391,9 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                           icon: Icons.account_balance_rounded,
                           title: context.l10n.checkoutVsCredit,
                           subtitle: context.l10n.checkoutBuyNowPayLater,
+                          // The only payment option on the credit path — there
+                          // is nothing to select.
                           selected: true,
-                          onTap: () {},
                         ),
                         AppSpacing.vGapMd,
                         VSCreditEligibilityBanner(
@@ -449,6 +456,14 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
           ),
           if (address != null && serviceabilityBlock != null)
             _ServiceabilityNotice(message: serviceabilityBlock),
+          // Place Order is disabled below the minimum — say why, in the same
+          // place the other blockers explain themselves.
+          if (belowMinimum)
+            _ServiceabilityNotice(
+              message: 'Minimum order value is ${summary.minOrder.asCurrency}. '
+                  'Add ${summary.minOrderShortfall.asCurrency} more to continue.',
+              icon: Icons.shopping_basket_outlined,
+            ),
           _CheckoutBar(
             total: total,
             placing: state.placing,
@@ -680,14 +695,19 @@ class _PayOptionTile extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.selected,
-    required this.onTap,
+    this.onTap,
   });
 
   final IconData icon;
   final String title;
   final String subtitle;
   final bool selected;
-  final VoidCallback onTap;
+
+  /// Null when this is the only option available, so the tile renders as a
+  /// statement of what will happen rather than a choice. It used to be passed
+  /// an empty closure, which gave the VS Credit tile a tap ripple that led
+  /// nowhere — indistinguishable, to the shopper, from a broken control.
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -885,10 +905,16 @@ class _TermsNote extends StatelessWidget {
 
 /// A strip above the checkout bar explaining why the order can't be placed right
 /// now — store closed, at capacity, or the address fell outside coverage.
+/// Why Place Order is disabled. Every blocker on this screen explains itself
+/// through this strip — a greyed-out CTA with no reason is what it replaces.
 class _ServiceabilityNotice extends StatelessWidget {
-  const _ServiceabilityNotice({required this.message});
+  const _ServiceabilityNotice({
+    required this.message,
+    this.icon = Icons.error_outline_rounded,
+  });
 
   final String message;
+  final IconData icon;
 
   @override
   Widget build(BuildContext context) {
@@ -899,7 +925,7 @@ class _ServiceabilityNotice extends StatelessWidget {
       padding: AppSpacing.screen,
       child: Row(
         children: [
-          Icon(Icons.error_outline_rounded, size: 18, color: vs.danger),
+          Icon(icon, size: 18, color: vs.danger),
           AppSpacing.hGapSm,
           Expanded(
             child: Text(message,

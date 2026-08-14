@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { Camera, Clock, LogOut, Menu, Store } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { Camera, Clock, KeyRound, LogOut, Menu, Store } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useStore } from "@/lib/store/store-context";
@@ -10,6 +11,7 @@ import { ApiError } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { OrderAlertsToggle } from "@/components/notifications/order-alerts-toggle";
+import { ChangePasswordDialog } from "@/components/change-password-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -49,18 +51,40 @@ function Avatar({ url, name, size = 32 }: { url?: string | null; name?: string |
   );
 }
 
+interface AttendanceState {
+  date: string;
+  checkInAt: string | null;
+  checkOutAt: string | null;
+  /** Server-derived: checked in today and not yet checked out. */
+  clockedIn: boolean;
+}
+
 export function Topbar({ onMenu }: { onMenu: () => void }) {
   const { user, logout, refreshUser } = useAuth();
   const { me } = useStore();
-  const [clockedIn, setClockedIn] = React.useState(false);
   const inputRef = React.useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = React.useState(false);
+  const [changingPassword, setChangingPassword] = React.useState(false);
+
+  // Attendance comes from the server, not from a local boolean. The old code
+  // held `useState(false)` and flipped it on each click, so the button showed
+  // "Clock in" to someone who had been on shift since 08:00, and any navigation
+  // that remounted the topbar silently reset it back to "out".
+  const attendance = useQuery({
+    queryKey: ["store", "attendance", "me"],
+    queryFn: () => api.get<AttendanceState>("/store/staff/attendance/me"),
+    staleTime: 60_000,
+  });
+  const clockedIn = attendance.data?.clockedIn ?? false;
 
   const clock = useApiMutation(
-    (action: "check-in" | "check-out") => api.post(`/store/staff/attendance/${action}`, {}),
+    (action: "check-in" | "check-out") =>
+      api.post<AttendanceState>(`/store/staff/attendance/${action}`, {}),
     {
+      // The write returns the authoritative state; invalidating keeps the
+      // roster page (which reads the same attendance) in step too.
+      invalidate: [["store", "attendance"]],
       successMessage: "Attendance updated",
-      onDone: () => setClockedIn((v) => !v),
     }
   );
 
@@ -104,10 +128,15 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
           variant={clockedIn ? "secondary" : "outline"}
           size="sm"
           onClick={() => clock.mutate(clockedIn ? "check-out" : "check-in")}
-          disabled={clock.isPending}
+          // Disabled until the real state has loaded, so the first click can't
+          // fire the wrong action against an assumed-false default.
+          disabled={clock.isPending || attendance.isPending}
+          title={clockedIn ? "You are on shift" : "You are not clocked in"}
         >
           <Clock className="size-4" />
-          <span className="hidden sm:inline">{clockedIn ? "Clock out" : "Clock in"}</span>
+          <span className="hidden sm:inline">
+            {attendance.isPending ? "…" : clockedIn ? "Clock out" : "Clock in"}
+          </span>
         </Button>
 
         {/* capture="user" hints the front/selfie camera on a phone browser; a
@@ -142,6 +171,9 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
             <DropdownMenuItem disabled={uploading} onSelect={() => inputRef.current?.click()}>
               <Camera /> {uploading ? "Uploading…" : user?.avatar_url ? "Change photo" : "Add photo"}
             </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => setChangingPassword(true)}>
+              <KeyRound /> Change password
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem destructive onSelect={() => logout()}>
               <LogOut /> Sign out
@@ -149,6 +181,11 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      <ChangePasswordDialog
+        open={changingPassword}
+        onOpenChange={setChangingPassword}
+      />
     </header>
   );
 }

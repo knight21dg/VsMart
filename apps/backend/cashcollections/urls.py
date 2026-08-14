@@ -3,6 +3,7 @@ from django.urls import path
 from .admin_views import (
     AdminCollectionAgentsView,
     AdminCollectionAssignView,
+    AdminCollectionManualVerifyView,
     AdminCollectionAutoAssignView,
     AdminCollectionCommandCenterView,
     AdminCollectionDunningView,
@@ -40,6 +41,8 @@ urlpatterns = [
     path("admin/collections/command-center", AdminCollectionCommandCenterView.as_view()),
     path("admin/collections/<int:pk>", AdminCollectionUpdateView.as_view()),
     path("admin/collections/<int:pk>/assign", AdminCollectionAssignView.as_view()),
+    path("admin/collections/<int:pk>/manual-verify",
+         AdminCollectionManualVerifyView.as_view()),
     # ── customer ──
     # Customer-facing: view the in-app confirmation OTP for an active collection.
     path("collections/confirm", CustomerCollectionConfirmView.as_view()),

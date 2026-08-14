@@ -12,6 +12,7 @@ class CartBill {
     required this.subtotal,
     required this.savings,
     required this.deliveryFee,
+    required this.deliveryFeeWaived,
     required this.gst,
     required this.platformFee,
     required this.handlingFee,
@@ -26,6 +27,11 @@ class CartBill {
   final num subtotal;
   final num savings;
   final num deliveryFee;
+
+  /// What delivery would have cost, when it is being waived. Server-supplied:
+  /// the cart used to strike through a hardcoded '45' regardless of the zone's
+  /// real fee, advertising a saving that was not the customer's saving.
+  final num deliveryFeeWaived;
   final num gst;
   final num platformFee;
   final num handlingFee;
@@ -159,6 +165,7 @@ class CartBillDataSource implements CartStockChecker {
       subtotal: _num(b['subtotal']),
       savings: _num(b['savings']),
       deliveryFee: _num(b['deliveryFee']),
+      deliveryFeeWaived: _num(b['deliveryFeeWaived']),
       gst: _num(b['gst']),
       platformFee: _num(b['platformFee']),
       handlingFee: _num(b['handlingFee']),

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { KeyRound, Loader2, Lock } from "lucide-react";
+import { Check, Copy, Eye, EyeOff, KeyRound, Loader2, Lock } from "lucide-react";
 import { api } from "@/lib/api/client";
 import { useApiMutation } from "@/lib/api/hooks";
 import { useAuth } from "@/lib/auth/auth-context";
@@ -22,104 +22,291 @@ import {
 } from "@/components/ui/select";
 import { LoadingState, ErrorState } from "@/components/states";
 
-/** Server-returned integration settings. Secrets are NEVER returned — only *Set flags. */
-interface Integrations {
-  smsProvider: string;
-  msg91TemplateId: string;
-  msg91AuthKeySet: boolean;
-  smsloginUsername: string;
-  smsloginSenderId: string;
-  smsloginTemplateId: string;
-  smsloginOtpMessage: string;
-  smsloginApiKeySet: boolean;
-  otpBypassCodeSet: boolean;
-  emailHost: string;
-  emailPort: number | null;
-  emailUser: string;
-  emailUseTls: boolean;
-  emailFrom: string;
-  emailPasswordSet: boolean;
-  razorpayKeyId: string;
-  razorpayKeySecretSet: boolean;
-  razorpayWebhookSecretSet: boolean;
-  fcmServerKeySet: boolean;
-  googleMapsKeySet: boolean;
+/**
+ * Every integration credential, shown in clear text.
+ *
+ * Secrets used to be write-only — the API returned a `<field>Set` boolean and the
+ * inputs were always blank, so nobody could read back or verify what was
+ * configured. That is deliberately reversed (owner decision, 2026-08-11) so the
+ * platform can be handed over with its credentials visible.
+ *
+ * The page is driven by whatever the server sends rather than a hardcoded field
+ * list. The previous version enumerated ~20 fields by hand and silently omitted
+ * every KYC and credit-bureau setting, which is how the Payon key ended up with
+ * nowhere in the UI to live. Anything the server returns that isn't placed in a
+ * group below still renders, under "Other" — a new integration can be missing a
+ * nice label, but it can no longer be invisible.
+ */
+
+type Scalar = string | number | boolean | null;
+
+interface Payload extends Record<string, unknown> {
+  /** snake_case names of the sensitive fields, straight from the backend. */
+  secretFields?: string[];
   updatedAt?: string;
 }
 
-/** PATCH body — every field optional; secrets only sent when newly typed. */
-interface IntegrationsPatch {
-  smsProvider?: string;
-  msg91AuthKey?: string;
-  msg91TemplateId?: string;
-  smsloginUsername?: string;
-  smsloginApiKey?: string;
-  smsloginSenderId?: string;
-  smsloginTemplateId?: string;
-  smsloginOtpMessage?: string;
-  otpBypassCode?: string;
-  emailHost?: string;
-  emailPort?: number | null;
-  emailUser?: string;
-  emailPassword?: string;
-  emailUseTls?: boolean;
-  emailFrom?: string;
-  razorpayKeyId?: string;
-  razorpayKeySecret?: string;
-  razorpayWebhookSecret?: string;
-  fcmServerKey?: string;
-  googleMapsKey?: string;
+type FieldKind = "text" | "number" | "bool" | "select" | "long";
+
+interface FieldSpec {
+  key: string;
+  label: string;
+  kind?: FieldKind;
+  options?: { value: string; label: string }[];
+  placeholder?: string;
+  hint?: string;
 }
 
-/** Non-secret editable fields tracked in form state. */
-interface PlainForm {
-  smsProvider: string;
-  msg91TemplateId: string;
-  smsloginUsername: string;
-  smsloginSenderId: string;
-  smsloginTemplateId: string;
-  smsloginOtpMessage: string;
-  emailHost: string;
-  emailPort: string;
-  emailUser: string;
-  emailUseTls: boolean;
-  emailFrom: string;
-  razorpayKeyId: string;
+interface GroupSpec {
+  title: string;
+  note?: string;
+  fields: FieldSpec[];
 }
 
-const EMPTY_PLAIN: PlainForm = {
-  smsProvider: "console",
-  msg91TemplateId: "",
-  smsloginUsername: "",
-  smsloginSenderId: "",
-  smsloginTemplateId: "",
-  smsloginOtpMessage: "",
-  emailHost: "",
-  emailPort: "",
-  emailUser: "",
-  emailUseTls: true,
-  emailFrom: "",
-  razorpayKeyId: "",
-};
+/** Server keys arrive camelCased by the envelope renderer; `secretFields` doesn't. */
+function toCamel(s: string) {
+  return s.replace(/_([a-z0-9])/g, (_, c: string) => c.toUpperCase());
+}
 
-/** Secret inputs — keyed by their PATCH field name. Only sent if non-empty. */
-type SecretKey =
-  | "msg91AuthKey"
-  | "smsloginApiKey"
-  | "otpBypassCode"
-  | "emailPassword"
-  | "razorpayKeySecret"
-  | "razorpayWebhookSecret"
-  | "fcmServerKey"
-  | "googleMapsKey";
+const GROUPS: GroupSpec[] = [
+  {
+    title: "SMS / OTP",
+    note:
+      "Under TRAI rules the smslogin.co body must match the registered DLT template exactly — only {code} varies.",
+    fields: [
+      {
+        key: "smsProvider",
+        label: "SMS provider",
+        kind: "select",
+        options: [
+          { value: "console", label: "Console (log only)" },
+          { value: "msg91", label: "MSG91" },
+          { value: "smslogin", label: "smslogin.co" },
+          { value: "off", label: "Off" },
+        ],
+      },
+      { key: "msg91AuthKey", label: "MSG91 auth key" },
+      { key: "msg91TemplateId", label: "MSG91 template id" },
+      { key: "smsloginUsername", label: "smslogin username" },
+      { key: "smsloginApiKey", label: "smslogin API key" },
+      { key: "smsloginSenderId", label: "Sender id", placeholder: "e.g. VSMRTS" },
+      { key: "smsloginTemplateId", label: "DLT template id" },
+      {
+        key: "smsloginOtpMessage",
+        label: "OTP message body",
+        kind: "long",
+        placeholder: "{code} is your VS Mart verification code.",
+      },
+      {
+        key: "otpBypassCode",
+        label: "OTP bypass code",
+        hint: "Accepted instead of a real OTP. Clear this before going live.",
+      },
+    ],
+  },
+  {
+    title: "Email (SMTP)",
+    fields: [
+      { key: "emailHost", label: "Host", placeholder: "smtp.example.com" },
+      { key: "emailPort", label: "Port", kind: "number", placeholder: "587" },
+      { key: "emailUser", label: "Username" },
+      { key: "emailPassword", label: "Password" },
+      { key: "emailUseTls", label: "Use TLS", kind: "bool" },
+      { key: "emailFrom", label: "From address", placeholder: "no-reply@thevsmart.com" },
+    ],
+  },
+  {
+    title: "Payments — Razorpay",
+    fields: [
+      { key: "razorpayKeyId", label: "Key id", placeholder: "rzp_live_..." },
+      { key: "razorpayKeySecret", label: "Key secret" },
+      { key: "razorpayWebhookSecret", label: "Webhook secret" },
+    ],
+  },
+  {
+    title: "Push — FCM",
+    fields: [{ key: "fcmServerKey", label: "Server key" }],
+  },
+  {
+    title: "Maps — Google (server)",
+    note: "Server-side APIs only (directions, geocoding). The in-app map key is set at build time.",
+    fields: [{ key: "googleMapsKey", label: "Server API key" }],
+  },
+  {
+    title: "Credit bureau & DigiLocker — Payon",
+    note:
+      "One Payon account serves both the CIBIL score pull and DigiLocker, so the API key below is used by both. Reseller keys must go to reseller.apipayon.in — the bare host rejects a valid key as 'Invalid API key'.",
+    fields: [
+      {
+        key: "creditBureauProvider",
+        label: "Provider",
+        kind: "select",
+        options: [
+          { value: "payon", label: "Payon (live)" },
+          { value: "mock", label: "Mock" },
+        ],
+      },
+      {
+        key: "creditBureauBaseUrl",
+        label: "Base URL",
+        placeholder: "https://reseller.apipayon.in/api/v1/serv2/check_credit_score.php",
+      },
+      {
+        key: "creditBureauApiKey",
+        label: "API key",
+        hint: "Also used for DigiLocker. Needs wallet balance on the Payon account.",
+      },
+    ],
+  },
+  {
+    title: "KYC — provider",
+    note:
+      "PAN, Aadhaar OTP and bank verification use this selection. Leaving it blank/mock returns FABRICATED 'verified' results — do not ship that. DigiLocker is not affected: it always uses Payon.",
+    fields: [
+      {
+        key: "kycProvider",
+        label: "Active provider",
+        kind: "select",
+        options: [
+          { value: "mock", label: "Mock — fabricated results, dev only" },
+          { value: "signzy", label: "Signzy" },
+          { value: "setu", label: "Setu" },
+          { value: "cashfree", label: "Cashfree Secure ID" },
+        ],
+      },
+    ],
+  },
+  {
+    title: "KYC — Signzy",
+    fields: [
+      { key: "signzyBaseUrl", label: "Base URL" },
+      { key: "signzyApiKey", label: "API key" },
+      { key: "signzyUsername", label: "Username" },
+      { key: "signzyPassword", label: "Password" },
+    ],
+  },
+  {
+    title: "KYC — Setu",
+    fields: [
+      { key: "setuBaseUrl", label: "Base URL" },
+      { key: "setuDgBaseUrl", label: "DigiLocker base URL" },
+      { key: "setuClientId", label: "Client id" },
+      { key: "setuClientSecret", label: "Client secret" },
+      { key: "setuPanProductId", label: "PAN product id" },
+      { key: "setuDigilockerProductId", label: "DigiLocker product id" },
+      { key: "setuAadhaarProductId", label: "Aadhaar product id" },
+      { key: "setuBankProductId", label: "Bank product id" },
+    ],
+  },
+  {
+    title: "KYC — Cashfree Secure ID",
+    note: "Needs the Verification Suite enabled on the account; plain payment-gateway keys won't reach /verification/*.",
+    fields: [
+      { key: "cashfreeBaseUrl", label: "Base URL" },
+      { key: "cashfreeAppId", label: "App id" },
+      { key: "cashfreeSecretKey", label: "Secret key" },
+      { key: "cashfreeApiVersion", label: "API version" },
+    ],
+  },
+];
 
-const SECRET_PLACEHOLDER = "Leave blank to keep current";
+/** Keys the page handles itself — anything else the server sends is a real field. */
+const NON_FIELD_KEYS = new Set(["secretFields", "updatedAt"]);
 
-function StatusChip({ configured }: { configured: boolean }) {
-  return configured ? (
-    <Badge variant="success">Configured</Badge>
-  ) : (
-    <Badge variant="secondary">Not set</Badge>
+function CopyButton({ value }: { value: string }) {
+  const [done, setDone] = React.useState(false);
+  if (!value) return null;
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon"
+      className="size-7 shrink-0"
+      aria-label="Copy value"
+      onClick={() => {
+        void navigator.clipboard.writeText(value).then(() => {
+          setDone(true);
+          setTimeout(() => setDone(false), 1200);
+        });
+      }}
+    >
+      {done ? <Check className="size-3.5 text-emerald-600" /> : <Copy className="size-3.5" />}
+    </Button>
+  );
+}
+
+function FieldRow({
+  spec,
+  value,
+  secret,
+  masked,
+  onChange,
+}: {
+  spec: FieldSpec;
+  value: Scalar;
+  secret: boolean;
+  masked: boolean;
+  onChange: (v: Scalar) => void;
+}) {
+  const str = value == null ? "" : String(value);
+
+  if (spec.kind === "bool") {
+    return (
+      <div className="flex items-center justify-between rounded-md border border-input px-3 py-2">
+        <Label htmlFor={spec.key} className="cursor-pointer">
+          {spec.label}
+        </Label>
+        <Switch id={spec.key} checked={!!value} onCheckedChange={(v) => onChange(v)} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between gap-2">
+        <Label htmlFor={spec.key}>{spec.label}</Label>
+        {secret ? (
+          str ? (
+            <Badge variant="success">Configured</Badge>
+          ) : (
+            <Badge variant="secondary">Not set</Badge>
+          )
+        ) : null}
+      </div>
+      <div className="flex items-center gap-1">
+        {spec.kind === "select" ? (
+          <Select value={str} onValueChange={(v) => onChange(v)}>
+            <SelectTrigger id={spec.key} className="flex-1">
+              <SelectValue placeholder="Select…" />
+            </SelectTrigger>
+            <SelectContent>
+              {(spec.options ?? []).map((o) => (
+                <SelectItem key={o.value} value={o.value}>
+                  {o.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : (
+          <Input
+            id={spec.key}
+            className="flex-1 font-mono text-xs"
+            // Secrets render readable by default so they can be handed over; the
+            // header toggle flips every one at once for screen-sharing.
+            type={secret && masked ? "password" : spec.kind === "number" ? "number" : "text"}
+            autoComplete="off"
+            spellCheck={false}
+            placeholder={spec.placeholder}
+            value={str}
+            onChange={(e) =>
+              onChange(spec.kind === "number" ? (e.target.value === "" ? null : Number(e.target.value)) : e.target.value)
+            }
+          />
+        )}
+        {spec.kind !== "select" && <CopyButton value={str} />}
+      </div>
+      {spec.hint && <p className="text-xs text-muted-foreground">{spec.hint}</p>}
+    </div>
   );
 }
 
@@ -129,87 +316,27 @@ export default function IntegrationsPage() {
 
   const query = useQuery({
     queryKey: ["admin", "integrations"],
-    queryFn: () => api.get<Integrations>("/admin/settings/integrations"),
+    queryFn: () => api.get<Payload>("/admin/settings/integrations"),
     enabled: isSuper,
   });
 
-  const [plain, setPlain] = React.useState<PlainForm>(EMPTY_PLAIN);
-  const [secrets, setSecrets] = React.useState<Record<SecretKey, string>>({
-    msg91AuthKey: "",
-    smsloginApiKey: "",
-    otpBypassCode: "",
-    emailPassword: "",
-    razorpayKeySecret: "",
-    razorpayWebhookSecret: "",
-    fcmServerKey: "",
-    googleMapsKey: "",
-  });
+  const [form, setForm] = React.useState<Record<string, Scalar>>({});
+  const [masked, setMasked] = React.useState(false);
 
   React.useEffect(() => {
     if (!query.data) return;
-    const d = query.data;
-    setPlain({
-      smsProvider: d.smsProvider || "console",
-      msg91TemplateId: d.msg91TemplateId ?? "",
-      smsloginUsername: d.smsloginUsername ?? "",
-      smsloginSenderId: d.smsloginSenderId ?? "",
-      smsloginTemplateId: d.smsloginTemplateId ?? "",
-      smsloginOtpMessage: d.smsloginOtpMessage ?? "",
-      emailHost: d.emailHost ?? "",
-      emailPort: d.emailPort == null ? "" : String(d.emailPort),
-      emailUser: d.emailUser ?? "",
-      emailUseTls: !!d.emailUseTls,
-      emailFrom: d.emailFrom ?? "",
-      razorpayKeyId: d.razorpayKeyId ?? "",
+    const next: Record<string, Scalar> = {};
+    Object.entries(query.data).forEach(([k, v]) => {
+      if (NON_FIELD_KEYS.has(k) || k.endsWith("Set")) return;
+      next[k] = (v ?? "") as Scalar;
     });
+    setForm(next);
   }, [query.data]);
 
   const save = useApiMutation(
-    (body: IntegrationsPatch) => api.patch<Integrations>("/admin/settings/integrations", body),
-    {
-      invalidate: [["admin", "integrations"]],
-      successMessage: "Integrations saved.",
-      onDone: () =>
-        // Clear secret inputs after a successful save — they were write-only.
-        setSecrets({
-          msg91AuthKey: "",
-          smsloginApiKey: "",
-          otpBypassCode: "",
-          emailPassword: "",
-          razorpayKeySecret: "",
-          razorpayWebhookSecret: "",
-          fcmServerKey: "",
-          googleMapsKey: "",
-        }),
-    }
+    (body: Record<string, Scalar>) => api.patch<Payload>("/admin/settings/integrations", body),
+    { invalidate: [["admin", "integrations"]], successMessage: "Integrations saved." }
   );
-
-  function setSecret(key: SecretKey, value: string) {
-    setSecrets((s) => ({ ...s, [key]: value }));
-  }
-
-  function submit() {
-    const body: IntegrationsPatch = {
-      smsProvider: plain.smsProvider,
-      msg91TemplateId: plain.msg91TemplateId,
-      smsloginUsername: plain.smsloginUsername,
-      smsloginSenderId: plain.smsloginSenderId,
-      smsloginTemplateId: plain.smsloginTemplateId,
-      smsloginOtpMessage: plain.smsloginOtpMessage,
-      emailHost: plain.emailHost,
-      emailPort: plain.emailPort === "" ? null : Number(plain.emailPort),
-      emailUser: plain.emailUser,
-      emailUseTls: plain.emailUseTls,
-      emailFrom: plain.emailFrom,
-      razorpayKeyId: plain.razorpayKeyId,
-    };
-    // Only include secrets the user actually typed — blank means "keep current".
-    (Object.keys(secrets) as SecretKey[]).forEach((k) => {
-      const v = secrets[k].trim();
-      if (v) body[k] = v;
-    });
-    save.mutate(body);
-  }
 
   if (!isSuper) {
     return (
@@ -228,18 +355,45 @@ export default function IntegrationsPage() {
     );
   }
 
-  const d = query.data;
+  const secretKeys = new Set((query.data?.secretFields ?? []).map(toCamel));
+  const placed = new Set(GROUPS.flatMap((g) => g.fields.map((f) => f.key)));
+  // Anything the server knows about that no group claims. Renders generically so
+  // a new backend setting is never silently unreachable from the panel.
+  const orphans = Object.keys(form)
+    .filter((k) => !placed.has(k))
+    .sort();
+
+  const groups: GroupSpec[] = orphans.length
+    ? [
+        ...GROUPS,
+        {
+          title: "Other",
+          note: "Settings the server exposes that this page has no label for yet.",
+          fields: orphans.map((k) => ({ key: k, label: k })),
+        },
+      ]
+    : GROUPS;
 
   return (
     <>
       <PageHeader
         title="Integrations"
-        description="SMS, email, payment and push credentials. Secrets are write-only — they're never shown."
+        description="Every third-party credential, in clear text. Changes take effect immediately — no redeploy."
         actions={
-          <Button onClick={submit} disabled={save.isPending || query.isLoading}>
-            {save.isPending ? <Loader2 className="size-4 animate-spin" /> : <KeyRound className="size-4" />}
-            Save changes
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button type="button" variant="outline" onClick={() => setMasked((m) => !m)}>
+              {masked ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
+              {masked ? "Show keys" : "Hide keys"}
+            </Button>
+            <Button onClick={() => save.mutate(form)} disabled={save.isPending || query.isLoading}>
+              {save.isPending ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <KeyRound className="size-4" />
+              )}
+              Save changes
+            </Button>
+          </div>
         }
       />
 
@@ -248,317 +402,36 @@ export default function IntegrationsPage() {
       ) : query.isError ? (
         <ErrorState message="Couldn't load integrations." onRetry={() => query.refetch()} />
       ) : (
-        <div className="grid gap-4 lg:grid-cols-2">
-          {/* SMS / OTP */}
-          <Card>
-            <CardHeader>
-              <CardTitle>SMS / OTP</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="smsProvider">SMS provider</Label>
-                <Select
-                  value={plain.smsProvider}
-                  onValueChange={(v) => setPlain((f) => ({ ...f, smsProvider: v }))}
-                >
-                  <SelectTrigger id="smsProvider">
-                    <SelectValue placeholder="Select a provider" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="console">Console (log only)</SelectItem>
-                    <SelectItem value="msg91">MSG91</SelectItem>
-                    <SelectItem value="smslogin">smslogin.co</SelectItem>
-                    <SelectItem value="off">Off</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="msg91AuthKey">MSG91 auth key</Label>
-                  <StatusChip configured={!!d?.msg91AuthKeySet} />
-                </div>
-                <Input
-                  id="msg91AuthKey"
-                  type="password"
-                  autoComplete="off"
-                  placeholder={SECRET_PLACEHOLDER}
-                  value={secrets.msg91AuthKey}
-                  onChange={(e) => setSecret("msg91AuthKey", e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="msg91TemplateId">MSG91 template id</Label>
-                <Input
-                  id="msg91TemplateId"
-                  value={plain.msg91TemplateId}
-                  onChange={(e) => setPlain((f) => ({ ...f, msg91TemplateId: e.target.value }))}
-                />
-              </div>
-
-              {plain.smsProvider === "smslogin" && (
-                <div className="space-y-3 rounded-lg border bg-muted/30 p-3">
-                  <p className="text-xs text-muted-foreground">
-                    smslogin.co takes the full message body plus a DLT template id.
-                    Under TRAI rules the body must match the registered template
-                    exactly — only <code className="font-mono">{"{code}"}</code> varies.
-                    Sender id and template id are both required; without them the
-                    gateway rejects every send.
-                  </p>
-
-                  <div className="space-y-1.5">
-                    <Label htmlFor="smsloginUsername">Username</Label>
-                    <Input
-                      id="smsloginUsername"
-                      value={plain.smsloginUsername}
-                      onChange={(e) => setPlain((f) => ({ ...f, smsloginUsername: e.target.value }))}
+        <div className="grid items-start gap-4 lg:grid-cols-2">
+          {groups.map((g) => (
+            <Card key={g.title}>
+              <CardHeader>
+                <CardTitle>{g.title}</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {g.note && <p className="text-xs text-muted-foreground">{g.note}</p>}
+                {g.fields
+                  // A field the server didn't send doesn't exist — don't offer it.
+                  .filter((f) => f.key in form)
+                  .map((f) => (
+                    <FieldRow
+                      key={f.key}
+                      spec={f}
+                      value={form[f.key]}
+                      secret={secretKeys.has(f.key)}
+                      masked={masked}
+                      onChange={(v) => setForm((s) => ({ ...s, [f.key]: v }))}
                     />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="smsloginApiKey">API key</Label>
-                      <StatusChip configured={!!d?.smsloginApiKeySet} />
-                    </div>
-                    <Input
-                      id="smsloginApiKey"
-                      type="password"
-                      autoComplete="off"
-                      placeholder={SECRET_PLACEHOLDER}
-                      value={secrets.smsloginApiKey}
-                      onChange={(e) => setSecret("smsloginApiKey", e.target.value)}
-                    />
-                  </div>
-
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="space-y-1.5">
-                      <Label htmlFor="smsloginSenderId">Sender id</Label>
-                      <Input
-                        id="smsloginSenderId"
-                        value={plain.smsloginSenderId}
-                        onChange={(e) => setPlain((f) => ({ ...f, smsloginSenderId: e.target.value }))}
-                        placeholder="e.g. VSMART"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="smsloginTemplateId">DLT template id</Label>
-                      <Input
-                        id="smsloginTemplateId"
-                        value={plain.smsloginTemplateId}
-                        onChange={(e) => setPlain((f) => ({ ...f, smsloginTemplateId: e.target.value }))}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label htmlFor="smsloginOtpMessage">OTP message body</Label>
-                    <Input
-                      id="smsloginOtpMessage"
-                      value={plain.smsloginOtpMessage}
-                      onChange={(e) => setPlain((f) => ({ ...f, smsloginOtpMessage: e.target.value }))}
-                      placeholder="{code} is your VS Mart verification code."
-                    />
-                  </div>
-                </div>
-              )}
-
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="otpBypassCode">OTP bypass code</Label>
-                  <StatusChip configured={!!d?.otpBypassCodeSet} />
-                </div>
-                <Input
-                  id="otpBypassCode"
-                  type="password"
-                  autoComplete="off"
-                  placeholder={SECRET_PLACEHOLDER}
-                  value={secrets.otpBypassCode}
-                  onChange={(e) => setSecret("otpBypassCode", e.target.value)}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Email (SMTP) */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Email (SMTP)</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="emailHost">Host</Label>
-                <Input
-                  id="emailHost"
-                  placeholder="smtp.example.com"
-                  value={plain.emailHost}
-                  onChange={(e) => setPlain((f) => ({ ...f, emailHost: e.target.value }))}
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="emailPort">Port</Label>
-                <Input
-                  id="emailPort"
-                  type="number"
-                  placeholder="587"
-                  value={plain.emailPort}
-                  onChange={(e) => setPlain((f) => ({ ...f, emailPort: e.target.value }))}
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="emailUser">Username</Label>
-                <Input
-                  id="emailUser"
-                  autoComplete="off"
-                  value={plain.emailUser}
-                  onChange={(e) => setPlain((f) => ({ ...f, emailUser: e.target.value }))}
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="emailPassword">Password</Label>
-                  <StatusChip configured={!!d?.emailPasswordSet} />
-                </div>
-                <Input
-                  id="emailPassword"
-                  type="password"
-                  autoComplete="off"
-                  placeholder={SECRET_PLACEHOLDER}
-                  value={secrets.emailPassword}
-                  onChange={(e) => setSecret("emailPassword", e.target.value)}
-                />
-              </div>
-
-              <div className="flex items-center justify-between rounded-md border border-input px-3 py-2">
-                <Label htmlFor="emailUseTls" className="cursor-pointer">
-                  Use TLS
-                </Label>
-                <Switch
-                  id="emailUseTls"
-                  checked={plain.emailUseTls}
-                  onCheckedChange={(v) => setPlain((f) => ({ ...f, emailUseTls: v }))}
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="emailFrom">From address</Label>
-                <Input
-                  id="emailFrom"
-                  type="email"
-                  placeholder="no-reply@thevsmart.com"
-                  value={plain.emailFrom}
-                  onChange={(e) => setPlain((f) => ({ ...f, emailFrom: e.target.value }))}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Payments — Razorpay */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Payments — Razorpay</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="razorpayKeyId">Key id</Label>
-                <Input
-                  id="razorpayKeyId"
-                  autoComplete="off"
-                  placeholder="rzp_live_..."
-                  value={plain.razorpayKeyId}
-                  onChange={(e) => setPlain((f) => ({ ...f, razorpayKeyId: e.target.value }))}
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="razorpayKeySecret">Key secret</Label>
-                  <StatusChip configured={!!d?.razorpayKeySecretSet} />
-                </div>
-                <Input
-                  id="razorpayKeySecret"
-                  type="password"
-                  autoComplete="off"
-                  placeholder={SECRET_PLACEHOLDER}
-                  value={secrets.razorpayKeySecret}
-                  onChange={(e) => setSecret("razorpayKeySecret", e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="razorpayWebhookSecret">Webhook secret</Label>
-                  <StatusChip configured={!!d?.razorpayWebhookSecretSet} />
-                </div>
-                <Input
-                  id="razorpayWebhookSecret"
-                  type="password"
-                  autoComplete="off"
-                  placeholder={SECRET_PLACEHOLDER}
-                  value={secrets.razorpayWebhookSecret}
-                  onChange={(e) => setSecret("razorpayWebhookSecret", e.target.value)}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Push — FCM */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Push — FCM</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="fcmServerKey">Server key</Label>
-                  <StatusChip configured={!!d?.fcmServerKeySet} />
-                </div>
-                <Input
-                  id="fcmServerKey"
-                  type="password"
-                  autoComplete="off"
-                  placeholder={SECRET_PLACEHOLDER}
-                  value={secrets.fcmServerKey}
-                  onChange={(e) => setSecret("fcmServerKey", e.target.value)}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Maps — Google (server-side) */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Maps — Google (server)</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="googleMapsKey">Server API key</Label>
-                  <StatusChip configured={!!d?.googleMapsKeySet} />
-                </div>
-                <Input
-                  id="googleMapsKey"
-                  type="password"
-                  autoComplete="off"
-                  placeholder={SECRET_PLACEHOLDER}
-                  value={secrets.googleMapsKey}
-                  onChange={(e) => setSecret("googleMapsKey", e.target.value)}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Server-side Google APIs (directions, geocoding). The in-app map key is set at build time.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+                  ))}
+              </CardContent>
+            </Card>
+          ))}
         </div>
       )}
 
-      {d?.updatedAt && (
+      {query.data?.updatedAt && (
         <p className="text-xs text-muted-foreground">
-          Last updated {new Date(d.updatedAt).toLocaleString("en-IN")}.
+          Last updated {new Date(query.data.updatedAt).toLocaleString("en-IN")}.
         </p>
       )}
     </>

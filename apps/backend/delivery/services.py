@@ -16,6 +16,7 @@ write the Order timeline (via orders.advance_status). Money/stock changes are at
 """
 import math
 import secrets
+from datetime import timedelta
 from decimal import Decimal
 
 from django.conf import settings
@@ -44,6 +45,12 @@ S = DeliveryTask.Status
 #: actually be at the address. The OTP + proof-photo handover remains the real
 #: proof of delivery.
 GEOFENCE_M = 100
+
+#: How long a delivery OTP stays valid. It is only minted once the agent has
+#: confirmed arrival at the door, so the whole handover happens inside minutes;
+#: 15 gives room for a customer to find their phone without leaving a live
+#: credential sitting in an SMS inbox. Overridable for a slower operation.
+OTP_TTL_MINUTES = getattr(settings, "DELIVERY_OTP_TTL_MINUTES", 15)
 
 # Strict state machine — a transition not listed here is rejected.
 ALLOWED = {
@@ -119,7 +126,7 @@ def _transition(task, to_status, *, actor=None, note="", audit_code=None):
 # ───────────────────────── assignment engine ─────────────────────────
 def _agent_active_load(agent):
     return DeliveryTask.objects.filter(agent=agent).exclude(
-        status__in=DeliveryTask.TERMINAL | {S.FAILED}
+        status__in=DeliveryTask.CLOSED_FOR_AGENT
     ).count()
 
 
@@ -283,8 +290,35 @@ def reassign(task, agent, *, by, reason=""):
 
 
 # ───────────────────────── agent workflow ─────────────────────────
+def _assert_still_offered(task, action):
+    """The task must still be sitting on this agent's offer, un-actioned.
+
+    A push alert is a snapshot. By the time the rider looks up from the road and
+    taps Accept or Reject, the dispatch engine's 120-second tick has very often
+    already moved the task on — in production the overwhelming majority of tasks
+    end up ``reassigned``. Tapping then produced
+    ``Can't move a delivery from 'reassigned' to 'rejected'``, which the app
+    showed as "Couldn't reject — try again": an invitation to keep tapping a
+    button that can never succeed.
+
+    It isn't an error the rider can do anything about, so say the true thing —
+    the offer is gone — with a code the app can branch on to dismiss the alert.
+    """
+    if task.status != S.ASSIGNED:
+        raise AppError(
+            "DELIVERY_TASK_REQUIRED",
+            message=(
+                f"This delivery is no longer yours to {action} — it was "
+                f"reassigned or already actioned."
+            ),
+            entity_type="delivery_task",
+            entity_id=task.id,
+        )
+
+
 def accept(task, agent):
     _assert_owner(task, agent)
+    _assert_still_offered(task, "accept")
     _transition(task, S.ACCEPTED, actor=agent, audit_code="AGENT_ASSIGNED")
     DeliveryAssignmentHistory.objects.create(task=task, agent=agent, action="accepted")
     return task
@@ -292,6 +326,7 @@ def accept(task, agent):
 
 def reject(task, agent, reason=""):
     _assert_owner(task, agent)
+    _assert_still_offered(task, "reject")
     _transition(task, S.REJECTED, actor=agent, note=reason)
     DeliveryAssignmentHistory.objects.create(
         task=task, agent=agent, action="rejected", reason=reason)
@@ -348,6 +383,18 @@ def arrive(task, agent, lat, lng):
     return task
 
 
+def otp_is_expired(otp, ttl_minutes=OTP_TTL_MINUTES):
+    """Whether `otp` is past its time-to-live.
+
+    A NULL ``generated_at`` is treated as **not** expired: pre-existing rows
+    (and the odd fixture) were written before the timestamp was enforced, and
+    expiring them retroactively would strand live deliveries mid-handover.
+    """
+    if otp.generated_at is None:
+        return False
+    return timezone.now() - otp.generated_at > timedelta(minutes=ttl_minutes)
+
+
 def verify_otp(task, agent, code):
     _assert_owner(task, agent)
     otp = getattr(task, "delivery_otp", None)
@@ -355,12 +402,25 @@ def verify_otp(task, agent, code):
         raise AppError("DELIVERY_OTP_REQUIRED", message="No delivery OTP has been generated yet.")
     if otp.locked:
         raise AppError("MANUAL_VERIFICATION_REQUIRED")
+    # Checked BEFORE the code comparison, so an expired code can neither be
+    # accepted nor burn one of the three attempts. `generated_at` was recorded
+    # on every OTP and never read: a code stayed valid forever, so a delivery
+    # re-attempted the next day still accepted yesterday's code.
+    if otp_is_expired(otp):
+        raise AppError("DELIVERY_OTP_EXPIRED")
     if code and code == otp.code:
         otp.verified = True
         otp.verified_at = timezone.now()
         otp.save(update_fields=["verified", "verified_at", "updated_at"])
         task.otp_verified = True
         task.save(update_fields=["otp_verified", "updated_at"])
+        # Clear a stale lockout flag from an EARLIER round. `_generate_otp`
+        # unlocks the OTP row on re-arrival but left this set, so a task that
+        # went on to verify cleanly stayed flagged "manual verification
+        # required" in the board and every report that reads it.
+        if task.manual_verification_required:
+            task.manual_verification_required = False
+            task.save(update_fields=["manual_verification_required", "updated_at"])
         _audit("DELIVERY_OTP_VERIFIED", task, agent)
         return task
     otp.attempts += 1
@@ -624,7 +684,13 @@ def _notify_agent(task):
     notify(task.agent, type="delivery", title="New delivery assigned",
            body=f"Order {task.order.code} — {task.order.address_snapshot.get('formatted', '')}",
            data={"orderCode": task.order.code, "taskId": task.id,
-                 "kind": "delivery_assignment", "route": "deliveries"})
+                 "kind": "delivery_assignment", "route": "deliveries"},
+           # One buzz per (agent, task). The dispatch engine runs on a 120s loop
+           # and every assignment path funnels through here, so an agent used to
+           # be re-alerted for a delivery already sitting in their list each time
+           # anything touched the task. Keyed on the agent too, so a genuine
+           # reassignment still notifies the NEW agent.
+           dedupe_key=f"delivery_assigned:task:{task.id}:agent:{task.agent_id}")
 
 
 # The statuses in which an agent is actively working this order, so their GPS

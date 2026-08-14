@@ -22,7 +22,7 @@ import { PageHeader } from "@/components/page-header";
 import { RequirePerm } from "@/components/permission-gate";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -33,12 +33,13 @@ import { EmptyState } from "@/components/states";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { ProductLink } from "@/components/product-link";
 import { PosPrintReceipt, printReceipt, type PrintReceipt } from "@/components/pos-print-receipt";
+import { CloseSession } from "@/components/pos/close-session";
 import { useFocusOnModalClose, useHotkeys } from "@/lib/use-hotkeys";
 import {
   beepError, beepScan, beepSuccess, beepTick, isMuted, isMutedServer, setMuted, subscribeMuted,
 } from "@/lib/pos-sound";
 import { useStore } from "@/lib/store/store-context";
-import { inr } from "@/lib/utils";
+import { cn, inr } from "@/lib/utils";
 
 interface SessionResp {
   session: { id: number; status: string; openingCash: number; cashier: string; drawer?: Record<string, number> } | null;
@@ -99,7 +100,10 @@ function POSInner() {
     queryKey: ["store", "settings"],
     queryFn: () => api.get<{ platform: { gstRate: number; posPriceTaxInclusive: boolean } }>("/store/settings"),
   });
-  const gstRate = settingsQ.data?.platform.gstRate ?? 0.18;
+  // `/store/settings` reports GST as a PERCENTAGE (18), the same as every other
+  // API surface; the tax maths below needs the fraction, so convert once here.
+  const gstPercent = settingsQ.data?.platform.gstRate ?? 18;
+  const gstRate = gstPercent / 100;
   // Mirrors `pos.services._split_tax`: when prices are tax-INCLUSIVE the shelf
   // price already contains GST and tax is backed OUT of it; otherwise tax is added
   // on top. Hardcoding "exclusive" here meant flipping this config made the till
@@ -581,7 +585,7 @@ function POSInner() {
             <CardContent className="space-y-3 pt-0">
               <div className="space-y-1 text-sm">
                 <Row label="Subtotal" value={inr(subtotal, { decimals: true })} />
-                <Row label={`GST (${Math.round(gstRate * 100)}%)`} value={inr(tax, { decimals: true })} />
+                <Row label={`GST (${gstPercent}%)`} value={inr(tax, { decimals: true })} />
                 {appliedDiscount > 0 && (
                   <div className="flex justify-between text-[var(--color-success)]">
                     <span>Discount {couponCode && <span className="font-medium">({couponCode})</span>}</span>
@@ -1321,81 +1325,6 @@ function NoSession({ onOpened }: { onOpened: () => void }) {
         </CardContent>
       </Card>
     </div>
-  );
-}
-
-/** Indian currency, largest first — the order a cashier actually counts in. */
-const DENOMS = [500, 200, 100, 50, 20, 10, 5, 2, 1];
-
-/**
- * Close the till with a real denomination count.
- *
- * It used to be a single "Counted cash" box — the cashier had to add the drawer
- * up in their head (or on paper) and type one number, which is exactly where
- * counting errors hide. Now they key how many of each note/coin they hold and the
- * total is computed; the breakdown rides along in `notes` so a variance can be
- * investigated afterwards.
- *
- * The backend takes the TOTAL (`countedCash`) — there is no denomination model —
- * so this is a counting aid that produces the number the server already expects.
- */
-function CloseSession({ onClosed }: { onClosed: () => void }) {
-  const [open, setOpen] = React.useState(false);
-  const [count, setCount] = React.useState<Record<number, string>>({});
-  const [notes, setNotes] = React.useState("");
-
-  const total = DENOMS.reduce((s, d) => s + d * (Number(count[d]) || 0), 0);
-  const breakdown = DENOMS
-    .filter((d) => Number(count[d]) > 0)
-    .map((d) => `${d}x${Number(count[d])}`)
-    .join(" ");
-
-  const close = useApiMutation<void, { variance: number; totalSales: number }>(
-    () => api.post("/store/pos/session/close", {
-      countedCash: total,
-      notes: [notes.trim(), breakdown && `[drawer ${breakdown}]`].filter(Boolean).join(" "),
-    }),
-    { successMessage: "Till closed", onDone: () => { setOpen(false); onClosed(); } },
-  );
-
-  if (!open) return <Button variant="outline" onClick={() => setOpen(true)}>Close till</Button>;
-  return (
-    <Dialog open onOpenChange={(o) => !o && setOpen(false)}>
-      <DialogContent className="max-w-sm">
-        <DialogHeader><DialogTitle>Count the drawer</DialogTitle></DialogHeader>
-        <div className="space-y-2 py-1">
-          <div className="grid grid-cols-3 gap-2">
-            {DENOMS.map((d) => (
-              <div key={d} className="space-y-1">
-                <Label className="text-xs">{inr(d)}</Label>
-                <Input
-                  className="h-8" inputMode="numeric" placeholder="0"
-                  value={count[d] ?? ""}
-                  onChange={(e) => setCount((p) => ({ ...p, [d]: e.target.value.replace(/\D/g, "") }))}
-                />
-              </div>
-            ))}
-          </div>
-          <div className="space-y-1.5 pt-1">
-            <Label className="text-xs">Notes (optional)</Label>
-            <Input className="h-8" value={notes} onChange={(e) => setNotes(e.target.value)}
-                   placeholder="e.g. ₹200 paid out for delivery" />
-          </div>
-          <div className="flex justify-between border-t pt-2 font-semibold">
-            <span>Counted</span><span className="tabular-nums">{inr(total, { decimals: true })}</span>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            The variance against expected cash is shown after closing.
-          </p>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)} disabled={close.isPending}>Cancel</Button>
-          <Button onClick={() => close.mutate()} disabled={close.isPending || total <= 0}>
-            {close.isPending && <Loader2 className="size-4 animate-spin" />} Close till
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   );
 }
 

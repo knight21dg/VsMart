@@ -21,8 +21,9 @@ from .serializers import (
 )
 
 ZERO = Decimal("0.00")
-PER_DELIVERY = Decimal("20")
-PER_COLLECTION = Decimal("30")
+# `PER_DELIVERY` / `PER_COLLECTION` lived here as bare constants and were the source
+# of the invented agent pay this audit removed. Rates now live in `agents/earnings.py`,
+# which both this view and the finance settlement view read.
 
 
 def _get_profile(user):
@@ -151,30 +152,23 @@ class AgentEarningsView(APIView):
     permission_classes = [IsAgent]
 
     def get(self, request):
-        # Delivery pay comes from the REAL per-task DeliveryEarnings rows (base +
-        # distance/heavy/peak bonuses, released on completion). This used to be a
-        # flat ₹20 × delivered-count — a parallel formula that could never match
-        # the figure the agent was shown on the completion screen (₹50 there,
-        # ₹20 here). One source of truth now; the flat rate remains only for
-        # collections, which have no per-task earnings model yet.
-        from delivery.models import DeliveryEarnings
+        # One definition, shared with the finance view that actually pays this out
+        # (`reports/accounting_views.py`). The two used to compute pay differently —
+        # the agent's own screen read the DeliveryEarnings ledger while finance
+        # invented ₹20 × delivered-count — so an agent and the person paying them
+        # could read different numbers off the same data.
+        #
+        # Note this drops the `released=True` filter. Nothing ever writes
+        # `released=False`, so it never excluded anything; keeping it implied a
+        # paid/unpaid distinction the data does not support.
+        from .earnings import breakdown
 
-        delivery_pay = (
-            DeliveryEarnings.objects.filter(
-                agent=request.user, released=True
-            ).aggregate(total=Sum("total"))["total"]
-            or ZERO
-        )
-        collections = _collections_done(request.user)
-        base = delivery_pay + collections * PER_COLLECTION
-        incentives = (
-            AgentIncentive.objects.filter(agent=request.user).aggregate(
-                total=Sum("amount")
-            )["total"]
-            or ZERO
-        )
-        total = base + incentives
-        data = {"base": base, "incentives": incentives, "total": total}
+        b = breakdown(request.user)
+        data = {
+            "base": b["base"],
+            "incentives": b["incentives"],
+            "total": b["total"],
+        }
         return Response(AgentEarningsSerializer(data).data)
 
 

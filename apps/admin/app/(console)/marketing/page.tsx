@@ -13,6 +13,7 @@ import { ImageUpload } from "@/components/image-upload";
 import { BannerCropDialog, type CropRect } from "@/components/banner-cropper";
 import { DataTable } from "@/components/data-table";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { HomeScreenTab } from "@/components/marketing/home-screen-tab";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -99,15 +100,17 @@ export default function MarketingPage() {
   const [tab, setTab] = React.useState("offers");
   return (
     <>
-      <PageHeader title="Marketing" description="Banners, deals, coupons and customer campaigns." />
+      <PageHeader title="Marketing" description="Banners, deals, coupons, home screen and customer campaigns." />
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
           <TabsTrigger value="offers">Banners & Deals</TabsTrigger>
           <TabsTrigger value="coupons">Coupons</TabsTrigger>
+          <TabsTrigger value="home">Home Screen</TabsTrigger>
           <TabsTrigger value="notify">Campaigns</TabsTrigger>
         </TabsList>
         <TabsContent value="offers"><OffersTab active={tab === "offers"} /></TabsContent>
         <TabsContent value="coupons"><CouponsTab active={tab === "coupons"} /></TabsContent>
+        <TabsContent value="home"><HomeScreenTab active={tab === "home"} /></TabsContent>
         <TabsContent value="notify"><CampaignTab active={tab === "notify"} /></TabsContent>
       </Tabs>
     </>
@@ -228,16 +231,15 @@ function OffersTab({ active }: { active: boolean }) {
   }
 
   /** Delete a banner. Served banners are archived server-side so the
-   *  impression/click history behind past reporting survives. */
+   *  impression/click history behind past reporting survives. The server decides
+   *  which of the two happened and says so — this used to guess from
+   *  `impressions > 0` alone and got it wrong for a banner archived on its
+   *  clicks or events. */
   async function remove(offer: Offer) {
     setBusy(true);
     try {
-      await api.del(`/admin/marketing/offers/${offer.id}`);
-      toast.success(
-        offer.impressions > 0
-          ? "Banner removed. Its performance history was kept for reporting."
-          : "Banner deleted."
-      );
+      const res = await api.delWithMessage(`/admin/marketing/offers/${offer.id}`);
+      toast.success(res.message || "Banner deleted.");
       qc.invalidateQueries({ queryKey: ["mkt", "offers"] });
       setConfirmDelete(null);
       setOpen(false);
@@ -800,9 +802,20 @@ function CouponsTab({ active }: { active: boolean }) {
     (body: Partial<Coupon>) => (editing ? api.patch(`/admin/marketing/coupons/${editing.id}`, body) : api.post("/admin/marketing/coupons", body)),
     { invalidate: [["mkt", "coupons"]], successMessage: "Saved.", onDone: () => setOpen(false) }
   );
+  // A coupon that has ever been redeemed is deactivated, not deleted (the
+  // redemption history accounting reconciles against cascades off it). It stays
+  // in the list afterwards, so a flat "Coupon deleted." reads as a failed
+  // delete — report what the server actually did.
   const remove = useApiMutation(
-    () => api.del(`/admin/marketing/coupons/${editing!.id}`),
-    { invalidate: [["mkt", "coupons"]], successMessage: "Coupon deleted.", onDone: () => { setConfirmDelete(false); setOpen(false); } }
+    () => api.delWithMessage(`/admin/marketing/coupons/${editing!.id}`),
+    {
+      invalidate: [["mkt", "coupons"]],
+      onDone: (res) => {
+        toast.success(res.message || "Coupon deleted.");
+        setConfirmDelete(false);
+        setOpen(false);
+      },
+    }
   );
   const [confirmDelete, setConfirmDelete] = React.useState(false);
   function openCreate() { setEditing(null); setForm({ discountType: "percent", isActive: true }); setOpen(true); }

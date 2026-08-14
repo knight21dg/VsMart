@@ -261,6 +261,10 @@ class StockTransferCompleteView(APIView):
 def _complete_transfer(transfer, user):
     InventoryService.transfer(
         transfer.product,
+        # The pack that was chosen when the transfer was raised. `transfer()`
+        # has always taken this; nothing passed it, so every transfer moved the
+        # `variant=NULL` unallocated pool regardless of what the operator picked.
+        variant=transfer.variant,
         from_warehouse=transfer.from_warehouse,
         to_warehouse=transfer.to_warehouse,
         quantity=transfer.quantity,

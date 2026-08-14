@@ -12,6 +12,7 @@ from core.renderers import SnakeEnvelopeJSONRenderer
 from . import otp
 from .models import AccountDeletionRequest, DeviceToken, Role, User
 from .serializers import (
+    ChangePasswordSerializer,
     DeletionRequestSerializer,
     DeviceTokenSerializer,
     ForgotPasswordSerializer,
@@ -22,7 +23,7 @@ from .serializers import (
     UserSerializer,
     VerifyOtpSerializer,
 )
-from .services import get_or_create_customer, issue_tokens
+from .services import get_or_create_customer, issue_tokens, record_audit
 
 
 class SendOtpView(APIView):
@@ -141,6 +142,57 @@ class ResetPasswordView(APIView):
         user.set_password(data["new_password"])
         user.save(update_fields=["password"])
         return Response(ok("PASSWORD_RESET_OK"))
+
+
+#: Roles that sign in with an email + password. Customer and agent accounts are
+#: phone-OTP-only and are created with NO password at all —
+#: ``has_usable_password()`` cannot gate this, because Django reports an unset
+#: (blank) password as *usable* unless ``set_unusable_password()`` was called,
+#: which nothing in those creation paths does. Gate by role instead. (Same trap
+#: documented on ``ResetPasswordView``.)
+PASSWORD_LOGIN_ROLES = (Role.SUPERADMIN, Role.ADMIN, Role.STORE_STAFF)
+
+
+class ChangePasswordView(APIView):
+    """Change your own password while signed in.
+
+    There was no way to do this anywhere in the product: the only route to a new
+    password was the signed-*out* forgot-password flow, which needs an OTP to the
+    account's phone — useless to an admin who simply wants to rotate a password
+    they already know, and impossible for a store account whose registered phone
+    has changed hands.
+
+    Deliberately does NOT invalidate the caller's session: this is a voluntary
+    rotation, and signing someone out of the console mid-task to prove a point
+    about credentials is hostile. A compromised account is what logout +
+    blacklisting is for.
+    """
+
+    permission_classes = [IsAuthenticated]
+    renderer_classes = [SnakeEnvelopeJSONRenderer]
+    throttle_classes = [ScopedRateThrottle]
+    # Shares the OTP scope: password guessing is the same class of abuse as OTP
+    # brute force, and this endpoint takes the *current* password as input.
+    throttle_scope = "otp"
+
+    def post(self, request):
+        from core.app_errors import AppError, ok
+
+        user = request.user
+        if user.role not in PASSWORD_LOGIN_ROLES:
+            raise AppError("PASSWORD_LOGIN_UNAVAILABLE")
+
+        s = ChangePasswordSerializer(data=request.data)
+        s.is_valid(raise_exception=True)
+        if not user.check_password(s.validated_data["current_password"]):
+            # Audited as a security event via the catalog's `security` flag —
+            # repeated failures here are worth seeing in the trail.
+            raise AppError("CURRENT_PASSWORD_WRONG")
+
+        user.set_password(s.validated_data["new_password"])
+        user.save(update_fields=["password"])
+        record_audit(user, "auth.password_change", target=user)
+        return Response(ok("PASSWORD_CHANGED"))
 
 
 class AccountDeletionRequestView(APIView):

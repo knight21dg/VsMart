@@ -22,6 +22,9 @@ urlpatterns = [
     path("store/permissions", views.StorePermissionCatalogView.as_view()),
     path("store/staff", views.StoreStaffListView.as_view()),
     path("store/staff/attendance", views.StoreAttendanceView.as_view()),
+    # `me` must precede the <str:action> catch-all or it would be routed to the
+    # check-in/check-out handler and rejected as an unknown action.
+    path("store/staff/attendance/me", views.StoreMyAttendanceView.as_view()),
     path("store/staff/attendance/<str:action>", views.StoreAttendanceActionView.as_view()),
     path("store/staff/<int:staff_id>", views.StoreStaffDetailView.as_view()),
 

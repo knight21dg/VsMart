@@ -170,25 +170,46 @@ class AdminOfferDetailView(RetrieveUpdateDestroyAPIView):
         _reconcile_state(self, offer)
         record_audit(self.request.user, "offer.update", target=offer, after={"title": offer.title})
 
-    def perform_destroy(self, offer):
-        """Delete a banner.
+    def destroy(self, request, *args, **kwargs):
+        """Delete a banner, and say which of the two things happened.
 
         A banner that has ever been served is **archived**, not row-deleted:
         ``BannerEvent`` cascades off this row, so a hard delete would silently
         destroy the impression/click history behind past campaign reporting.
         A banner that never ran has nothing to preserve, so it is really deleted.
+
+        Returns 200 + a coded message rather than a bare 204. With a 204 the
+        console had to re-derive the archive rule itself to word its toast, and
+        its copy of the rule was already wrong — it checked impressions only,
+        so a banner archived for its clicks or events was announced as deleted.
+        One owner for the rule, and the outcome travels with the response.
         """
+        offer = self.get_object()
         if offer.impressions or offer.clicks or offer.events.exists():
             offer.state = Offer.State.ARCHIVED
             offer.is_active = False
             offer.deleted_at = timezone.now()
             offer.save(update_fields=["state", "is_active", "deleted_at"])
-            record_audit(self.request.user, "offer.archive", target=offer,
+            record_audit(request.user, "offer.archive", target=offer,
                          after={"reason": "delete requested; history preserved"})
-            return
-        record_audit(self.request.user, "offer.delete", target=offer,
+            return Response(ok(
+                "RECORD_ARCHIVED",
+                message=(
+                    f"{offer.title} has been served to customers, so it was "
+                    f"archived instead of deleted. It no longer shows, and its "
+                    f"performance history is kept for reporting."
+                ),
+                data={"id": str(offer.id), "outcome": "archived", "isActive": False},
+            ))
+        record_audit(request.user, "offer.delete", target=offer,
                      after={"title": offer.title})
+        title, offer_id = offer.title, str(offer.id)
         offer.delete()
+        return Response(ok(
+            "RECORD_DELETED",
+            message=f"{title} has been deleted.",
+            data={"id": offer_id, "outcome": "deleted"},
+        ))
 
 
 class AdminOfferImageView(APIView):
@@ -347,25 +368,45 @@ class AdminCouponDetailView(RetrieveUpdateDestroyAPIView):
         coupon = serializer.save()
         record_audit(self.request.user, "coupon.update", target=coupon, after={"code": coupon.code})
 
-    def perform_destroy(self, coupon):
-        """Delete a coupon.
+    def destroy(self, request, *args, **kwargs):
+        """Delete a coupon, and say which of the two things happened.
 
         A coupon that has ever been redeemed is **deactivated**, not row-deleted:
         ``CouponRedemption`` cascades off this row, so a hard delete would wipe
         the redemption history that accounting reconciles discounts against —
         while the console's own dialog promises those records are kept. Mirrors
         the banner archive path above. An unredeemed coupon is really deleted.
+
+        Like the store and zone deletes, this returns 200 + a coded message
+        instead of a bare 204: "Coupon deleted" over a code that is still in the
+        list (deactivated, redemptions intact) reads as a bug to the operator.
         """
-        if coupon.redemptions.exists():
+        coupon = self.get_object()
+        redeemed = coupon.redemptions.count()
+        if redeemed:
             coupon.is_active = False
             coupon.save(update_fields=["is_active"])
-            record_audit(self.request.user, "coupon.deactivate", target=coupon,
+            record_audit(request.user, "coupon.deactivate", target=coupon,
                          after={"code": coupon.code,
                                 "reason": "delete requested; redemptions preserved"})
-            return
-        record_audit(self.request.user, "coupon.delete", target=coupon,
+            return Response(ok(
+                "RECORD_DEACTIVATED",
+                message=(
+                    f"{coupon.code} has been redeemed {redeemed} time(s), so it was "
+                    f"deactivated instead of deleted. It no longer validates at "
+                    f"checkout and its redemption history is intact."
+                ),
+                data={"id": str(coupon.id), "outcome": "deactivated", "isActive": False},
+            ))
+        record_audit(request.user, "coupon.delete", target=coupon,
                      after={"code": coupon.code})
+        code, coupon_id = coupon.code, str(coupon.id)
         coupon.delete()
+        return Response(ok(
+            "RECORD_DELETED",
+            message=f"Coupon {code} has been deleted.",
+            data={"id": coupon_id, "outcome": "deleted"},
+        ))
 
 
 class NotificationCampaignView(APIView):
