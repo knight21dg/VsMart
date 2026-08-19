@@ -268,6 +268,68 @@ class ZoneStoreDeletionContractTests(TestCase):
         # The order keeps its zone attribution — that is the whole point.
         self.assertEqual(Order.objects.filter(zone=zone).count(), 1)
 
+    def test_force_delete_is_ignored_on_an_active_zone_with_orders(self):
+        """force=true must not skip the deactivate step on the FIRST delete —
+        only on a zone that's already been through it."""
+        from accounts.models import User
+        from orders.models import Order
+
+        zone = Zone.objects.create(code="ZD3", name="StillActive", is_active=True)
+        customer = User.objects.create(phone="+919000000503", name="Cust", role="customer")
+        Order.objects.create(user=customer, zone=zone)
+
+        r = self.client.delete(f"/api/v1/admin/zones/{zone.id}?force=true")
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertEqual(r.json()["code"], "RECORD_DEACTIVATED")
+        self.assertTrue(Zone.objects.filter(pk=zone.pk).exists())
+
+    def test_force_delete_removes_an_already_deactivated_zone_with_orders(self):
+        from accounts.models import User
+        from orders.models import Order
+
+        zone = Zone.objects.create(code="ZD4", name="Retired", is_active=False)
+        customer = User.objects.create(phone="+919000000504", name="Cust", role="customer")
+        order = Order.objects.create(user=customer, zone=zone)
+
+        r = self.client.delete(f"/api/v1/admin/zones/{zone.id}?force=true")
+        self.assertEqual(r.status_code, 200, r.content)
+        body = r.json()
+        self.assertEqual(body["code"], "RECORD_DELETED")
+        self.assertEqual(body["data"]["ordersDetached"], 1)
+        self.assertFalse(Zone.objects.filter(pk=zone.pk).exists())
+        # The order itself survives — only its zone pointer is cleared (SET_NULL).
+        order.refresh_from_db()
+        self.assertIsNone(order.zone_id)
+
+    def test_deactivated_zone_without_force_still_just_reaffirms_deactivation(self):
+        zone = Zone.objects.create(code="ZD5", name="Retired2", is_active=False)
+        from accounts.models import User
+        from orders.models import Order
+
+        customer = User.objects.create(phone="+919000000505", name="Cust", role="customer")
+        Order.objects.create(user=customer, zone=zone)
+
+        r = self.client.delete(f"/api/v1/admin/zones/{zone.id}")
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertEqual(r.json()["code"], "RECORD_DEACTIVATED")
+        self.assertTrue(Zone.objects.filter(pk=zone.pk).exists())
+
+    def test_zone_orders_export_returns_a_csv_of_its_orders(self):
+        from accounts.models import User
+        from orders.models import Order
+
+        zone = Zone.objects.create(code="ZX1", name="Exportable", is_active=False)
+        customer = User.objects.create(phone="+919000000506", name="Cust Export",
+                                       role="customer")
+        Order.objects.create(user=customer, zone=zone)
+
+        r = self.client.get(f"/api/v1/admin/zones/{zone.id}/orders/export")
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertEqual(r["Content-Type"], "text/csv")
+        body = r.content.decode()
+        self.assertIn("Order Code", body)
+        self.assertIn("Cust Export", body)
+
     def test_duplicate_zone_name_is_refused_with_a_readable_message(self):
         Zone.objects.create(code="ZK1", name="Kakinada", is_active=True)
         r = self.client.post(

@@ -4,11 +4,12 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { type ColumnDef } from "@tanstack/react-table";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Download, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { api } from "@/lib/api/client";
+import { api, API_BASE } from "@/lib/api/client";
 import { useApiMutation } from "@/lib/api/hooks";
 import { useAuth } from "@/lib/auth/auth-context";
+import { getAccessToken } from "@/lib/auth/session";
 import { PageHeader } from "@/components/page-header";
 import { DataTable } from "@/components/data-table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,6 +35,34 @@ export default function ZonesPage() {
   const router = useRouter();
   const canWrite = user?.role === "superadmin";
   const [toDelete, setToDelete] = React.useState<Zone | null>(null);
+  const [exportingId, setExportingId] = React.useState<string | null>(null);
+
+  async function exportZoneOrders(zone: Zone) {
+    setExportingId(zone.id);
+    try {
+      const token = getAccessToken();
+      const res = await fetch(`${API_BASE}/admin/zones/${zone.id}/orders/export`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
+      if (!res.ok) {
+        toast.error(`Export failed (${res.status}).`);
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${zone.code || zone.name}-orders.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error("Couldn't download that zone's order history.");
+    } finally {
+      setExportingId(null);
+    }
+  }
 
   const zones = useQuery({ queryKey: ["admin", "zones"], queryFn: () => api.getPaged<Zone>("/admin/zones") });
   const expansion = useQuery({
@@ -48,7 +77,16 @@ export default function ZonesPage() {
   // just inactive. Toasting a flat "Zone deleted." over that reads as a bug. Use
   // the server's own coded message, which names the outcome and the order count.
   const remove = useApiMutation(
-    (id: string) => api.delWithMessage<{ outcome?: string }>(`/admin/zones/${id}`),
+    (zone: Zone) => {
+      // An inactive zone has already been through the "would deactivate" step
+      // once — this second delete is the explicit, permanent one. force is
+      // harmless to send for an active zone too: the backend only honours it
+      // on a zone that's already inactive, so there's no need to branch here.
+      const qs = zone.isActive ? "" : "?force=true";
+      return api.delWithMessage<{ outcome?: string; ordersDetached?: number }>(
+        `/admin/zones/${zone.id}${qs}`
+      );
+    },
     {
       invalidate: [["admin", "zones"]],
       onDone: (res) => {
@@ -73,6 +111,17 @@ export default function ZonesPage() {
           <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
             <Button variant="ghost" size="icon" onClick={() => router.push(`/zones/${row.original.id}/edit`)} title="Edit zone">
               <Pencil className="size-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => exportZoneOrders(row.original)}
+              disabled={exportingId === row.original.id}
+              title="Download this zone's order history (CSV)"
+            >
+              {exportingId === row.original.id
+                ? <Loader2 className="size-4 animate-spin" />
+                : <Download className="size-4" />}
             </Button>
             <Button variant="ghost" size="icon" onClick={() => setToDelete(row.original)} title="Delete zone">
               <Trash2 className="size-4 text-destructive" />
@@ -128,11 +177,15 @@ export default function ZonesPage() {
         open={!!toDelete}
         onOpenChange={(o) => !o && setToDelete(null)}
         title={`Delete ${toDelete?.name}?`}
-        description="Customers in this zone will lose serviceability."
+        description={
+          toDelete?.isActive
+            ? "Customers in this zone will lose serviceability. If it has order history, it will be deactivated instead of deleted this time — delete it again afterwards to remove it for good."
+            : "This zone is already deactivated. Deleting it now is permanent: its orders keep their own record, but will no longer show this zone. Download the order history first (the ↓ button) if you want to keep it."
+        }
         confirmLabel="Delete"
         destructive
         loading={remove.isPending}
-        onConfirm={() => toDelete && remove.mutate(toDelete.id)}
+        onConfirm={() => toDelete && remove.mutate(toDelete)}
       />
     </div>
   );

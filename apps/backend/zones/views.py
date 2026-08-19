@@ -117,12 +117,23 @@ class AdminZoneViewSet(viewsets.ModelViewSet):
         history stays attributable. A zone that never served an order is really
         deleted. The response says which, because the two outcomes look different
         in the list afterwards.
+
+        ``?force=true`` overrides that guard, but only for a zone that is
+        *already* deactivated — never on the first delete of an active one. That
+        ordering is deliberate: it means the operator has already seen the
+        RECORD_DEACTIVATED response once (and, via the export endpoint below, has
+        had the chance to save the order list) before a second, explicit action
+        detaches it for good. Force on an active zone with orders is silently
+        ignored rather than erroring, so the console can send it unconditionally
+        without branching on state.
         """
         from orders.models import Order
 
         zone = self.get_object()
         order_count = Order.objects.filter(zone=zone).count()
-        if order_count:
+        force = str(request.query_params.get("force", "")).lower() in ("1", "true", "yes")
+
+        if order_count and not (force and not zone.is_active):
             zone.is_active = False
             zone.save(update_fields=["is_active", "updated_at"])
             record_audit(request.user, "zone.deactivate", target=zone,
@@ -133,23 +144,78 @@ class AdminZoneViewSet(viewsets.ModelViewSet):
                 "RECORD_DEACTIVATED",
                 message=(
                     f"{zone.name} has {order_count} order(s) on record, so it was "
-                    f"deactivated instead of deleted. It no longer serves customers."
+                    f"deactivated instead of deleted. It no longer serves customers. "
+                    f"Download its order history, then delete again to remove it for good."
                 ),
                 data={"id": str(zone.id), "outcome": "deactivated", "isActive": False},
             ))
-        record_audit(request.user, "zone.delete", target=zone,
-                     after={"code": zone.code, "name": zone.name})
+
+        audit_action = "zone.force_delete" if order_count else "zone.delete"
+        audit_extra = ({"reason": f"force delete; {order_count} order(s) detached"}
+                       if order_count else {})
+        record_audit(request.user, audit_action, target=zone,
+                     after={"code": zone.code, "name": zone.name, **audit_extra})
         # ZoneEvent.zone is SET_NULL, so the row survives the delete but loses
         # its pointer — carry the identity in the payload or the trail is blank.
         emit_zone_event("zone_deleted", zone=zone, actor=request.user,
                         zone_name=zone.name, zone_code=zone.code)
         name, zone_id = zone.name, str(zone.id)
+        detached = order_count
         zone.delete()
+        message = f"{name} zone has been deleted."
+        if detached:
+            message += f" {detached} order(s) kept their history but no longer show this zone."
         return Response(ok(
             "RECORD_DELETED",
-            message=f"{name} zone has been deleted.",
-            data={"id": zone_id, "outcome": "deleted"},
+            message=message,
+            data={"id": zone_id, "outcome": "deleted", "ordersDetached": detached},
         ))
+
+
+class AdminZoneOrdersExportView(APIView):
+    """CSV of every order a zone has ever served.
+
+    The record an operator needs *before* force-deleting a deactivated zone —
+    ``AdminZoneViewSet.destroy`` with ``force=true`` detaches these orders from
+    the zone permanently (``Order.zone`` is SET_NULL), and there is no way to
+    reconstruct which orders those were afterwards. This is that snapshot.
+    """
+
+    permission_classes = [IsSuperAdmin]
+
+    def get(self, request, zone_id):
+        import csv
+        import io
+
+        from django.http import HttpResponse
+
+        from orders.models import Order
+
+        zone = get_object_or_404(Zone, pk=zone_id)
+        orders = (Order.objects.filter(zone=zone).select_related("user")
+                  .order_by("-created_at"))
+
+        buf = io.StringIO()
+        w = csv.writer(buf)
+        w.writerow(["Order Code", "Placed At", "Status", "Customer Name",
+                    "Customer Phone", "Payment Method", "Subtotal", "GST", "Total"])
+        for o in orders:
+            w.writerow([
+                o.code,
+                o.created_at.isoformat() if o.created_at else "",
+                o.status,
+                getattr(o.user, "name", "") or "",
+                getattr(o.user, "phone", "") or "",
+                o.payment_method,
+                o.subtotal,
+                o.gst,
+                o.total,
+            ])
+
+        resp = HttpResponse(buf.getvalue(), content_type="text/csv")
+        fname = (zone.code or f"zone-{zone.id}").replace(" ", "-")
+        resp["Content-Disposition"] = f'attachment; filename="{fname}-orders.csv"'
+        return resp
 
 
 class AdminStoreViewSet(viewsets.ModelViewSet):
