@@ -73,6 +73,50 @@ class ZoneSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("polygon_geojson has no coordinates.")
         return value
 
+    def validate(self, attrs):
+        """An active zone must be resolvable, or it silently serves nobody.
+
+        `resolve_serviceable_zone` matches a customer by polygon first, then falls
+        back to a radius circle (centre + radius) or a pincode list. A zone
+        carrying none of the three saved happily, listed normally in the console,
+        and answered every serviceability check with `serviceable: false` — which
+        reads as "the app is broken in that area", not "this zone is empty". DRF
+        also drops unknown keys silently, so a field-name slip on the client
+        (`polygon` instead of `polygonGeojson`) produced the same dead zone.
+        """
+        def resolved(field):
+            # PATCH sends only changed fields — fall back to the stored value.
+            if field in attrs:
+                return attrs[field]
+            return getattr(self.instance, field, None)
+
+        if not resolved("is_active"):
+            return attrs          # an inactive zone is allowed to be a stub
+
+        # Only gate CREATE, and the moment an existing zone is switched ON. Zones
+        # predating this rule may legitimately have no service area, and they must
+        # stay editable — otherwise changing a delivery fee on one is impossible
+        # (see ZoneStoreDeletionContractTests.test_codeless_zone_can_still_be_edited).
+        if self.instance is not None and not (
+            attrs.get("is_active") and not self.instance.is_active
+        ):
+            return attrs
+
+        has_polygon = bool(resolved("polygon_geojson"))
+        has_circle = (resolved("center_lat") is not None
+                      and resolved("center_lng") is not None
+                      and resolved("radius_km"))
+        has_pincodes = bool(resolved("pincodes"))
+        if not (has_polygon or has_circle or has_pincodes):
+            raise serializers.ValidationError({
+                "polygon_geojson": [
+                    "An active zone needs a service area: draw a polygon, or set "
+                    "center_lat/center_lng with a radius, or list pincodes. "
+                    "Without one it can never match a customer."
+                ]
+            })
+        return attrs
+
 
 class StoreSerializer(serializers.ModelSerializer):
     id = serializers.CharField(read_only=True)

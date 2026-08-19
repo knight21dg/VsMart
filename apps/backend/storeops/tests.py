@@ -1508,19 +1508,79 @@ class BatchReassignTests(TestCase):
         self.assertEqual(
             Order.objects.filter(store=self.store, status="ready_for_dispatch").count(), 2)
 
-    def test_sla_sweep_reassigns_stale(self):
+    def _age(self, batch, minutes=20, field="assigned_at"):
         from datetime import timedelta
+
         from django.utils import timezone
-        from delivery import assignment_engine as engine
         from delivery.models import DeliveryBatch
+
+        DeliveryBatch.objects.filter(id=batch.id).update(
+            **{field: timezone.now() - timedelta(minutes=minutes)})
+
+    def test_sla_sweep_reassigns_stale(self):
+        """An OFFERED batch nobody answered is re-offered once the SLA passes.
+
+        The window runs from `assigned_at` (when a rider was offered it), not
+        `created_at` (when it was planned) — a batch that sat queued should not
+        arrive with its accept window already part-spent.
+        """
+        from delivery import assignment_engine as engine
         b = self._assign()
-        # Make it stale (created 20 min ago) and drop the other agent so it re-queues.
-        DeliveryBatch.objects.filter(id=b.id).update(
-            created_at=timezone.now() - timedelta(minutes=20))
+        self._age(b, minutes=20)
         n = engine.sweep_stale_batches(self.store)
         self.assertEqual(n, 1)
         b.refresh_from_db()
         self.assertEqual(b.status, "cancelled")
+
+    def test_sla_sweep_leaves_accepted_batches_alone(self):
+        """Once a rider accepts, the job is theirs — the sweep must not take it back."""
+        from delivery import assignment_engine as engine
+        b = self._assign()
+        r = client_for(b.agent).post(
+            f"/api/v1/deliveries/batch/{b.id}/accept", {}, format="json")
+        self.assertEqual(r.status_code, 200)
+        b.refresh_from_db()
+        self.assertEqual(b.status, "accepted")
+
+        self._age(b, minutes=120)          # far past any SLA
+        self.assertEqual(engine.sweep_stale_batches(self.store), 0)
+        b.refresh_from_db()
+        self.assertEqual(b.status, "accepted")
+
+    def test_sla_sweep_does_not_renotify_forever(self):
+        """Regression: one delivery job must not ring an agent on every tick.
+
+        The sweep matched on `created_at` with `accepted` included, so every
+        dispatch tick reclaimed and re-assigned the same job — a fresh "New
+        delivery assigned" push each time, bouncing between riders indefinitely.
+        """
+        from delivery import assignment_engine as engine
+        from delivery.models import DeliveryBatch
+        from notifications.models import Notification
+
+        def assign_notifications():
+            return Notification.objects.filter(title="New delivery assigned").count()
+
+        def live_batch():
+            return (DeliveryBatch.objects
+                    .filter(store=self.store)
+                    .exclude(status__in=["cancelled", "completed", "failed"])
+                    .order_by("-id").first())
+
+        b = self._assign()
+        client_for(b.agent).post(
+            f"/api/v1/deliveries/batch/{b.id}/accept", {}, format="json")
+        baseline = assign_notifications()
+
+        for _ in range(5):                 # five dispatch ticks, all past the SLA
+            current = live_batch()
+            if current is not None:
+                self._age(current, minutes=60)
+            engine.sweep_stale_batches(self.store)
+
+        self.assertEqual(
+            assign_notifications(), baseline,
+            "an accepted delivery was re-assigned and re-notified by the SLA sweep")
 
 
 class StoreCatalogManagementTests(TestCase):

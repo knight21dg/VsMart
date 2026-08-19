@@ -227,12 +227,33 @@ def _seed_tracking_identity(task):
     return task
 
 
-def auto_assign(order, *, by=None):
+def _agents_who_rejected(order):
+    """Agents who have already turned this order down.
+
+    A rejection has to outlive the request that made it. `reject()` called
+    `auto_assign` with no exclusion, and since nothing about the order had
+    changed the rejecting agent was still `ranked[0]` — so the job was re-offered
+    to them inside the same request and Reject appeared to do nothing.
+    """
+    return set(
+        DeliveryAssignmentHistory.objects
+        .filter(task__order=order, action="rejected", agent__isnull=False)
+        .values_list("agent_id", flat=True)
+    )
+
+
+def auto_assign(order, *, by=None, exclude_agent_ids=None):
     """Pick the best-ranked candidate and create a task. Returns the task, or None
-    when no agent is available (caller surfaces AGENT_UNAVAILABLE)."""
+    when no agent is available (caller surfaces AGENT_UNAVAILABLE).
+
+    An agent who already rejected this order is never re-offered it. Returning
+    None leaves the order for the store to place by hand, which is the right
+    outcome once everyone available has declined.
+    """
     dlat, dlng = _dest_coords(order)
     order._dest_lat, order._dest_lng = dlat, dlng
-    agents = candidate_agents(order)
+    blocked = set(exclude_agent_ids or ()) | _agents_who_rejected(order)
+    agents = [a for a in candidate_agents(order) if a.id not in blocked]
     if not agents:
         record_event("delivery_event", {"code": "AGENT_UNAVAILABLE", "order": order.code})
         return None
@@ -330,8 +351,10 @@ def reject(task, agent, reason=""):
     _transition(task, S.REJECTED, actor=agent, note=reason)
     DeliveryAssignmentHistory.objects.create(
         task=task, agent=agent, action="rejected", reason=reason)
-    # Try to auto-reassign to the next best agent.
-    auto_assign(task.order, by=agent)
+    # Try to auto-reassign to the next best agent — never back to the one who just
+    # declined it. Passed explicitly as well as being read from the history row
+    # above, so this does not depend on the order of the two statements.
+    auto_assign(task.order, by=agent, exclude_agent_ids=[agent.id])
     return task
 
 

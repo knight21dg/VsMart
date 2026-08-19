@@ -127,13 +127,27 @@ def _record_assignment(coll, agent, action, by=None, reason=""):
         collection=coll, agent=agent, action=action, by=by, reason=reason)
 
 
-def auto_assign(coll, *, by=None):
+def _agents_who_rejected(coll):
+    """Agents who already turned this collection down — the twin of the
+    delivery-side helper. Without it, `reject()` handed the task straight back to
+    the agent who had just declined it."""
+    return set(
+        CollectionAssignmentHistory.objects
+        .filter(collection=coll, action="rejected", agent__isnull=False)
+        .values_list("agent_id", flat=True)
+    )
+
+
+def auto_assign(coll, *, by=None, exclude_agent_ids=None):
     """Assign to a free agent (lowest open-collection load among them); only
     when every candidate is already working does this fall back to whoever's
     current workload (across delivery/collections/verification) will clear
-    soonest — see agents.dispatch.rank_for_new_task."""
+    soonest — see agents.dispatch.rank_for_new_task.
+
+    An agent who already rejected this collection is never re-offered it."""
     store = collection_store(coll)
-    agents = candidate_agents(store=store)
+    blocked = set(exclude_agent_ids or ()) | _agents_who_rejected(coll)
+    agents = [a for a in candidate_agents(store=store) if a.id not in blocked]
     if not agents:
         from agents.candidates import unassignable_reason
 
@@ -211,7 +225,8 @@ def reject(coll, agent, reason=""):
     coll.agent = None
     coll.save(update_fields=["agent", "updated_at"])
     _transition(coll, S.REQUESTED, actor=agent, note=reason)
-    auto_assign(coll, by=agent)  # back to the pool → next best agent
+    # Back to the pool → next best agent, never the one who just declined it.
+    auto_assign(coll, by=agent, exclude_agent_ids=[agent.id])
     return coll
 
 

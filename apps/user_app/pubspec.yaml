@@ -88,12 +88,19 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^5.0.0
 
-  # Code generation
+  # Code generation. Only freezed + json_serializable are actually used — every
+  # committed *.freezed.dart / *.g.dart is produced by those two.
+  #
+  # riverpod_generator and hive_generator were declared but never used (no
+  # @riverpod / @Riverpod annotation and no @HiveType / @HiveField anywhere in
+  # lib/), and they are mutually unsatisfiable: riverpod_generator wants
+  # source_gen ^2.0.0 while hive_generator 2.0.1 is still on source_gen ^1.0.0.
+  # That made `flutter pub get` fail outright on current Dart SDKs — the app
+  # could not be built or tested at all. Removing them changes no runtime
+  # behaviour and regenerates nothing differently.
   build_runner: ^2.4.13
   freezed: ^2.5.7
   json_serializable: ^6.9.0
-  riverpod_generator: ^2.6.3
-  hive_generator: ^2.0.1
 
 flutter:
   uses-material-design: true

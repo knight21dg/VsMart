@@ -257,7 +257,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               const SizedBox(width: 12),
               Expanded(
                 child: _InfoTile(
-                  title: agentMoney(earnings?.total ?? 0),
+                  // `earnedToday`, NOT `total`. This tile rendered the LIFETIME
+                  // total under a "today" label, so a rider who had earned
+                  // nothing all day still saw a large number and it never moved
+                  // when they completed a drop. A dash when the server didn't
+                  // report a today figure — better than a confident zero.
+                  title: (earnings?.hasToday ?? false)
+                      ? agentMoney(earnings!.earnedToday)
+                      : '—',
                   subtitle: 'Earned today',
                   // Was wrongly opening PerformanceScreen — an "earnings"
                   // tile should land on the earnings breakdown.

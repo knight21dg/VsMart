@@ -262,22 +262,46 @@ class AgentEarnings extends Equatable {
     required this.base,
     required this.incentives,
     required this.total,
+    this.todayTotal,
+    this.todayDeliveries = 0,
+    this.todayCollections = 0,
   });
 
+  /// Lifetime figures — what the Earnings screen shows, labelled as totals.
   final double base;
   final double incentives;
   final double total;
+
+  /// Today only. Null against a backend that predates these fields, which is
+  /// why [hasToday] exists — better a dash than a confidently wrong number.
+  final double? todayTotal;
+  final int todayDeliveries;
+  final int todayCollections;
+
+  /// What the dashboard's "Earned today" tile must render.
+  ///
+  /// That tile used to show [total] — a LIFETIME figure under a "today" label —
+  /// so a rider who had earned nothing all day still saw a large number, and it
+  /// never moved when they completed a drop.
+  double get earnedToday => todayTotal ?? 0;
+
+  /// Whether the server actually reported a today figure.
+  bool get hasToday => todayTotal != null;
 
   factory AgentEarnings.fromMap(Map<String, dynamic> m) {
     return AgentEarnings(
       base: _double(m['base']),
       incentives: _double(m['incentives']),
       total: _double(m['total']),
+      todayTotal: m['todayTotal'] == null ? null : _double(m['todayTotal']),
+      todayDeliveries: (m['todayDeliveries'] as num?)?.toInt() ?? 0,
+      todayCollections: (m['todayCollections'] as num?)?.toInt() ?? 0,
     );
   }
 
   @override
-  List<Object?> get props => [base, incentives, total];
+  List<Object?> get props =>
+      [base, incentives, total, todayTotal, todayDeliveries, todayCollections];
 }
 
 /// Thin repository over [Api] for the dashboard endpoints.

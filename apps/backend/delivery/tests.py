@@ -622,3 +622,58 @@ class AdminDeliveryStatusGuardTests(TestCase):
         self.assertEqual(r.status_code, 200, r.data)
         self.order.refresh_from_db()
         self.assertEqual(self.order.status, "out_for_delivery")
+class RejectDoesNotBounceBackTests(TestCase):
+    """Rejecting a delivery must not hand it straight back to the same agent.
+
+    `reject()` called `auto_assign` with no exclusion. Nothing about the order had
+    changed, so the rejecting agent was still the best-ranked candidate and got the
+    job re-offered inside the same request — Reject appeared to do nothing, and the
+    full-screen assignment alert rang again immediately.
+    """
+
+    def setUp(self):
+        self.a = User.objects.create(phone="+919777000301", name="Rider A", role="agent")
+        self.b = User.objects.create(phone="+919777000302", name="Rider B", role="agent")
+        self.customer = User.objects.create(phone="+919000000301", name="Cust", role="customer")
+
+    def test_sole_agent_is_not_re_offered_after_rejecting(self):
+        self.b.is_active = False          # leave exactly one candidate
+        self.b.save(update_fields=["is_active"])
+        order = _order(self.customer)
+        task = services.auto_assign(order)
+        self.assertEqual(task.agent_id, self.a.id)
+
+        services.reject(task, self.a, reason="too far")
+
+        task.refresh_from_db()
+        self.assertEqual(task.status, "rejected")
+        # No live task may exist for this order — it goes back to the store, and
+        # must NOT be re-offered to the agent who just declined it.
+        live = DeliveryTask.objects.filter(order=order).exclude(status="rejected")
+        self.assertFalse(
+            live.exists(),
+            f"order was re-assigned after the only agent rejected it: "
+            f"{[(t.id, t.agent_id, t.status) for t in live]}")
+
+    def test_rejected_job_moves_to_a_different_agent(self):
+        order = _order(self.customer)
+        task = services.auto_assign(order)
+        first = task.agent
+
+        services.reject(task, first, reason="busy")
+
+        live = DeliveryTask.objects.filter(order=order).exclude(status="rejected").first()
+        self.assertIsNotNone(live, "the job should still be offered to someone else")
+        self.assertNotEqual(live.agent_id, first.id)
+
+    def test_rejection_survives_a_later_auto_assign(self):
+        """A rejection is durable — a later dispatch pass must still skip that agent."""
+        order = _order(self.customer)
+        task = services.auto_assign(order)
+        first = task.agent
+        services.reject(task, first, reason="busy")
+        DeliveryTask.objects.filter(order=order).exclude(status="rejected").delete()
+
+        again = services.auto_assign(order)
+        if again is not None:
+            self.assertNotEqual(again.agent_id, first.id)

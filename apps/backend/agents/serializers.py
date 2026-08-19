@@ -38,9 +38,21 @@ class AgentPerformanceSerializer(serializers.Serializer):
 
 
 class AgentEarningsSerializer(serializers.Serializer):
+    # Lifetime — what the Earnings screen shows, and labels honestly as totals.
     base = serializers.DecimalField(max_digits=12, decimal_places=2)
     incentives = serializers.DecimalField(max_digits=12, decimal_places=2)
     total = serializers.DecimalField(max_digits=12, decimal_places=2)
+    # Today only — what the dashboard's "Earned today" tile must render. Added
+    # alongside rather than changing the three above, so a shipped APK reading
+    # `total` keeps working until it is updated.
+    today_base = serializers.DecimalField(
+        max_digits=12, decimal_places=2, required=False)
+    today_incentives = serializers.DecimalField(
+        max_digits=12, decimal_places=2, required=False)
+    today_total = serializers.DecimalField(
+        max_digits=12, decimal_places=2, required=False)
+    today_deliveries = serializers.IntegerField(required=False)
+    today_collections = serializers.IntegerField(required=False)
 
 
 class AgentIncentiveSerializer(serializers.ModelSerializer):

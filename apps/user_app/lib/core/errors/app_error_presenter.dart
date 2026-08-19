@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/routes/route_paths.dart';
+import '../../app/theme/theme_extensions.dart';
 import '../../features/auth/presentation/providers/session_provider.dart';
 import '../extensions/context_extensions.dart';
 import 'failures.dart';
@@ -36,7 +37,38 @@ void presentFailure(
         // failed address save looked like: the POST 401'd, the presenter pushed
         // `/login`, the redirect turned it into `/home`, and the customer landed
         // on an empty screen with their address unsaved and no error shown.
+        //
+        // Navigating is not enough on its own — it also has to SAY WHY. Moving
+        // the user silently is what made a blocked checkout look like a dead
+        // button: MIN_ORDER_NOT_MET carries `navigate -> /cart`, so the order
+        // just didn't place, the customer was dropped back on the cart, and
+        // nothing ever told them the area has a minimum order. Every
+        // navigate-action code had the same problem.
+        //
+        // The message must not DELAY the navigation though — a blocking dialog
+        // here would strand an expired session on the failed screen until the
+        // user tapped OK. So: capture the messenger first (it lives above the
+        // router, so it survives the route change), navigate, then speak. The
+        // message lands on the destination.
+        final messenger = context.messenger;
+        final text = _snackText(context, failure);
+        final isError =
+            failure.severity == 'error' || failure.severity == 'critical';
+        // Resolved defensively: `context.vsColors` null-asserts the VSColors
+        // theme extension, which is absent anywhere the full app theme isn't
+        // installed — throwing on the way to showing an error message.
+        final dangerColor = Theme.of(context).extension<VSColors>()?.danger ??
+            Theme.of(context).colorScheme.error;
         context.goNamed(routeName);
+        messenger
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(
+              content: Text(text),
+              backgroundColor: isError ? dangerColor : null,
+              duration: const Duration(seconds: 6),
+            ),
+          );
         return;
       }
       // No known mapping -> fall through to a message.

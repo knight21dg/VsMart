@@ -164,10 +164,22 @@ class AgentEarningsView(APIView):
         from .earnings import breakdown
 
         b = breakdown(request.user)
+        # TODAY, reported alongside the lifetime figures rather than replacing
+        # them. The Earnings screen reads base/incentives/total and labels them
+        # honestly as totals; the dashboard tile says "Earned today" and needs a
+        # day-scoped number. It was rendering `total`, so it showed a lifetime
+        # figure under a "today" label and never moved when a rider completed a
+        # drop. Added as new fields so a shipped APK reading `total` keeps working.
+        t = breakdown(request.user, on=timezone.localdate())
         data = {
             "base": b["base"],
             "incentives": b["incentives"],
             "total": b["total"],
+            "today_base": t["base"],
+            "today_incentives": t["incentives"],
+            "today_total": t["total"],
+            "today_deliveries": t["deliveries"],
+            "today_collections": t["collections"],
         }
         return Response(AgentEarningsSerializer(data).data)
 

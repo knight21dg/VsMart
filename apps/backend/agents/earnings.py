@@ -59,24 +59,38 @@ def _collections_qs(agent=None):
     return qs.filter(agent=agent) if agent is not None else qs
 
 
-def breakdown(agent):
-    """What one agent has earned. Amounts are ACCRUED, not paid."""
+def breakdown(agent, on=None):
+    """What one agent has earned. Amounts are ACCRUED, not paid.
+
+    Pass ``on`` (a date) to scope every component to that single day. The agent
+    dashboard's tile is labelled "Earned today" but rendered the lifetime
+    ``total``, so a rider who had earned nothing that day still saw a large
+    number — and it never moved when they completed a drop.
+
+    The day is taken from when each component was *earned*: ``released_at`` for a
+    delivery (written at the moment of delivery by ``compute_earnings``),
+    ``collected_at`` for a collection, ``created_at`` for an incentive.
+    """
     from delivery.models import DeliveryEarnings
 
-    delivery = (
-        DeliveryEarnings.objects.filter(agent=agent).aggregate(s=Sum("total"))["s"]
-        or ZERO
-    )
-    deliveries = DeliveryEarnings.objects.filter(agent=agent).count()
-    collections = _collections_qs(agent).count()
-    collection_pay = collections * collection_fee()
+    earnings_qs = DeliveryEarnings.objects.filter(agent=agent)
+    collections_qs = _collections_qs(agent)
 
     from .models import AgentIncentive
 
-    incentives = (
-        AgentIncentive.objects.filter(agent=agent).aggregate(s=Sum("amount"))["s"]
-        or ZERO
-    )
+    incentives_qs = AgentIncentive.objects.filter(agent=agent)
+
+    if on is not None:
+        earnings_qs = earnings_qs.filter(released_at__date=on)
+        collections_qs = collections_qs.filter(collected_at__date=on)
+        incentives_qs = incentives_qs.filter(created_at__date=on)
+
+    delivery = earnings_qs.aggregate(s=Sum("total"))["s"] or ZERO
+    deliveries = earnings_qs.count()
+    collections = collections_qs.count()
+    collection_pay = collections * collection_fee()
+
+    incentives = incentives_qs.aggregate(s=Sum("amount"))["s"] or ZERO
     base = delivery + collection_pay
     return {
         "deliveries": deliveries,

@@ -474,14 +474,27 @@ def reassign_batch(batch, *, reason="", by=None, exclude_agent_ids=None):
     return run_auto_assign(store, by=by, exclude_agent_ids=exclude_agent_ids)
 
 
-# Auto-release a batch an agent hasn't picked up within this many minutes (nothing
-# is delivered yet at assigned/accepted, so reassigning is safe).
+# Auto-release a batch an agent was OFFERED but never answered, after this many
+# minutes. Only `assigned` (offered, unanswered) qualifies — see sweep_stale_batches.
 STALE_ACCEPT_MIN = 12
 
 
 def sweep_stale_batches(store):
-    """SLA guard: reassign batches stuck un-picked-up past the accept SLA. Returns
-    the count reassigned."""
+    """SLA guard: re-offer batches an agent never answered. Returns the count reassigned.
+
+    Two things here are deliberate, and both were bugs:
+
+    * **`assigned` only, never `accepted`.** An accepted batch has a rider already
+      riding to the store. Reclaiming it took the job out from under them, and
+      because reassigning mints a *fresh* batch with a fresh clock, the same job
+      bounced between riders every SLA window indefinitely — a new "New delivery
+      assigned" push each time, and that push opens a full-screen alert that rings
+      until answered. Once a rider accepts, the job is theirs until pickup,
+      abandon, or a manual reassign from the dispatch board.
+    * **Measured from `assigned_at`, not `created_at`.** `created_at` is when the
+      batch was *planned*; one that sat queued before anyone was offered it
+      arrived with its accept window already part-spent.
+    """
     from datetime import timedelta
 
     from delivery.models import DeliveryBatch
@@ -489,11 +502,14 @@ def sweep_stale_batches(store):
     cutoff = timezone.now() - timedelta(minutes=STALE_ACCEPT_MIN)
     stale = list(
         DeliveryBatch.objects.filter(
-            store=store, status__in=["assigned", "accepted"], created_at__lt=cutoff
+            store=store,
+            status=DeliveryBatch.Status.ASSIGNED,
+            assigned_at__isnull=False,
+            assigned_at__lt=cutoff,
         )
     )
     for b in stale:
         agent_id = b.agent_id
-        reassign_batch(b, reason="SLA: not picked up in time",
+        reassign_batch(b, reason="SLA: not accepted in time",
                        exclude_agent_ids=[agent_id] if agent_id else None)
     return len(stale)

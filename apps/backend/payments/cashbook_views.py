@@ -82,6 +82,19 @@ class AgentCashView(APIView):
         }))
 
     def post(self, request):
+        # A hand-over must name the collections it covers. `_claim_collections`
+        # cross-checks the declared amount against those rows — but it returns
+        # early when the list is empty, so a request with no collections skips
+        # that check entirely and books a self-declared figure against nothing.
+        # It reduces no one's cash-in-hand, so the cash book and the ledger drift
+        # apart with no shortfall raised anywhere.
+        collection_ids = (request.data.get("collectionIds")
+                          or request.data.get("collection_ids") or [])
+        if not collection_ids:
+            raise AppError(
+                "VALIDATION_ERROR",
+                message="Select the collections this hand-over covers.",
+            )
         deposit = create_deposit(
             request.user,
             amount=request.data.get("amount"),
@@ -89,8 +102,7 @@ class AgentCashView(APIView):
             deposited_on=request.data.get("depositedOn")
             or request.data.get("deposited_on"),
             reference=request.data.get("reference") or "",
-            collection_ids=request.data.get("collectionIds")
-            or request.data.get("collection_ids") or [],
+            collection_ids=collection_ids,
             notes=request.data.get("notes") or "",
             actor=request.user,
         )
