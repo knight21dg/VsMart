@@ -215,6 +215,66 @@ class AdminStoreCreateTests(TestCase):
         self.zone.refresh_from_db()
         self.assertIsNone(self.zone.store_id)
 
+    def test_create_store_links_every_zone_in_the_list(self):
+        """A store legitimately serves several zones — `zones` (plural) replaces
+        the old one-zone-only `zone` field."""
+        second = Zone.objects.create(code="ZN2", name="South", is_active=True)
+
+        r = self.client.post(
+            "/api/v1/admin/stores",
+            {"code": "S3", "name": "Multi Store", "zones": [str(self.zone.id), str(second.id)]},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 201, r.content)
+        store_id = r.json()["data"]["id"]
+
+        self.zone.refresh_from_db()
+        second.refresh_from_db()
+        self.assertEqual(self.zone.store_id, int(store_id))
+        self.assertEqual(second.store_id, int(store_id))
+
+    def test_updating_the_zone_list_unlinks_zones_dropped_from_it(self):
+        """The submitted list is the resulting set — a zone left out gets
+        unlinked, not just ones added get linked."""
+        from stores.models import Store
+
+        second = Zone.objects.create(code="ZN3", name="East", is_active=True)
+        r = self.client.post(
+            "/api/v1/admin/stores",
+            {"code": "S4", "name": "Shrinking Store", "zones": [str(self.zone.id), str(second.id)]},
+            format="json",
+        )
+        store_id = r.json()["data"]["id"]
+
+        # Now submit with only `second` in the list — self.zone should be dropped.
+        r2 = self.client.patch(
+            f"/api/v1/admin/stores/{store_id}",
+            {"zones": [str(second.id)]},
+            format="json",
+        )
+        self.assertEqual(r2.status_code, 200, r2.content)
+        self.zone.refresh_from_db()
+        second.refresh_from_db()
+        self.assertIsNone(self.zone.store_id)
+        self.assertEqual(second.store_id, Store.objects.get(pk=store_id).id)
+
+    def test_patch_without_zones_key_leaves_assignment_untouched(self):
+        """A PATCH that doesn't mention zones at all (e.g. just opening hours)
+        must not silently detach every zone the store serves."""
+        r = self.client.post(
+            "/api/v1/admin/stores",
+            {"code": "S5", "name": "Untouched Store", "zones": [str(self.zone.id)]},
+            format="json",
+        )
+        store_id = r.json()["data"]["id"]
+
+        r2 = self.client.patch(
+            f"/api/v1/admin/stores/{store_id}", {"opensAt": "09:00"}, format="json"
+        )
+        self.assertEqual(r2.status_code, 200, r2.content)
+        self.zone.refresh_from_db()
+        self.assertEqual(self.zone.store_id, int(store_id))
+
 
 class ZoneStoreDeletionContractTests(TestCase):
     """Deleting a zone or a store.

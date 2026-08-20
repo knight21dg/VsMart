@@ -34,9 +34,11 @@ interface Store {
 }
 interface ZoneLite { id: string; name: string; store: number | null; polygonGeojson: GeoJSONGeometry | null }
 
-// `zone` is not a Store field — it's the serving zone this store is bound to, sent
-// alongside the store body and linked server-side.
-type StoreForm = Partial<Store> & { zone?: string | null };
+// `zones` is not a Store field — it's the full set of serving zones this store
+// is bound to, sent alongside the store body and linked server-side. The list
+// submitted IS the resulting set (zones left out get unlinked), not an add-only
+// list — see AdminStoreViewSet._link_zone.
+type StoreForm = Partial<Store> & { zones?: string[] };
 
 export function StoreFormPage({ storeId }: { storeId?: string }) {
   const router = useRouter();
@@ -59,11 +61,18 @@ export function StoreFormPage({ storeId }: { storeId?: string }) {
     setHydratedId(storeId ?? null);
   }
 
-  // The zone currently routing to this store (a store may serve several; show the first).
-  const linkedZoneId = editing
-    ? (zones.data?.rows ?? []).find((z) => z.store != null && String(z.store) === storeId)?.id
-    : undefined;
-  const selectedZone = form.zone !== undefined ? form.zone : (linkedZoneId ?? null);
+  // Every zone currently routing to this store.
+  const linkedZoneIds = editing
+    ? (zones.data?.rows ?? []).filter((z) => z.store != null && String(z.store) === storeId).map((z) => z.id)
+    : [];
+  const selectedZones = form.zones !== undefined ? form.zones : linkedZoneIds;
+
+  function toggleZone(id: string) {
+    const set = new Set(selectedZones);
+    if (set.has(id)) set.delete(id);
+    else set.add(id);
+    setForm({ ...form, zones: Array.from(set) });
+  }
 
   const save = useApiMutation(
     (body: StoreForm) => (editing ? api.patch(`/admin/stores/${storeId}`, body) : api.post("/admin/stores", body)),
@@ -88,7 +97,7 @@ export function StoreFormPage({ storeId }: { storeId?: string }) {
       opensAt: form.opensAt || null,
       closesAt: form.closesAt || null,
       dailyOrderCapacity: num(form.dailyOrderCapacity),
-      zone: selectedZone,
+      zones: selectedZones,
     });
   }
 
@@ -130,25 +139,37 @@ export function StoreFormPage({ storeId }: { storeId?: string }) {
             </div>
             <Field label="Address"><Input value={form.address ?? ""} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="Auto-fills from the map pin" /></Field>
 
-            <Field label="Serving zone">
-              <Select value={selectedZone ?? "none"} onValueChange={(v) => setForm({ ...form, zone: v === "none" ? null : v })}>
-                <SelectTrigger><SelectValue placeholder="Select the zone this store serves" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Unassigned</SelectItem>
-                  {(zones.data?.rows ?? []).map((z) => {
-                    const takenByOther = z.store != null && String(z.store) !== storeId;
-                    return (
-                      <SelectItem key={z.id} value={z.id}>
-                        {z.name}{takenByOther ? " · already assigned" : ""}
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
+            <Field label={`Serving zones${selectedZones.length ? ` (${selectedZones.length} selected)` : ""}`}>
+              <div className="max-h-56 space-y-0.5 overflow-y-auto rounded-md border p-2">
+                {(zones.data?.rows ?? []).length === 0 && (
+                  <p className="px-1 py-1 text-xs text-warning">No zones yet — create a zone first, then it will appear here.</p>
+                )}
+                {(zones.data?.rows ?? []).map((z) => {
+                  const checked = selectedZones.includes(z.id);
+                  const takenByOther = z.store != null && String(z.store) !== storeId;
+                  return (
+                    <label
+                      key={z.id}
+                      className="flex cursor-pointer items-center gap-2 rounded px-1.5 py-1 text-sm hover:bg-muted/50"
+                    >
+                      <input
+                        type="checkbox"
+                        className="size-4 accent-primary"
+                        checked={checked}
+                        onChange={() => toggleZone(z.id)}
+                      />
+                      <span className="flex-1">{z.name}</span>
+                      {takenByOther && !checked && (
+                        <span className="text-xs text-muted-foreground">already assigned elsewhere</span>
+                      )}
+                    </label>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Checking a zone that&apos;s already assigned elsewhere moves it to this store.
+              </p>
             </Field>
-            {(zones.data?.rows ?? []).length === 0 && (
-              <p className="text-xs text-warning">No zones yet — create a zone first, then it will appear here.</p>
-            )}
 
             <div className="grid grid-cols-2 gap-3 pt-2">
               <Field label="Status">

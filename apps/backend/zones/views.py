@@ -313,24 +313,56 @@ class AdminStoreViewSet(viewsets.ModelViewSet):
         ))
 
     def _link_zone(self, store):
-        """Optionally bind the serving zone to this store (the store-onboarding flow
-        asks for the zone). Sets ``Zone.store`` for the selected zone so the zone now
-        routes to this store; non-destructive (ignores a missing/blank zone)."""
-        zone_id = self.request.data.get("zone")
-        if not zone_id:
+        """Bind the store-onboarding flow's selected zones to this store.
+
+        A store legitimately serves several zones (one-to-many, FK lives on
+        ``Zone``), but the old console form could only pick one — every other
+        zone that should route here had to be linked one at a time from the
+        zone's own edit page. ``zones`` (a list) replaces the whole set: every
+        zone in the list is linked, every zone *previously* linked to this
+        store but missing from the list is unlinked. Omitting the key entirely
+        leaves zone assignment untouched (a plain PATCH to, say, opening hours
+        must not silently detach every zone the store serves).
+
+        The older singular ``zone`` field still works, for any API caller that
+        hasn't moved to ``zones`` — treated as a one-element list, same rules.
+        """
+        data = self.request.data
+        if "zones" in data:
+            raw_ids = data.get("zones") or []
+            if not isinstance(raw_ids, list):
+                raw_ids = [raw_ids]
+        elif "zone" in data:
+            raw_ids = [data.get("zone")] if data.get("zone") else []
+        else:
             return
-        try:
-            zone = Zone.objects.filter(pk=zone_id).first()
-        except (ValueError, TypeError):
-            return
-        if zone is None or zone.store_id == store.id:
-            return
-        zone.store = store
-        zone.save(update_fields=["store", "updated_at"])
-        record_audit(self.request.user, "zone.assign_store", target=zone,
-                     after={"store": store.code})
-        emit_zone_event("store_assigned", zone=zone, actor=self.request.user,
-                        store_id=store.id)
+
+        wanted_ids = set()
+        for raw in raw_ids:
+            try:
+                wanted_ids.add(int(raw))
+            except (TypeError, ValueError):
+                continue
+
+        current_ids = set(Zone.objects.filter(store=store).values_list("id", flat=True))
+        to_link = wanted_ids - current_ids
+        to_unlink = current_ids - wanted_ids
+
+        for zone in Zone.objects.filter(pk__in=to_link):
+            zone.store = store
+            zone.save(update_fields=["store", "updated_at"])
+            record_audit(self.request.user, "zone.assign_store", target=zone,
+                         after={"store": store.code})
+            emit_zone_event("store_assigned", zone=zone, actor=self.request.user,
+                            store_id=store.id)
+
+        for zone in Zone.objects.filter(pk__in=to_unlink):
+            zone.store = None
+            zone.save(update_fields=["store", "updated_at"])
+            record_audit(self.request.user, "zone.unassign_store", target=zone,
+                         after={"store": None})
+            emit_zone_event("store_unassigned", zone=zone, actor=self.request.user,
+                            store_id=store.id)
 
 
 class AdminStoreAdminView(APIView):
