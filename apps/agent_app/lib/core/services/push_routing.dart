@@ -31,7 +31,12 @@ const _flagInsistent = 4;
 /// How long the ringing alert keeps sounding before Android clears it by
 /// itself. Long enough that a rider who feels it in a pocket can get to the
 /// phone; short enough that an unanswered alert doesn't ring forever.
-const Duration _ringTimeout = Duration(minutes: 2);
+///
+/// Was 2 minutes — agents reported it as continuous/disturbing well before
+/// that point. The task doesn't disappear when the ring stops (it still sits
+/// in their list, same as any alert that times out — see the timeoutAfter
+/// comment below), so shortening this costs nothing but the ring itself.
+const Duration _ringTimeout = Duration(seconds: 30);
 
 /// The one id an assignment's ringing alert is always shown/cancelled under —
 /// stable per task so [IncomingTaskScreen] can silence the exact alert it's
