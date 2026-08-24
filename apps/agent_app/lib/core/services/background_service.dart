@@ -71,8 +71,18 @@ void onServiceStart(ServiceInstance service) async {
     service.on('stopService').listen((_) => service.stopSelf());
   }
 
+  // Real fixes only, same rule as location_service.dart — but unlike a fresh
+  // isolate, this one lives for as long as the service runs, so it can
+  // remember its own last good fix across ticks and fall back to it instead
+  // of giving up. Without this, a stationary/indoor agent (a store counter,
+  // home, waiting between deliveries — exactly when "online" but not moving)
+  // could fail to get a fresh HIGH-accuracy fix inside the deadline on every
+  // single tick, forever, and the notification would sit on "Waiting for a
+  // GPS fix…" the whole time the agent is online, not occasionally.
+  Position? lastFix;
+
   Future<void> tick() async {
-    final posted = await _pingOnce();
+    final posted = await _pingOnce(lastFix: lastFix, remember: (f) => lastFix = f);
     if (service is AndroidServiceInstance &&
         await service.isForegroundService()) {
       final now = DateTime.now();
@@ -102,7 +112,24 @@ void onServiceStart(ServiceInstance service) async {
 /// still has this 90s tick to fall back on once the foreground 15s
 /// breadcrumb (delivery_detail_screen.dart) stops, so the customer's live
 /// tracking doesn't just freeze for the rest of the trip.
-Future<bool> _pingOnce() async {
+///
+/// Fix acquisition has a real fallback chain, same honesty rule as
+/// location_service.dart (real data or nothing — never a fabricated
+/// position): a fresh MEDIUM-accuracy fix (HIGH routinely never resolves
+/// indoors/stationary within any reasonable deadline — an agent sitting at
+/// a store counter or at home "online" between deliveries is exactly the
+/// common case, not an edge case), else [lastFix] (this isolate's own last
+/// good fix — it lives for as long as the service runs, so this genuinely
+/// carries across ticks), else the OS's own last-known position. Only if
+/// all three come up empty does the ping — and the "Waiting for a GPS
+/// fix…" notification — actually skip. Before this fell straight to that
+/// last resort on a single HIGH-accuracy attempt with no memory at all, so
+/// a stationary indoor agent could get stuck showing "Waiting for a GPS
+/// fix…" on every tick, indefinitely, for the entire time they're online.
+Future<bool> _pingOnce({
+  Position? lastFix,
+  required void Function(Position) remember,
+}) async {
   try {
     final tokens = TokenStore();
     var access = await tokens.access;
@@ -112,12 +139,22 @@ Future<bool> _pingOnce() async {
     // Bounded: an unbounded fix request can hang for the whole 90 s tick (and
     // beyond), stacking one never-completing location request per tick while
     // the notification still claims the agent is being tracked.
-    final position = await Geolocator.getCurrentPosition(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high,
-        timeLimit: Duration(seconds: 30),
-      ),
-    ).timeout(const Duration(seconds: 35));
+    Position? position;
+    try {
+      position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.medium,
+          timeLimit: Duration(seconds: 20),
+        ),
+      ).timeout(const Duration(seconds: 25));
+      remember(position);
+    } catch (_) {
+      position = lastFix ?? await Geolocator.getLastKnownPosition();
+    }
+    if (position == null) return false;
+    // Closures capture by reference, so the null check above doesn't promote
+    // `position` inside `post` below — bind it to a non-nullable local instead.
+    final fix = position;
 
     final dio = Dio(BaseOptions(
       baseUrl: Env.apiBaseUrl,
@@ -128,9 +165,9 @@ Future<bool> _pingOnce() async {
     Future<Response<dynamic>> post(String token) => dio.post<dynamic>(
           '/deliveries/location',
           data: {
-            'latitude': position.latitude,
-            'longitude': position.longitude,
-            'accuracy_m': position.accuracy,
+            'latitude': fix.latitude,
+            'longitude': fix.longitude,
+            'accuracy_m': fix.accuracy,
             if (taskId != null && taskId.isNotEmpty) 'task_id': taskId,
           },
           options: Options(headers: {'Authorization': 'Bearer $token'}),
