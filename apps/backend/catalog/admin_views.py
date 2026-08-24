@@ -16,6 +16,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from accounts.services import record_audit
+from core.app_errors import ok
 from core.permissions import IsAdmin
 
 from .models import Category, Product
@@ -176,38 +177,66 @@ class AdminCategoryListCreateView(ListCreateAPIView):
 class AdminCategoryDetailView(RetrieveUpdateDestroyAPIView):
     """Category read/edit/delete.
 
-    Deleting is refused while anything depends on the category. `Product.category`
-    is PROTECT, so a DELETE on a category with products raised `ProtectedError` —
-    not a DRF exception, so it escaped the handler as a **500 SYSTEM_ERROR**
-    instead of telling the admin why. `Category.parent` is CASCADE, so deleting a
-    parent would also silently take its children with it.
+    Delete deactivates a category that anything still depends on, instead of
+    row-deleting it. `Product.category` is PROTECT and NOT NULL — a product can't
+    exist without one, so a category with products genuinely can't be removed
+    without either reassigning them first (a bigger, deliberate move, not this
+    button) or leaving them in place. Deactivating gets the operator the outcome
+    they actually want ("stop showing this category") without an error dead-end:
+    `is_active=False` takes it out of the storefront/console listings immediately,
+    same effect a delete would have had, while the products underneath keep a
+    real category instead of losing their only required field.
+
+    `Category.parent` is CASCADE, so an actual row-delete of a parent would
+    silently take its children with it — the same "still depends on it" rule
+    applies to a category with sub-categories, active or not.
+
+    A genuinely empty category (no products, no children) is really deleted.
+    Either way the response says which, because a bare 204 can't (this used to
+    be exactly that: a plain DRF destroy() that raised `ProtectedError` — not a
+    DRF exception, so it escaped the handler as an unexplained 500 instead of
+    telling the operator why nothing happened).
     """
 
     permission_classes = [IsAdmin]
     serializer_class = AdminCategorySerializer
     queryset = Category.objects.all()
 
-    def perform_destroy(self, instance):
-        from rest_framework.exceptions import ValidationError
+    def destroy(self, request, *args, **kwargs):
+        category = self.get_object()
+        used = Product.objects.filter(category=category).count()
+        kids = Category.objects.filter(parent=category).count()
 
-        used = Product.objects.filter(category=instance).count()
-        if used:
-            raise ValidationError({"category": [
-                f"'{instance.name}' still has {used} product(s). Move or archive "
-                f"them first."
-            ]})
-        # `parent` is CASCADE — deleting a department would silently take its
-        # sub-categories (and, through them, nothing that PROTECT would catch).
-        # Make the operator clear the tree explicitly.
-        kids = Category.objects.filter(parent=instance).count()
-        if kids:
-            raise ValidationError({"category": [
-                f"'{instance.name}' still has {kids} sub-categor"
-                f"{'y' if kids == 1 else 'ies'}. Delete those first."
-            ]})
-        record_audit(self.request.user, "category.delete", target=instance,
-                     after={"name": instance.name})
-        instance.delete()
+        if used or kids:
+            category.is_active = False
+            category.save(update_fields=["is_active", "updated_at"])
+            reason_bits = []
+            if used:
+                reason_bits.append(f"{used} product(s)")
+            if kids:
+                reason_bits.append(f"{kids} sub-categor{'y' if kids == 1 else 'ies'}")
+            record_audit(request.user, "category.deactivate", target=category,
+                         after={"name": category.name,
+                                "reason": f"delete requested; {' and '.join(reason_bits)} preserved"})
+            return Response(ok(
+                "RECORD_DEACTIVATED",
+                message=(
+                    f"'{category.name}' still has {' and '.join(reason_bits)}, so it "
+                    f"was deactivated instead of deleted. It no longer shows in the "
+                    f"catalog."
+                ),
+                data={"id": str(category.id), "outcome": "deactivated", "isActive": False},
+            ))
+
+        record_audit(request.user, "category.delete", target=category,
+                     after={"name": category.name})
+        name, cat_id = category.name, str(category.id)
+        category.delete()
+        return Response(ok(
+            "RECORD_DELETED",
+            message=f"'{name}' category has been deleted.",
+            data={"id": cat_id, "outcome": "deleted"},
+        ))
 
 
 class AdminProductVariantsView(APIView):

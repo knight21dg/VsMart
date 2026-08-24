@@ -120,9 +120,25 @@ class _BatchRouteScreenState extends ConsumerState<BatchRouteScreen> {
 
   Future<void> _navigate(RouteStop s) async {
     if (s.lat == null || s.lng == null) return;
-    final uri = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}');
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    // google.navigation launches true turn-by-turn; fall back to the maps URL —
+    // same order as active_delivery_map_screen.dart's _navigateExternal.
+    //
+    // The fallback is unconditional, not gated behind another canLaunchUrl
+    // check: gating it meant a false negative from the FIRST check (e.g. no
+    // <queries> entry for the google.navigation scheme — see
+    // AndroidManifest.xml) left the button doing nothing at all, with no
+    // feedback, on the one screen an agent running a multi-stop trip actually
+    // depends on to get moving.
+    final nav = Uri.parse('google.navigation:q=${s.lat},${s.lng}');
+    if (await canLaunchUrl(nav)) {
+      await launchUrl(nav);
+      return;
+    }
+    final maps = Uri.parse(
+        'https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}');
+    final opened = await launchUrl(maps, mode: LaunchMode.externalApplication);
+    if (!opened && mounted) {
+      _snack('Could not open navigation for this stop.', error: true);
     }
   }
 

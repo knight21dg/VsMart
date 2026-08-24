@@ -138,11 +138,14 @@ class _ActiveDeliveryMapScreenState
       await launchUrl(nav);
       return;
     }
-    await launchUrl(
+    final opened = await launchUrl(
       Uri.parse('https://www.google.com/maps/dir/?api=1'
           '&destination=${d.destLat},${d.destLng}'),
       mode: LaunchMode.externalApplication,
     );
+    if (!opened && mounted) {
+      showToast(context, 'Could not open navigation for this delivery', error: true);
+    }
   }
 
   Future<void> _call(AgentDelivery d) async {

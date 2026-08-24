@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronRight, FolderTree, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import { api } from "@/lib/api/client";
 import { useApiMutation } from "@/lib/api/hooks";
 import { PageHeader } from "@/components/page-header";
@@ -56,11 +57,22 @@ export default function CategoriesPage() {
     (body: Form) => (editing ? api.patch(`/admin/catalog/categories/${editing.id}`, body) : api.post("/admin/catalog/categories", body)),
     { invalidate: [["admin", "categories"]], successMessage: "Category saved.", onDone: () => setOpen(false) }
   );
-  const remove = useApiMutation((id: string) => api.del(`/admin/catalog/categories/${id}`), {
-    invalidate: [["admin", "categories"]],
-    successMessage: "Category deleted.",
-    onDone: () => setToDelete(null),
-  });
+  // A category with products or sub-categories is deactivated rather than
+  // row-deleted (Product.category is PROTECT + NOT NULL — it can't be deleted
+  // out from under them), so the row is still in the list afterwards, just
+  // inactive. Use the server's own coded message, which names the outcome and
+  // what's still attached, rather than a flat "Category deleted." that isn't
+  // true when the category only got deactivated.
+  const remove = useApiMutation(
+    (id: string) => api.delWithMessage<{ outcome?: string }>(`/admin/catalog/categories/${id}`),
+    {
+      invalidate: [["admin", "categories"]],
+      onDone: (res) => {
+        toast.success(res.message || "Category deleted.");
+        setToDelete(null);
+      },
+    }
+  );
 
   function openCreate(parentId?: string) {
     setEditing(null);
@@ -265,9 +277,9 @@ export default function CategoriesPage() {
         onOpenChange={(o) => !o && setToDelete(null)}
         title={`Delete ${toDelete?.name}?`}
         description={
-          toDelete && toDelete.parentId == null
-            ? "Top-level categories delete their sub-categories too. Products in this category may be affected."
-            : "This sub-category will be removed."
+          toDelete && (toDelete.productCount > 0 || childrenOf(toDelete.id).length > 0)
+            ? "This category still has products or sub-categories under it, so it will be deactivated instead of deleted — it stops showing in the catalog, but the products keep their category."
+            : "This category has nothing under it and will be permanently deleted."
         }
         confirmLabel="Delete"
         destructive

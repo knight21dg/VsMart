@@ -37,6 +37,16 @@
             <category android:name="android.intent.category.BROWSABLE"/>
             <data android:scheme="https"/>
         </intent>
+        <!-- google.navigation: (active_delivery_map_screen.dart / batch_route_screen.dart
+             _navigate) launches TRUE turn-by-turn in Google Maps. Without this
+             package-visibility entry, canLaunchUrl on that scheme is always false
+             on Android 11+ regardless of whether Maps is installed — every tap
+             silently degraded to the plain "open a maps URL" web fallback, never
+             the actual navigation app. -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="google.navigation"/>
+        </intent>
     </queries>
     <application
         android:label="VS Mart Agent"
