@@ -494,16 +494,11 @@ class _LegalCard extends StatelessWidget {
             label: context.l10n.accountPrivacy,
             onTap: () => context.pushNamed(RouteNames.privacyPolicy),
           ),
-          Divider(height: 1, color: vs.border),
-          _LegalRow(
-            icon: Icons.verified_user_outlined,
-            label: context.l10n.settingsLicenses,
-            onTap: () => showLicensePage(
-              context: context,
-              applicationName: AppConstants.appName,
-              applicationVersion: 'Version 1.0.0',
-            ),
-          ),
+          // Third-party OSS license viewer removed: it's Flutter's own
+          // package-license dump (React/Dio/etc.), not the business
+          // accreditations "Licenses & accreditations" actually implied to a
+          // customer — a genuine label/content mismatch, and not something
+          // a customer-facing legal card should surface at all.
         ],
       ),
     );

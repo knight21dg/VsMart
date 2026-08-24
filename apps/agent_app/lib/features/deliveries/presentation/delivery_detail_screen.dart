@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/active_task_store.dart';
 import '../../../core/api_exception.dart';
 import '../../../core/destination_map.dart';
 import '../../../core/gps.dart';
@@ -116,6 +117,13 @@ class _DeliveryDetailScreenState extends ConsumerState<DeliveryDetailScreen> {
     if (_trackingTaskId == d.id && _locationTimer != null) return;
     _stopTracking();
     _trackingTaskId = d.id;
+    // So the background presence service (which survives the app being
+    // backgrounded/killed, unlike this Timer) can also carry this task_id on
+    // its own ping once the 15s foreground breadcrumb stops — see
+    // ActiveTaskStore's docstring for why this is the one thing that closes
+    // the gap. Fire-and-forget: losing this write just means one degraded
+    // window, not a crash.
+    unawaited(ActiveTaskStore().set(d.id));
     Future<void> ping() async {
       // Real fixes only: a breadcrumb is dispatch's picture of where this rider
       // actually is. Reporting the destination when GPS is off would tell
@@ -139,6 +147,7 @@ class _DeliveryDetailScreenState extends ConsumerState<DeliveryDetailScreen> {
     _locationTimer?.cancel();
     _locationTimer = null;
     _trackingTaskId = null;
+    unawaited(ActiveTaskStore().set(null));
   }
 
   // ── state transitions ─────────────────────────────────────────────────────

@@ -86,7 +86,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
   Future<void> _refresh() async {
     ref
       ..invalidate(bannersProvider)
-      ..invalidate(dealsProvider)
+      ..invalidate(featuredProductsProvider)
       ..invalidate(departmentsProvider)
       ..invalidate(popularProductsProvider)
       ..invalidate(recommendedProductsProvider)
@@ -1145,171 +1145,22 @@ class _TodaysDealsState extends State<_TodaysDeals> {
           ),
         ),
         AppSpacing.vGapMd,
-        const _DealsRail(),
+        // Was _DealsRail() — bound to dealsProvider (/offers?type=deal, the
+        // marketing-banner Offer model), a completely different feature from
+        // the one this section is meant to show: the curated/algorithmic
+        // "Today's Deals" rail (HomeFeature.TODAY_DEALS, GET
+        // /home/sections/today_deals, admin-curatable from Marketing > Home
+        // Screen). Nobody creating an Offer(type=deal) meant admin curation
+        // here had zero effect, and the rail read as permanently empty
+        // (silent SizedBox.shrink()) since a fresh install has no such Offer
+        // rows. _ProductRail is the same widget Popular/Recommended already
+        // use against this exact home/sections family.
+        _ProductRail(provider: featuredProductsProvider, source: 'home-deals'),
       ],
     );
   }
 }
 
-/// "Today's Deals" rail sourced from [dealsProvider].
-class _DealsRail extends ConsumerWidget {
-  const _DealsRail();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final deals = ref.watch(dealsProvider);
-    return SizedBox(
-      height: 212,
-      child: deals.when(
-        loading: () => const Center(child: VSLoadingView()),
-        error: (_, __) => _RailError(onRetry: () => ref.invalidate(dealsProvider)),
-        data: (offers) {
-          if (offers.isEmpty) return const SizedBox.shrink();
-          return ListView.separated(
-            scrollDirection: Axis.horizontal,
-            padding: AppSpacing.screenHorizontal,
-            itemCount: offers.length,
-            separatorBuilder: (_, __) => AppSpacing.hGapMd,
-            itemBuilder: (context, i) {
-              final o = offers[i];
-              return _DealCard(
-                offer: o,
-                onTap: () {
-                  ref
-                      .read(analyticsServiceProvider)
-                      .track('offer_clicked', {'offer': o.id});
-                  if (o.productId != null) {
-                    context.pushNamed(RouteNames.productDetails,
-                        pathParameters: {'productId': o.productId!});
-                  } else {
-                    context.pushNamed(RouteNames.offers);
-                  }
-                },
-              );
-            },
-          );
-        },
-      ),
-    );
-  }
-}
-
-/// Rich "Today's Deal" card: a product image with a discount badge, then the
-/// deal title and price below.
-class _DealCard extends StatelessWidget {
-  const _DealCard({required this.offer, required this.onTap});
-
-  final Offer offer;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final vs = context.vsColors;
-    final hasDiscount =
-        offer.discountPercent != null && offer.discountPercent! > 0;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: AppRadius.brLg,
-      child: Container(
-        width: 160,
-        clipBehavior: Clip.antiAlias,
-        decoration: BoxDecoration(
-          color: context.colors.surface,
-          borderRadius: AppRadius.brLg,
-          border: Border.all(color: vs.border),
-          boxShadow: AppShadows.xs,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ---- Image (fills available height) with discount badge ----
-            Expanded(
-              child: Stack(
-                children: [
-                  Positioned.fill(
-                    child: Container(
-                      color: vs.brandTint.withValues(alpha: 0.4),
-                      padding: const EdgeInsets.all(AppSpacing.sm),
-                      child: VSNetworkImage(
-                        url: offer.imageUrl,
-                        fit: BoxFit.contain,
-                        borderRadius: AppRadius.brSm,
-                        fallbackIcon: Icons.local_offer_rounded,
-                      ),
-                    ),
-                  ),
-                  if (hasDiscount)
-                    Positioned(
-                      top: AppSpacing.xs,
-                      left: AppSpacing.xs,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: AppSpacing.sm, vertical: 2),
-                        decoration: BoxDecoration(
-                            color: vs.offer, borderRadius: AppRadius.brSm),
-                        child: Text(
-                            context.l10n
-                                .discountPercentOff(offer.discountPercent!),
-                            style: AppTypography.labelSmall
-                                .copyWith(color: AppColors.white)),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            // ---- Info ----
-            Padding(
-              padding: const EdgeInsets.all(AppSpacing.sm),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(offer.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTypography.titleMedium),
-                  const SizedBox(height: 4),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      if (offer.dealPrice != null)
-                        Text(offer.dealPrice!.asCurrency,
-                            style: AppTypography.priceMedium),
-                      if (offer.originalPrice != null) ...[
-                        AppSpacing.hGapSm,
-                        Flexible(
-                          child: Text(offer.originalPrice!.asCurrency,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: AppTypography.bodySmall.copyWith(
-                                color: vs.textSecondary,
-                                decoration: TextDecoration.lineThrough,
-                              )),
-                        ),
-                      ],
-                    ],
-                  ),
-                  if (offer.savings > 0) ...[
-                    const SizedBox(height: 4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.sm, vertical: 1),
-                      decoration: BoxDecoration(
-                        color: vs.success.withValues(alpha: 0.14),
-                        borderRadius: AppRadius.brXs,
-                      ),
-                      child: Text(
-                          context.l10n.productSave(offer.savings.asCurrency),
-                          style: AppTypography.labelSmall.copyWith(
-                              color: vs.success, fontWeight: FontWeight.w700)),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
+// _DealsRail / _DealCard removed — replaced by _ProductRail(featuredProductsProvider)
+// above, which is bound to the actual "Today's Deals" backend feature. See the
+// comment at the _ProductRail(provider: featuredProductsProvider, ...) call site.

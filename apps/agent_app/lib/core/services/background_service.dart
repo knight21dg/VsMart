@@ -6,6 +6,7 @@ import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:geolocator/geolocator.dart';
 
+import '../active_task_store.dart';
 import '../env.dart';
 import '../token_store.dart';
 
@@ -89,16 +90,24 @@ void onServiceStart(ServiceInstance service) async {
 }
 
 /// One presence ping: a GPS fix (best-effort — silently skipped if location
-/// is unavailable/denied) posted to the same task-less `/deliveries/location`
+/// is unavailable/denied) posted to the same `/deliveries/location`
 /// path [PresenceController] used to call directly. Refreshes the access
 /// token once on a 401, mirroring api.dart's own retry-once policy, since a
 /// service that outlives the 30-min token lifetime would otherwise start
 /// silently failing every ping.
+///
+/// Task-less by default (an available agent between deliveries has no task
+/// to attach), but includes [ActiveTaskStore]'s current value when one is
+/// set — an agent `out_for_delivery` whose app gets backgrounded or killed
+/// still has this 90s tick to fall back on once the foreground 15s
+/// breadcrumb (delivery_detail_screen.dart) stops, so the customer's live
+/// tracking doesn't just freeze for the rest of the trip.
 Future<bool> _pingOnce() async {
   try {
     final tokens = TokenStore();
     var access = await tokens.access;
     if (access == null || access.isEmpty) return false;
+    final taskId = await ActiveTaskStore().current;
 
     // Bounded: an unbounded fix request can hang for the whole 90 s tick (and
     // beyond), stacking one never-completing location request per tick while
@@ -122,6 +131,7 @@ Future<bool> _pingOnce() async {
             'latitude': position.latitude,
             'longitude': position.longitude,
             'accuracy_m': position.accuracy,
+            if (taskId != null && taskId.isNotEmpty) 'task_id': taskId,
           },
           options: Options(headers: {'Authorization': 'Bearer $token'}),
         );
