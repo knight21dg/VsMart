@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers.dart';
@@ -34,10 +35,35 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   /// session. [TaskSync] is what keeps newly-assigned work appearing.
   late final TaskSync _sync;
 
+  DateTime? _lastBackAt;
+
   @override
   void initState() {
     super.initState();
     _sync = ref.read(taskSyncProvider)..start();
+  }
+
+  /// Tabs switch by changing [homeTabProvider]'s index into an IndexedStack —
+  /// there's no route push for the system back button to pop, so with no
+  /// handling at all it fell straight through to exiting the app from ANY
+  /// tab, home or not. Same fix as the customer app's own shell
+  /// (app_shell.dart): a non-Home tab returns to Home first; only Home itself
+  /// is a real exit, and even then only on a double-press, so a stray back
+  /// button doesn't kill the app out from under an on-duty agent.
+  void _handleBack() {
+    final index = ref.read(homeTabProvider);
+    if (index != 0) {
+      ref.read(homeTabProvider.notifier).state = 0;
+      return;
+    }
+    final now = DateTime.now();
+    if (_lastBackAt != null &&
+        now.difference(_lastBackAt!) < const Duration(seconds: 2)) {
+      SystemNavigator.pop();
+      return;
+    }
+    _lastBackAt = now;
+    showToast(context, 'Press back again to exit');
   }
 
   static const _tabs = [
@@ -51,37 +77,47 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   @override
   Widget build(BuildContext context) {
     final index = ref.watch(homeTabProvider);
-    return Scaffold(
-      body: IndexedStack(index: index, children: _screens),
-      bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
-          color: AgentColors.bg,
-          border: Border(top: BorderSide(color: AgentColors.divider)),
-          boxShadow: [
-            BoxShadow(
-                color: Color(0x1A000000), blurRadius: 15, offset: Offset(0, -3)),
-          ],
-        ),
-        child: SafeArea(
-          top: false,
-          child: SizedBox(
-            height: 65,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                for (var i = 0; i < _tabs.length; i++)
-                  _NavItem(
-                    icon: _tabs[i].icon,
-                    label: _tabs[i].label,
-                    active: index == i,
-                    onTap: () {
-                      ref.read(homeTabProvider.notifier).state = i;
-                      // Switching to a queue is an explicit "show me what's
-                      // there now" — refetch rather than showing a stale list.
-                      _sync.refreshNow();
-                    },
-                  ),
-              ],
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        _handleBack();
+      },
+      child: Scaffold(
+        body: IndexedStack(index: index, children: _screens),
+        bottomNavigationBar: Container(
+          decoration: const BoxDecoration(
+            color: AgentColors.bg,
+            border: Border(top: BorderSide(color: AgentColors.divider)),
+            boxShadow: [
+              BoxShadow(
+                color: Color(0x1A000000),
+                blurRadius: 15,
+                offset: Offset(0, -3),
+              ),
+            ],
+          ),
+          child: SafeArea(
+            top: false,
+            child: SizedBox(
+              height: 65,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  for (var i = 0; i < _tabs.length; i++)
+                    _NavItem(
+                      icon: _tabs[i].icon,
+                      label: _tabs[i].label,
+                      active: index == i,
+                      onTap: () {
+                        ref.read(homeTabProvider.notifier).state = i;
+                        // Switching to a queue is an explicit "show me what's
+                        // there now" — refetch rather than showing a stale list.
+                        _sync.refreshNow();
+                      },
+                    ),
+                ],
+              ),
             ),
           ),
         ),
@@ -118,8 +154,11 @@ class _NavItem extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon,
-                size: 20, color: active ? Colors.white : AgentColors.label),
+            Icon(
+              icon,
+              size: 20,
+              color: active ? Colors.white : AgentColors.label,
+            ),
             const SizedBox(height: 2),
             Text(
               label,
