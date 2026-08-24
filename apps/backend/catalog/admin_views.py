@@ -174,39 +174,38 @@ class AdminCategoryListCreateView(ListCreateAPIView):
     queryset = Category.objects.all()
 
 
+#: The fallback bucket a product lands in when its category is deleted out
+#: from under it. `Product.category` is PROTECT and NOT NULL — a product can
+#: never have no category — so a real one-shot category delete needs
+#: somewhere real to put its products, not just a refusal.
+UNCATEGORIZED_SLUG = "uncategorized"
+
+
 class AdminCategoryDetailView(RetrieveUpdateDestroyAPIView):
     """Category read/edit/delete.
 
-    Delete deactivates a category that anything still depends on, instead of
-    row-deleting it. `Product.category` is PROTECT and NOT NULL — a product can't
-    exist without one, so a category with products genuinely can't be removed
-    without either reassigning them first (a bigger, deliberate move, not this
-    button) or leaving them in place. Deactivating gets the operator the outcome
-    they actually want ("stop showing this category") without an error dead-end:
-    `is_active=False` takes it out of the storefront/console listings immediately,
-    same effect a delete would have had, while the products underneath keep a
-    real category instead of losing their only required field.
+    Delete is a real, one-shot delete — the category and every descendant, at
+    any depth (`Category.parent` is CASCADE) — no deactivate step, no second
+    click. Any product anywhere in that subtree is moved to a catch-all
+    'Uncategorized' category first (auto-created on first use) rather than
+    blocking the delete or being destroyed with it: the operator gets what
+    they actually asked for ("delete it, that's it") and the products keep
+    every bit of their own data (stock, price, sales history) — they just
+    need to be filed somewhere afterward.
 
-    `Category.parent` is CASCADE, so an actual row-delete of a parent would
-    silently take its children with it — the same "still depends on it" rule
-    applies to a category with sub-categories, active or not.
+    This used to deactivate-instead-of-delete (mirroring zones/stores, where
+    Order.zone/store are nullable so orphaning is fine) and even offered a
+    stricter `?force=true` variant that still refused whenever a real product
+    existed anywhere in the subtree. Categories are a worse fit for that
+    pattern than zones/stores: Product.category has no null fallback, so
+    "leave it deactivated until someone manually moves every product" was a
+    dead end with no real second step — auto-reassigning to Uncategorized is
+    the actual fix, not a stopgap.
 
-    A genuinely empty category (no products, no children) is really deleted.
-    Either way the response says which, because a bare 204 can't (this used to
-    be exactly that: a plain DRF destroy() that raised `ProtectedError` — not a
-    DRF exception, so it escaped the handler as an unexplained 500 instead of
-    telling the operator why nothing happened).
-
-    ``?force=true`` on an ALREADY-deactivated category (same "you've seen the
-    deactivate outcome once already" contract as zones/stores) removes the
-    whole subtree — the category and every descendant, at any depth — but only
-    when NONE of them carry a single product. That's a hard floor, not a
-    policy choice: ``Product.category`` is NOT NULL, so a product literally
-    cannot survive its category being deleted out from under it. If any
-    descendant still has products, force is refused with the same message as
-    an unforced delete — there is no safe way to detach those products short
-    of moving them to a different category first, which is a bigger, separate
-    decision than this button makes.
+    A response of 204 can't say what happened, which is why this returns 200 +
+    a coded message instead (this used to be exactly a bare 204 from a plain
+    DRF destroy() that raised `ProtectedError` on a category with products —
+    not a DRF exception, so it escaped the handler as an unexplained 500).
     """
 
     permission_classes = [IsAdmin]
@@ -224,70 +223,46 @@ class AdminCategoryDetailView(RetrieveUpdateDestroyAPIView):
             ids.extend(frontier)
         return ids
 
+    def _uncategorized(self):
+        cat, _ = Category.objects.get_or_create(
+            slug=UNCATEGORIZED_SLUG,
+            defaults={"name": "Uncategorized", "is_active": True},
+        )
+        return cat
+
     def destroy(self, request, *args, **kwargs):
         category = self.get_object()
-        used = Product.objects.filter(category=category).count()
-        kids = Category.objects.filter(parent=category).count()
-        force = str(request.query_params.get("force", "")).lower() in ("1", "true", "yes")
 
-        if (used or kids) and force and not category.is_active:
-            subtree_ids = self._subtree_ids(category)
-            subtree_products = Product.objects.filter(category_id__in=subtree_ids).count()
-            if subtree_products == 0:
-                name, cat_id = category.name, str(category.id)
-                descendants = len(subtree_ids) - 1
-                record_audit(request.user, "category.force_delete", target=category,
-                             after={"name": name,
-                                    "reason": f"force delete; {descendants} descendant(s) removed with it"})
-                category.delete()  # CASCADE takes the (product-free) descendants with it
-                message = f"'{name}' category has been deleted."
-                if descendants:
-                    message += f" Its {descendants} sub-categor{'y' if descendants == 1 else 'ies'} went with it."
-                return Response(ok(
-                    "RECORD_DELETED",
-                    message=message,
-                    data={"id": cat_id, "outcome": "deleted", "descendantsRemoved": descendants},
-                ))
-            # Fall through to the deactivate-style refusal below — force can't
-            # override a real product dependency, only a soft "already inactive" gate.
+        if category.slug == UNCATEGORIZED_SLUG:
+            raise serializers.ValidationError({"category": [
+                "'Uncategorized' is the fallback bucket products land in when "
+                "their category is deleted — it can't be deleted itself."
+            ]})
 
-        if used or kids:
-            if not category.is_active:
-                # Already deactivated and force didn't clear it (still has
-                # products somewhere in the subtree) — say why plainly rather
-                # than repeating the same "deactivated" outcome a second time.
-                blocked_products = Product.objects.filter(
-                    category_id__in=self._subtree_ids(category)
-                ).count()
-                return Response(ok(
-                    "RECORD_DEACTIVATED",
-                    message=(
-                        f"'{category.name}' (or one of its sub-categories) still has "
-                        f"{blocked_products} product(s), so it can't be fully removed. "
-                        f"Move or archive those products first, then delete again."
-                    ),
-                    data={"id": str(category.id), "outcome": "deactivated", "isActive": False},
-                ))
-            category.is_active = False
-            category.save(update_fields=["is_active", "updated_at"])
-            reason_bits = []
-            if used:
-                reason_bits.append(f"{used} product(s)")
-            if kids:
-                reason_bits.append(f"{kids} sub-categor{'y' if kids == 1 else 'ies'}")
-            record_audit(request.user, "category.deactivate", target=category,
-                         after={"name": category.name,
-                                "reason": f"delete requested; {' and '.join(reason_bits)} preserved"})
-            return Response(ok(
-                "RECORD_DEACTIVATED",
-                message=(
-                    f"'{category.name}' still has {' and '.join(reason_bits)}, so it "
-                    f"was deactivated instead of deleted. It no longer shows in the "
-                    f"catalog. Delete again to remove it for good, once nothing under "
-                    f"it has products."
-                ),
-                data={"id": str(category.id), "outcome": "deactivated", "isActive": False},
-            ))
+        subtree_ids = self._subtree_ids(category)
+        descendants = len(subtree_ids) - 1
+        orphaned = Product.objects.filter(category_id__in=subtree_ids)
+        moved = orphaned.count()
+
+        if moved:
+            orphaned.update(category=self._uncategorized())
+
+        name, cat_id = category.name, str(category.id)
+        record_audit(request.user, "category.delete", target=category,
+                     after={"name": name, "descendants": descendants, "productsMoved": moved})
+        category.delete()  # CASCADE removes the now-product-free descendants
+
+        message = f"'{name}' category has been deleted."
+        if descendants:
+            message += f" Its {descendants} sub-categor{'y' if descendants == 1 else 'ies'} went with it."
+        if moved:
+            message += f" {moved} product(s) moved to 'Uncategorized'."
+        return Response(ok(
+            "RECORD_DELETED",
+            message=message,
+            data={"id": cat_id, "outcome": "deleted",
+                  "descendantsRemoved": descendants, "productsMoved": moved},
+        ))
 
         record_audit(request.user, "category.delete", target=category,
                      after={"name": category.name})

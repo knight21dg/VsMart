@@ -57,25 +57,15 @@ export default function CategoriesPage() {
     (body: Form) => (editing ? api.patch(`/admin/catalog/categories/${editing.id}`, body) : api.post("/admin/catalog/categories", body)),
     { invalidate: [["admin", "categories"]], successMessage: "Category saved.", onDone: () => setOpen(false) }
   );
-  // A category with products or sub-categories is deactivated rather than
-  // row-deleted (Product.category is PROTECT + NOT NULL — it can't be deleted
-  // out from under them), so the row is still in the list afterwards, just
-  // inactive. Use the server's own coded message, which names the outcome and
-  // what's still attached, rather than a flat "Category deleted." that isn't
-  // true when the category only got deactivated.
-  //
-  // force=true is sent whenever the category is already inactive — same
-  // "you've already seen it deactivate once" contract as zones/stores. The
-  // backend only honours it if nothing in the subtree has a live product;
-  // otherwise it's a no-op and the same deactivated-with-reason response
-  // comes back, so it's harmless to send unconditionally here.
+  // A real, one-shot delete: the category, every sub-category under it, and
+  // any product in that subtree gets auto-moved to 'Uncategorized' rather
+  // than blocking the delete. Show the server's own coded message since it
+  // names exactly how many sub-categories/products were affected.
   const remove = useApiMutation(
-    (category: Category) => {
-      const qs = category.isActive ? "" : "?force=true";
-      return api.delWithMessage<{ outcome?: string; descendantsRemoved?: number }>(
-        `/admin/catalog/categories/${category.id}${qs}`
-      );
-    },
+    (category: Category) =>
+      api.delWithMessage<{ outcome?: string; descendantsRemoved?: number; productsMoved?: number }>(
+        `/admin/catalog/categories/${category.id}`
+      ),
     {
       invalidate: [["admin", "categories"]],
       onDone: (res) => {
@@ -290,10 +280,8 @@ export default function CategoriesPage() {
         description={
           !toDelete
             ? ""
-            : !toDelete.isActive
-            ? "This category is already deactivated. Deleting it now will permanently remove it — and any sub-categories under it — but only if none of them have products left. If any still do, nothing will change; move or archive those products first."
             : toDelete.productCount > 0 || childrenOf(toDelete.id).length > 0
-            ? "This category still has products or sub-categories under it, so it will be deactivated instead of deleted — it stops showing in the catalog, but the products keep their category."
+            ? "This deletes the category and every sub-category under it. Any products in them move to 'Uncategorized' — nothing is lost, they just need a new category afterward."
             : "This category has nothing under it and will be permanently deleted."
         }
         confirmLabel="Delete"
