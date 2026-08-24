@@ -63,8 +63,19 @@ export default function CategoriesPage() {
   // inactive. Use the server's own coded message, which names the outcome and
   // what's still attached, rather than a flat "Category deleted." that isn't
   // true when the category only got deactivated.
+  //
+  // force=true is sent whenever the category is already inactive — same
+  // "you've already seen it deactivate once" contract as zones/stores. The
+  // backend only honours it if nothing in the subtree has a live product;
+  // otherwise it's a no-op and the same deactivated-with-reason response
+  // comes back, so it's harmless to send unconditionally here.
   const remove = useApiMutation(
-    (id: string) => api.delWithMessage<{ outcome?: string }>(`/admin/catalog/categories/${id}`),
+    (category: Category) => {
+      const qs = category.isActive ? "" : "?force=true";
+      return api.delWithMessage<{ outcome?: string; descendantsRemoved?: number }>(
+        `/admin/catalog/categories/${category.id}${qs}`
+      );
+    },
     {
       invalidate: [["admin", "categories"]],
       onDone: (res) => {
@@ -277,14 +288,18 @@ export default function CategoriesPage() {
         onOpenChange={(o) => !o && setToDelete(null)}
         title={`Delete ${toDelete?.name}?`}
         description={
-          toDelete && (toDelete.productCount > 0 || childrenOf(toDelete.id).length > 0)
+          !toDelete
+            ? ""
+            : !toDelete.isActive
+            ? "This category is already deactivated. Deleting it now will permanently remove it — and any sub-categories under it — but only if none of them have products left. If any still do, nothing will change; move or archive those products first."
+            : toDelete.productCount > 0 || childrenOf(toDelete.id).length > 0
             ? "This category still has products or sub-categories under it, so it will be deactivated instead of deleted — it stops showing in the catalog, but the products keep their category."
             : "This category has nothing under it and will be permanently deleted."
         }
         confirmLabel="Delete"
         destructive
         loading={remove.isPending}
-        onConfirm={() => toDelete && remove.mutate(toDelete.id)}
+        onConfirm={() => toDelete && remove.mutate(toDelete)}
       />
     </>
   );

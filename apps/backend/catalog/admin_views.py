@@ -196,18 +196,78 @@ class AdminCategoryDetailView(RetrieveUpdateDestroyAPIView):
     be exactly that: a plain DRF destroy() that raised `ProtectedError` — not a
     DRF exception, so it escaped the handler as an unexplained 500 instead of
     telling the operator why nothing happened).
+
+    ``?force=true`` on an ALREADY-deactivated category (same "you've seen the
+    deactivate outcome once already" contract as zones/stores) removes the
+    whole subtree — the category and every descendant, at any depth — but only
+    when NONE of them carry a single product. That's a hard floor, not a
+    policy choice: ``Product.category`` is NOT NULL, so a product literally
+    cannot survive its category being deleted out from under it. If any
+    descendant still has products, force is refused with the same message as
+    an unforced delete — there is no safe way to detach those products short
+    of moving them to a different category first, which is a bigger, separate
+    decision than this button makes.
     """
 
     permission_classes = [IsAdmin]
     serializer_class = AdminCategorySerializer
     queryset = Category.objects.all()
 
+    def _subtree_ids(self, category):
+        """category's id plus every descendant's, at any depth."""
+        ids = [category.id]
+        frontier = [category.id]
+        while frontier:
+            frontier = list(
+                Category.objects.filter(parent_id__in=frontier).values_list("id", flat=True)
+            )
+            ids.extend(frontier)
+        return ids
+
     def destroy(self, request, *args, **kwargs):
         category = self.get_object()
         used = Product.objects.filter(category=category).count()
         kids = Category.objects.filter(parent=category).count()
+        force = str(request.query_params.get("force", "")).lower() in ("1", "true", "yes")
+
+        if (used or kids) and force and not category.is_active:
+            subtree_ids = self._subtree_ids(category)
+            subtree_products = Product.objects.filter(category_id__in=subtree_ids).count()
+            if subtree_products == 0:
+                name, cat_id = category.name, str(category.id)
+                descendants = len(subtree_ids) - 1
+                record_audit(request.user, "category.force_delete", target=category,
+                             after={"name": name,
+                                    "reason": f"force delete; {descendants} descendant(s) removed with it"})
+                category.delete()  # CASCADE takes the (product-free) descendants with it
+                message = f"'{name}' category has been deleted."
+                if descendants:
+                    message += f" Its {descendants} sub-categor{'y' if descendants == 1 else 'ies'} went with it."
+                return Response(ok(
+                    "RECORD_DELETED",
+                    message=message,
+                    data={"id": cat_id, "outcome": "deleted", "descendantsRemoved": descendants},
+                ))
+            # Fall through to the deactivate-style refusal below — force can't
+            # override a real product dependency, only a soft "already inactive" gate.
 
         if used or kids:
+            if not category.is_active:
+                # Already deactivated and force didn't clear it (still has
+                # products somewhere in the subtree) — say why plainly rather
+                # than repeating the same "deactivated" outcome a second time.
+                blocked_products = Product.objects.filter(
+                    category_id__in=self._subtree_ids(category)
+                ).count()
+                return Response(ok(
+                    "RECORD_DEACTIVATED",
+                    message=(
+                        f"'{category.name}' (or one of its sub-categories) still has "
+                        f"{blocked_products} product(s), so it can't be fully removed. "
+                        f"Move or archive those products first, then delete again."
+                    ),
+                    data={"id": str(category.id), "outcome": "deactivated", "isActive": False},
+                ))
             category.is_active = False
             category.save(update_fields=["is_active", "updated_at"])
             reason_bits = []
@@ -223,7 +283,8 @@ class AdminCategoryDetailView(RetrieveUpdateDestroyAPIView):
                 message=(
                     f"'{category.name}' still has {' and '.join(reason_bits)}, so it "
                     f"was deactivated instead of deleted. It no longer shows in the "
-                    f"catalog."
+                    f"catalog. Delete again to remove it for good, once nothing under "
+                    f"it has products."
                 ),
                 data={"id": str(category.id), "outcome": "deactivated", "isActive": False},
             ))

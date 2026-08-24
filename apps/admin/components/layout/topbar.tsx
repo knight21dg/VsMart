@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Camera, KeyRound, LogOut, Menu } from "lucide-react";
+import { Camera, KeyRound, LogOut, Menu, UserCog } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth/auth-context";
 import { api } from "@/lib/api/client";
@@ -17,6 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ChangePasswordDialog } from "@/components/change-password-dialog";
+import { EditProfileDialog } from "@/components/edit-profile-dialog";
 import { GlobalSearch } from "./global-search";
 import { titleize } from "@/lib/utils";
 
@@ -54,6 +55,7 @@ function Avatar({ url, name, size = 32 }: { url?: string | null; name?: string |
 export function Topbar({ onMenu }: { onMenu: () => void }) {
   const { user, logout, refreshUser } = useAuth();
   const [changingPassword, setChangingPassword] = React.useState(false);
+  const [editingProfile, setEditingProfile] = React.useState(false);
   const inputRef = React.useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = React.useState(false);
 
@@ -113,6 +115,9 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
             <DropdownMenuItem disabled={uploading} onSelect={() => inputRef.current?.click()}>
               <Camera /> {uploading ? "Uploading…" : user?.avatar_url ? "Change photo" : "Add photo"}
             </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => setEditingProfile(true)}>
+              <UserCog /> Edit profile
+            </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => setChangingPassword(true)}>
               <KeyRound /> Change password
             </DropdownMenuItem>
@@ -124,6 +129,10 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
         </DropdownMenu>
       </div>
 
+      <EditProfileDialog
+        open={editingProfile}
+        onOpenChange={setEditingProfile}
+      />
       <ChangePasswordDialog
         open={changingPassword}
         onOpenChange={setChangingPassword}
