@@ -37,23 +37,42 @@ class _HomeShellState extends ConsumerState<HomeShell> {
 
   DateTime? _lastBackAt;
 
+  /// The sequence of tabs actually visited, oldest first — always starts at
+  /// Home (index 0) and never empties, so there's always something to fall
+  /// back to. Back pops the tab just switched TO, landing on whichever tab
+  /// was open before it — real history, not a straight jump to Home.
+  final List<int> _tabHistory = [0];
+
   @override
   void initState() {
     super.initState();
     _sync = ref.read(taskSyncProvider)..start();
   }
 
+  /// Record a tab switch in the history, unless it's a no-op (re-tapping the
+  /// already-active tab).
+  void _goToTab(int index) {
+    if (_tabHistory.last == index) return;
+    _tabHistory.add(index);
+    ref.read(homeTabProvider.notifier).state = index;
+    // Switching to a queue is an explicit "show me what's there now" —
+    // refetch rather than showing a stale list.
+    _sync.refreshNow();
+  }
+
   /// Tabs switch by changing [homeTabProvider]'s index into an IndexedStack —
   /// there's no route push for the system back button to pop, so with no
   /// handling at all it fell straight through to exiting the app from ANY
-  /// tab, home or not. Same fix as the customer app's own shell
-  /// (app_shell.dart): a non-Home tab returns to Home first; only Home itself
-  /// is a real exit, and even then only on a double-press, so a stray back
-  /// button doesn't kill the app out from under an on-duty agent.
+  /// tab, home or not. Back now walks [_tabHistory] one step at a time —
+  /// Home → Collections → Deliveries steps back to Collections, then Home —
+  /// rather than jumping straight to Home from wherever you are. Only once
+  /// the history is down to just Home does back mean "exit," and even then
+  /// only on a double-press, so a stray back button doesn't kill the app out
+  /// from under an on-duty agent.
   void _handleBack() {
-    final index = ref.read(homeTabProvider);
-    if (index != 0) {
-      ref.read(homeTabProvider.notifier).state = 0;
+    if (_tabHistory.length > 1) {
+      _tabHistory.removeLast();
+      ref.read(homeTabProvider.notifier).state = _tabHistory.last;
       return;
     }
     final now = DateTime.now();
@@ -109,12 +128,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
                       icon: _tabs[i].icon,
                       label: _tabs[i].label,
                       active: index == i,
-                      onTap: () {
-                        ref.read(homeTabProvider.notifier).state = i;
-                        // Switching to a queue is an explicit "show me what's
-                        // there now" — refetch rather than showing a stale list.
-                        _sync.refreshNow();
-                      },
+                      onTap: () => _goToTab(i),
                     ),
                 ],
               ),
